@@ -523,67 +523,96 @@ Give a SHORT, combined analysis. Write EVERY section in BOTH English AND Chinese
 ---
 Now output the drawing instructions as a JSON block to annotate the chart.
 
-════ STRICT ANNOTATION RULES — READ CAREFULLY ════
+════ MARKET STRUCTURE ANNOTATION RULES ════
 
-MAXIMUM 5 ANNOTATIONS TOTAL. No exceptions.
+PURPOSE: Show what YOU SEE on the chart — trend structure, zones, and key levels.
+Do NOT draw SL / TP / Entry points. This is a market structure analysis overlay, not a trade setup.
 
-MANDATORY 4 (always include these):
-  1. entry_arrow  — at the entry price level
-  2. dashed_line (red)  — SL stop-loss level
-  3. dashed_line (lime) — TP1 first target
-  4. dashed_line (cyan) — TP2 second target
+MAXIMUM 7 ANNOTATIONS TOTAL.
 
-OPTIONAL 1 (pick at most ONE of these, only if clearly visible):
-  - zone_box: for a key OB or FVG zone that directly supports the trade
-  - horizontal_line: for a critical S/R level the price is reacting to
-  - diagonal_line: for a key trendline that is STILL ACTIVE and price is near it
-  - pattern_triangle / pattern_flag: ONLY if the pattern is STILL FORMING (price inside it)
-  - fibonacci: ONLY if there is a very clear, recent swing high-to-low visible
+ANNOTATION TYPES TO USE:
 
-THINGS TO NEVER DO:
-  - DO NOT draw pattern shapes for COMPLETED/BROKEN patterns — they just clutter the chart
-  - DO NOT add more than one zone_box
-  - DO NOT add a pattern_label annotation (it adds clutter)
-  - DO NOT add fibonacci unless you can clearly see a clean swing from top to bottom
-  - DO NOT use 0.0 or 1.0 as x-coordinates for diagonal lines — use 0.05 to 0.82
+1. "structure_break" — for BOS (Break of Structure) or CHoCH (Change of Character)
+   - Required fields: y_position, color, label, direction ("bullish" or "bearish")
+   - color: "teal" for BOS (trend continuation), "orange" for CHoCH (reversal signal)
+   - label: "BOS ↑ 结构突破" or "CHoCH ↓ 结构变化"
 
-LABELS — keep them SHORT (under 20 characters):
-  - SL label: "SL 止损"
-  - TP1 label: "TP1 目标"
-  - TP2 label: "TP2 目标"
-  - Entry label: "BUY 买入" or "SELL 卖出" or "WAIT 等待"
-  - Zone labels: "Bullish OB", "FVG", "S/R Zone", etc. — short!
+2. "zone_box" — for Order Blocks, FVGs, Liquidity zones, S/R zones
+   - Required: y_start, y_end, color, label
+   - color rules: green=Bullish OB/Demand, red=Bearish OB/Supply, blue=FVG, yellow=Liquidity
+   - label examples: "Bullish OB 看涨OB", "FVG 缺口", "Supply Zone", "Liquidity 流动性"
 
-For y positions use named positions: "top"(0.06), "upper_quarter"(0.20), "upper_third"(0.30), "middle"(0.50), "lower_third"(0.65), "lower_quarter"(0.78), "bottom"(0.93)
+3. "horizontal_line" — for key S/R levels, equal highs/lows, swing points
+   - color: green=support, red=resistance, yellow=equal highs/lows
 
-Example — clean BUY setup:
+4. "diagonal_line" — for active trendlines (still being respected by price)
+   - x1/x2 range: 0.05 to 0.82 (never 0.0 or 1.0)
+   - color: white=main trend, purple=secondary channel
+
+5. "fibonacci" — ONLY if there is a clean, obvious swing high-to-low visible
+   - swing_high_y, swing_low_y positions
+
+6. "pattern_triangle" / "pattern_flag" — ONLY if pattern is still FORMING (price is inside it)
+
+COLOUR CONVENTION (match the legend on the chart):
+  green  = Bullish OB / Demand zone / Support
+  red    = Bearish OB / Supply zone / Resistance
+  blue   = FVG / Imbalance
+  yellow = Liquidity zone / Equal H&L
+  teal   = BOS (Break of Structure)
+  orange = CHoCH (Change of Character)
+  white  = Trendlines
+
+LABEL RULES — SHORT labels only (under 22 characters):
+  - "Bullish OB 看涨OB" ✅    "This is a very important bullish order block" ❌
+  - "FVG 缺口" ✅             "Fair Value Gap Imbalance Zone" ❌
+  - "BOS ↑ 结构突破" ✅       "Break of Structure Upward" ❌
+  - "CHoCH ↓ 变化" ✅
+  - "Support 支撑" ✅
+  - "Resistance 阻力" ✅
+  - "Liquidity 流动性" ✅
+  - "Equal Lows 平底" ✅
+
+WHAT TO LOOK FOR (in priority order):
+  1. BOS / CHoCH — where did market structure change? Mark these first.
+  2. Order Blocks — last bearish candle before bullish impulse (Bullish OB), last bullish candle before bearish impulse (Bearish OB)
+  3. FVG — gaps between candle 1 high and candle 3 low (or vice versa) that haven't been filled
+  4. Key S/R — obvious swing highs/lows that price has respected multiple times
+  5. Liquidity zones — equal highs or equal lows where stops are likely resting
+  6. Trendline — only if price has touched it 2+ times and it's still active
+
+For y positions use: "top"(0.06), "upper_quarter"(0.20), "upper_third"(0.30), "middle"(0.50), "lower_third"(0.65), "lower_quarter"(0.78), "bottom"(0.93)
+
+Example — bullish structure with key zones:
 ```json
 {{
   "signal": "BUY",
   "confidence": 7,
-  "pattern_name": "BULLISH ENGULFING",
+  "pattern_name": "ACCUMULATION — MARKUP PHASE",
   "annotations": [
-    {{"type": "entry_arrow", "y_position": "lower_third", "color": "green", "label": "BUY 买入"}},
-    {{"type": "dashed_line", "y_position": "lower_quarter", "color": "red", "label": "SL 止损"}},
-    {{"type": "dashed_line", "y_position": "upper_third", "color": "lime", "label": "TP1 目标"}},
-    {{"type": "dashed_line", "y_position": "upper_quarter", "color": "cyan", "label": "TP2 目标"}},
-    {{"type": "zone_box", "y_start": "lower_third", "y_end": "lower_quarter", "color": "green", "label": "Bullish OB"}}
+    {{"type": "structure_break", "y_position": "upper_third", "color": "teal", "label": "BOS ↑ 结构突破", "direction": "bullish"}},
+    {{"type": "zone_box", "y_start": "lower_third", "y_end": "middle", "color": "green", "label": "Bullish OB 看涨OB"}},
+    {{"type": "zone_box", "y_start": "upper_third", "y_end": "upper_quarter", "color": "blue", "label": "FVG 缺口"}},
+    {{"type": "horizontal_line", "y_position": "upper_quarter", "color": "red", "label": "Resistance 阻力"}},
+    {{"type": "horizontal_line", "y_position": "lower_third", "color": "green", "label": "Support 支撑"}},
+    {{"type": "zone_box", "y_start": "lower_quarter", "y_end": "bottom", "color": "yellow", "label": "Liquidity 流动性"}}
   ]
 }}
 ```
 
-Example — WAIT setup (no clear signal):
+Example — bearish structure with CHoCH:
 ```json
 {{
-  "signal": "WAIT",
-  "confidence": 4,
-  "pattern_name": "ASCENDING TRIANGLE (FORMING)",
+  "signal": "SELL",
+  "confidence": 6,
+  "pattern_name": "DISTRIBUTION — MARKDOWN PHASE",
   "annotations": [
-    {{"type": "entry_arrow", "y_position": "upper_third", "color": "yellow", "label": "WAIT 等待突破"}},
-    {{"type": "dashed_line", "y_position": "lower_quarter", "color": "red", "label": "SL 止损"}},
-    {{"type": "dashed_line", "y_position": "upper_quarter", "color": "lime", "label": "TP1 目标"}},
-    {{"type": "dashed_line", "y_position": "top", "color": "cyan", "label": "TP2 目标"}},
-    {{"type": "pattern_triangle", "top_y": "upper_third", "bottom_y": "middle", "color": "yellow", "label": "Triangle 三角"}}
+    {{"type": "structure_break", "y_position": "middle", "color": "orange", "label": "CHoCH ↓ 结构变化", "direction": "bearish"}},
+    {{"type": "zone_box", "y_start": "upper_third", "y_end": "middle", "color": "red", "label": "Bearish OB 看跌OB"}},
+    {{"type": "zone_box", "y_start": "middle", "y_end": "lower_third", "color": "blue", "label": "FVG 缺口"}},
+    {{"type": "horizontal_line", "y_position": "upper_third", "color": "red", "label": "Supply Zone 供给"}},
+    {{"type": "zone_box", "y_start": "top", "y_end": "upper_quarter", "color": "yellow", "label": "Equal Highs 平顶"}},
+    {{"type": "diagonal_line", "x1": 0.05, "y1": "upper_quarter", "x2": 0.80, "y2": "middle", "color": "white", "label": "Downtrend 下降趋势"}}
   ]
 }}
 ```
@@ -677,10 +706,10 @@ def _label_box(draw, x, y, text, font, text_color, bg=(0, 0, 0, 190), padding=5)
 
 
 def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dict = {}) -> Image.Image:
-    """Draw minimal, clean trading annotations on the chart image."""
+    """Draw market structure annotations — OB / FVG / BOS / CHoCH / S&R / Liquidity."""
     img = image.copy().convert("RGBA")
 
-    # ── Scale up images for sharp annotations ─────────────
+    # ── Scale up for sharp annotations ────────────────────
     MIN_W = 2000
     w_orig, h_orig = img.size
     if w_orig < MIN_W:
@@ -692,37 +721,45 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
     draw    = ImageDraw.Draw(overlay)
 
     # ── Font sizes ────────────────────────────────────────
-    fs_b  = max(24, int(w / 70))   # bold labels on lines
-    fs_sm = max(20, int(w / 80))   # normal text
-    fs_lg = max(28, int(w / 55))   # signal badge
-    fs_xs = max(18, int(w / 95))   # small right-edge tags
+    fs_b  = max(22, int(w / 75))    # bold labels
+    fs_sm = max(19, int(w / 85))    # normal text
+    fs_lg = max(27, int(w / 58))    # signal badge
+    fs_xs = max(17, int(w / 100))   # small tags
 
     font_b  = _load_font(fs_b,  bold=True)
     font_sm = _load_font(fs_sm, bold=False)
     font_lg = _load_font(fs_lg, bold=True)
     font_xs = _load_font(fs_xs, bold=False)
 
-    # ── Line thickness ────────────────────────────────────
-    LW_TRADE = max(5, int(w / 320))   # SL / TP / Entry lines — most prominent
-    LW_ZONE  = max(2, int(w / 700))   # zone borders — thin and subtle
-    LW_PAT   = max(3, int(w / 500))   # pattern lines — secondary
-    LW_DIAG  = max(3, int(w / 500))   # trendlines — secondary
-    DASH_LEN = max(20, int(w / 80))
-    GAP_LEN  = max(10, int(w / 160))
+    # ── Line thickness ─────────────────────────────────────
+    LW_SR    = max(4, int(w / 380))   # S/R and key structural lines
+    LW_ZONE  = max(2, int(w / 650))   # zone box border
+    LW_TREND = max(3, int(w / 520))   # trendlines / diagonals
+    LW_BOS   = max(4, int(w / 380))   # BOS / CHoCH marker lines
+    DASH_LEN = max(18, int(w / 90))
+    GAP_LEN  = max(9,  int(w / 180))
 
-    # ── Colour palette ────────────────────────────────────
+    # ── Colour palette ─────────────────────────────────────
+    # Colour convention (shown in legend strip):
+    #   green  = Bullish OB / Demand zone / Support
+    #   red    = Bearish OB / Supply zone / Resistance
+    #   blue   = FVG / Imbalance / Fair Value Gap
+    #   yellow = Liquidity zone / Equal H&L / Liquidity pool
+    #   teal   = BOS (Break of Structure — trend continuation)
+    #   orange = CHoCH (Change of Character — potential reversal)
+    #   white  = Trendlines / general structure
     C = {
         "red":    (255,  55,  55),
-        "green":  (  0, 220,  80),
-        "blue":   ( 40, 140, 255),
-        "yellow": (255, 215,   0),
-        "orange": (255, 140,   0),
+        "green":  (  0, 215,  80),
+        "blue":   ( 50, 145, 255),
+        "yellow": (255, 210,   0),
+        "orange": (255, 135,   0),
         "purple": (190,  60, 255),
-        "white":  (255, 255, 255),
-        "teal":   (  0, 220, 200),
+        "white":  (235, 235, 235),
+        "teal":   (  0, 215, 195),
         "pink":   (255,  60, 165),
-        "lime":   (120, 255,  40),
-        "cyan":   (  0, 210, 255),
+        "lime":   (115, 255,  40),
+        "cyan":   (  0, 205, 255),
     }
 
     def col(name, alpha=255):
@@ -733,7 +770,7 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
         r, g, b = C.get(name, C["white"])
         return (r, g, b, 255)
 
-    # ── Position map ──────────────────────────────────────
+    # ── Position map ───────────────────────────────────────
     POS = {
         "top":           int(h * 0.06),
         "upper_quarter": int(h * 0.20),
@@ -752,282 +789,260 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
     def xp(val):
         return int(w * float(val))
 
-    # ── Right-edge label — ALL text goes here, never inside chart ──
-    right_label_y_used = []
-    RIGHT_MARGIN = int(w * 0.015)   # gap between line and label box
+    # ── Chart content area: leave right 18% for labels ────
+    CHART_R = int(w * 0.82)   # right edge of drawn elements
+    LABEL_X = CHART_R + 8     # where label boxes begin
 
-    def right_label(y, text, txt_col, line_col, bold=False):
-        """Place a label tag on the right edge, nudging down if collision."""
-        font  = font_b if bold else font_xs
-        label_h = (fs_b if bold else fs_xs) + 14
-        # Collision avoidance — nudge down if too close to existing label
-        adjusted_y = y
+    # ── Right-edge label helper ────────────────────────────
+    right_label_y_used = []
+
+    def right_label(y, text, txt_col, border_col, bold=False):
+        font    = font_b if bold else font_xs
+        fsize   = fs_b  if bold else fs_xs
+        label_h = fsize + 14
+
+        # Collision avoidance
+        adj_y = y
         for used_y in right_label_y_used:
-            if abs(adjusted_y - used_y) < label_h + 4:
-                adjusted_y = used_y + label_h + 5
-        right_label_y_used.append(adjusted_y)
+            if abs(adj_y - used_y) < label_h + 4:
+                adj_y = used_y + label_h + 5
+        right_label_y_used.append(adj_y)
 
         try:
             bbox = font.getbbox(text)
-            tw = bbox[2] - bbox[0] + 22
+            tw   = bbox[2] - bbox[0] + 20
         except Exception:
-            tw = len(text) * 11 + 22
-        half = label_h // 2
-        rx   = w - tw - RIGHT_MARGIN
-        # Dark pill with coloured border
-        draw.rectangle([rx, adjusted_y - half, w - RIGHT_MARGIN, adjusted_y + half],
-                       fill=(8, 8, 20, 235), outline=line_col, width=3)
-        draw.text((rx + 10, adjusted_y - half + 5), text, fill=txt_col, font=font)
-        # Short tick from line to label box
-        draw.line([(int(w * 0.85), adjusted_y), (rx, adjusted_y)],
-                  fill=line_col, width=max(2, LW_ZONE))
+            tw = len(text) * 10 + 20
 
-    # ── Enforce maximum 5 annotations to prevent clutter ──
-    # Priority order: entry_arrow > dashed_line/horizontal_line > zone_box > others
+        half = label_h // 2
+        rx   = LABEL_X
+        lx2  = min(rx + tw, w - 4)
+        # Pill background + border
+        draw.rectangle([rx, adj_y - half, lx2, adj_y + half],
+                       fill=(6, 8, 18, 240), outline=border_col, width=2)
+        draw.text((rx + 8, adj_y - half + 5), text, fill=txt_col, font=font)
+        # Tick from chart body to label
+        draw.line([(CHART_R - 4, adj_y), (rx, adj_y)],
+                  fill=border_col, width=max(1, LW_ZONE))
+
+    # ── Enforce max 8 annotations (structure needs more room) ──
     PRIORITY = {
-        "entry_arrow": 0,
-        "dashed_line": 1,
-        "horizontal_line": 2,
-        "zone_box": 3,
-        "diagonal_line": 4,
-        "pattern_triangle": 5,
-        "pattern_flag": 5,
-        "pattern_hs": 5,
-        "pattern_double": 5,
-        "fibonacci": 6,
-        "pattern_label": 7,
+        "structure_break": 0,   # BOS / CHoCH — most important context
+        "horizontal_line": 1,   # S/R levels
+        "zone_box":        2,   # OB / FVG / liquidity zones
+        "diagonal_line":   3,   # trendlines
+        "fibonacci":       4,
+        "pattern_triangle":5,
+        "pattern_flag":    5,
+        "pattern_hs":      5,
+        "pattern_double":  5,
+        "dashed_line":     6,
+        "entry_arrow":     7,
+        "pattern_label":   8,
     }
     sorted_anns = sorted(annotations, key=lambda a: PRIORITY.get(a.get("type", ""), 9))
-    annotations = sorted_anns[:5]   # hard cap at 5
+    annotations = sorted_anns[:8]
 
     # ═══════════════════════════════════════════════════════
-    # DRAW ANNOTATIONS
+    # DRAW MARKET STRUCTURE ANNOTATIONS
     # ═══════════════════════════════════════════════════════
     for ann in annotations:
         atype = ann.get("type", "")
         cname = ann.get("color", "white")
         label = ann.get("label", "")
 
-        # ── Solid horizontal line ─────────────────────────
-        if atype == "horizontal_line":
-            y = yp(ann.get("y_position", "middle"))
-            # Line spans left 85% of chart so right edge is free for label
-            draw.line([(int(w*0.01), y), (int(w*0.84), y)], fill=col(cname), width=LW_TRADE)
-            if label:
-                right_label(y, label, solid(cname), col(cname))
-
-        # ── Dashed line (SL / TP / Entry) — most important ─
-        elif atype == "dashed_line":
-            y = yp(ann.get("y_position", "middle"))
-            _draw_dashed_line(draw, int(w*0.01), y, int(w*0.84), y,
-                              fill=col(cname), width=LW_TRADE, dash=DASH_LEN, gap=GAP_LEN)
+        # ── BOS / CHoCH structural break marker ───────────
+        # Draw a solid line with a highlighted badge at the right
+        if atype == "structure_break":
+            y    = yp(ann.get("y_position", "middle"))
+            # Extend line full chart width
+            draw.line([(int(w*0.01), y), (CHART_R, y)],
+                      fill=col(cname), width=LW_BOS)
+            # Small diagonal arrow chevrons along the line to indicate direction
+            direction = ann.get("direction", "bullish")
+            chev_col  = col(cname, 210)
+            chev_sz   = max(10, int(w / 140))
+            for cx in range(int(w*0.15), CHART_R - 20, int(w * 0.12)):
+                if direction == "bullish":
+                    draw.line([(cx, y + chev_sz), (cx + chev_sz, y), (cx + chev_sz*2, y + chev_sz)],
+                              fill=chev_col, width=LW_TREND)
+                else:
+                    draw.line([(cx, y - chev_sz), (cx + chev_sz, y), (cx + chev_sz*2, y - chev_sz)],
+                              fill=chev_col, width=LW_TREND)
             if label:
                 right_label(y, label, solid(cname), col(cname), bold=True)
 
-        # ── Zone box — VERY subtle, thin border only ──────
+        # ── Solid S/R horizontal line ─────────────────────
+        elif atype == "horizontal_line":
+            y = yp(ann.get("y_position", "middle"))
+            draw.line([(int(w*0.01), y), (CHART_R, y)], fill=col(cname, 210), width=LW_SR)
+            if label:
+                right_label(y, label, solid(cname), col(cname))
+
+        # ── Dashed level line ─────────────────────────────
+        elif atype == "dashed_line":
+            y = yp(ann.get("y_position", "middle"))
+            _draw_dashed_line(draw, int(w*0.01), y, CHART_R, y,
+                              fill=col(cname, 200), width=LW_SR,
+                              dash=DASH_LEN, gap=GAP_LEN)
+            if label:
+                right_label(y, label, solid(cname), col(cname))
+
+        # ── Zone box: OB / FVG / Liquidity / S-R zone ─────
         elif atype == "zone_box":
             y1 = yp(ann.get("y_start", "upper_third"))
             y2 = yp(ann.get("y_end",   "upper_quarter"))
             if y1 > y2:
                 y1, y2 = y2, y1
-            # Almost invisible fill — just a faint tint so candles show through
-            draw.rectangle([int(w*0.01), y1, int(w*0.84), y2],
-                           fill=col(cname, 18), outline=col(cname, 160), width=LW_ZONE)
-            # Label goes on right edge at midpoint of zone
+            zone_h = y2 - y1
+            # Faint fill — candles still fully visible (alpha 22)
+            draw.rectangle([int(w*0.01), y1, CHART_R, y2],
+                           fill=col(cname, 22), outline=col(cname, 170), width=LW_ZONE)
+            # Subtle left-edge marker bar (3px thick, full zone height, more opaque)
+            draw.rectangle([int(w*0.01), y1, int(w*0.01) + max(4, LW_ZONE*2), y2],
+                           fill=col(cname, 200))
             if label:
-                right_label((y1 + y2) // 2, label, solid(cname), col(cname, 200))
+                mid_y = (y1 + y2) // 2
+                right_label(mid_y, label, solid(cname), col(cname, 200))
 
-        # ── Diagonal trendline — thin, secondary ─────────
+        # ── Diagonal trendline ────────────────────────────
         elif atype == "diagonal_line":
-            x1 = xp(ann.get("x1", 0.05));  x2 = min(xp(ann.get("x2", 0.82)), int(w*0.84))
-            y1 = yp(ann.get("y1", "upper_third")); y2 = yp(ann.get("y2", "lower_third"))
-            draw.line([(x1, y1), (x2, y2)], fill=col(cname, 200), width=LW_DIAG)
+            x1 = xp(ann.get("x1", 0.05))
+            x2 = min(xp(ann.get("x2", 0.80)), CHART_R)
+            y1 = yp(ann.get("y1", "upper_third"))
+            y2 = yp(ann.get("y2", "lower_third"))
+            draw.line([(x1, y1), (x2, y2)], fill=col(cname, 195), width=LW_TREND)
             if label:
-                # Label at midpoint
-                mx, my = (x1 + x2) // 2, (y1 + y2) // 2
+                # Label at ~60% along the line
+                mx = int(x1 + (x2 - x1) * 0.6)
+                my = int(y1 + (y2 - y1) * 0.6)
                 right_label(my, label, solid(cname), col(cname, 200))
 
-        # ── Fibonacci levels — only 3 most important ──────
+        # ── Fibonacci retracement ─────────────────────────
         elif atype == "fibonacci":
             y_high = yp(ann.get("swing_high_y", "upper_quarter"))
             y_low  = yp(ann.get("swing_low_y",  "lower_quarter"))
             rng    = y_low - y_high
             fibs = [
-                (0.500, "50%",    "yellow", LW_PAT),
-                (0.618, "61.8%",  "orange", LW_TRADE),  # golden ratio — thicker
-                (0.786, "78.6%",  "pink",   LW_PAT),
+                (0.382, "38.2%", "cyan",   LW_TREND),
+                (0.500, "50%",   "yellow", LW_TREND),
+                (0.618, "61.8%", "orange", LW_SR),
+                (0.786, "78.6%", "pink",   LW_TREND),
             ]
             for ratio, flabel, fcol, lw in fibs:
                 fy = int(y_high + rng * ratio)
-                _draw_dashed_line(draw, int(w*0.01), fy, int(w*0.84), fy,
-                                  fill=col(fcol, 180), width=lw,
+                _draw_dashed_line(draw, int(w*0.01), fy, CHART_R, fy,
+                                  fill=col(fcol, 170), width=lw,
                                   dash=DASH_LEN//2, gap=GAP_LEN)
                 right_label(fy, f"Fib {flabel}", solid(fcol), col(fcol, 200))
 
-        # ── Entry arrow — compact, right side of chart ────
-        elif atype == "entry_arrow":
-            y   = yp(ann.get("y_position", "middle"))
-            # Place arrow at right 20% of chart (near current price)
-            ax  = int(w * 0.68)
-            asz = max(14, int(w / 90))
-            is_bull = signal == "BUY" or cname == "green"
-            # Chevron-style compact arrow
-            if is_bull:
-                pts = [
-                    (ax,         y),
-                    (ax - asz,   y + asz),
-                    (ax - asz//2,y + asz),
-                    (ax - asz//2,y + asz*2),
-                    (ax + asz//2,y + asz*2),
-                    (ax + asz//2,y + asz),
-                    (ax + asz,   y + asz),
-                ]
-            else:
-                pts = [
-                    (ax,         y + asz*2),
-                    (ax - asz,   y + asz),
-                    (ax - asz//2,y + asz),
-                    (ax - asz//2,y),
-                    (ax + asz//2,y),
-                    (ax + asz//2,y + asz),
-                    (ax + asz,   y + asz),
-                ]
-            draw.polygon(pts, fill=col(cname, 220), outline=solid("white"))
-            if label:
-                right_label(y + asz, label, solid(cname), col(cname), bold=True)
-
-        # ── Triangle pattern — thin lines, no fill ────────
+        # ── Triangle / wedge / pennant ────────────────────
         elif atype == "pattern_triangle":
             top_y    = yp(ann.get("top_y",    "upper_third"))
             bottom_y = yp(ann.get("bottom_y", "lower_third"))
             apex_y   = (top_y + bottom_y) // 2
-            xs, xa   = int(w*0.05), int(w*0.82)
-            draw.line([(xs, top_y),    (xa, apex_y)], fill=col(cname, 180), width=LW_PAT)
-            draw.line([(xs, bottom_y), (xa, apex_y)], fill=col(cname, 180), width=LW_PAT)
+            xs, xa   = int(w*0.05), CHART_R - int(w*0.02)
+            draw.line([(xs, top_y),    (xa, apex_y)], fill=col(cname, 180), width=LW_TREND)
+            draw.line([(xs, bottom_y), (xa, apex_y)], fill=col(cname, 180), width=LW_TREND)
             if label:
                 right_label(apex_y, label, solid(cname), col(cname, 200))
 
-        # ── Flag / channel pattern — thin, no fill ────────
+        # ── Flag / channel ────────────────────────────────
         elif atype == "pattern_flag":
             top_y    = yp(ann.get("top_y",    "upper_third"))
             bottom_y = yp(ann.get("bottom_y", "middle"))
             is_bear  = "BEAR" in label.upper() or cname in ("red", "orange", "pink")
             tilt_dir = 1 if is_bear else -1
-            channel_h = abs(bottom_y - top_y)
-            tilt = int(channel_h * 0.18) * tilt_dir
-            x1, x2 = int(w * 0.15), int(w * 0.82)
-            t2_y = top_y    + tilt
-            b2_y = bottom_y + tilt
-            draw.line([(x1, top_y),    (x2, t2_y)], fill=col(cname, 180), width=LW_PAT)
-            draw.line([(x1, bottom_y), (x2, b2_y)], fill=col(cname, 180), width=LW_PAT)
+            tilt     = int(abs(bottom_y - top_y) * 0.18) * tilt_dir
+            x1, x2   = int(w * 0.12), CHART_R - int(w*0.02)
+            draw.line([(x1, top_y),    (x2, top_y    + tilt)], fill=col(cname, 180), width=LW_TREND)
+            draw.line([(x1, bottom_y), (x2, bottom_y + tilt)], fill=col(cname, 180), width=LW_TREND)
             if label:
                 mid_y = (top_y + bottom_y) // 2 + tilt // 2
                 right_label(mid_y, label, solid(cname), col(cname, 200))
 
-        # ── Head & Shoulders — minimal ────────────────────
+        # ── Head & Shoulders ──────────────────────────────
         elif atype == "pattern_hs":
             neck_y = yp(ann.get("neck_y", "lower_third"))
             head_y = yp(ann.get("head_y", "upper_quarter"))
             lsh_y  = yp(ann.get("lsh_y",  "upper_third"))
             rsh_y  = yp(ann.get("rsh_y",  "upper_third"))
-            r = max(12, int(w / 110))
-            for cx, cy in [
-                (int(w*0.22), lsh_y),
-                (int(w*0.50), head_y),
-                (int(w*0.78), rsh_y),
-            ]:
-                draw.ellipse([cx-r, cy-r, cx+r, cy+r], outline=col(cname, 200), width=LW_PAT)
-                draw.line([(cx, cy+r), (cx, neck_y)], fill=col(cname, 100), width=LW_PAT)
-            draw.line([(int(w*0.18), neck_y), (int(w*0.82), neck_y)],
-                      fill=col("yellow", 200), width=LW_PAT)
+            r = max(10, int(w / 120))
+            for cx, cy in [(int(w*0.22), lsh_y), (int(w*0.50), head_y), (int(w*0.76), rsh_y)]:
+                draw.ellipse([cx-r, cy-r, cx+r, cy+r], outline=col(cname, 200), width=LW_TREND)
+                draw.line([(cx, cy+r), (cx, neck_y)], fill=col(cname, 100), width=LW_TREND)
+            draw.line([(int(w*0.15), neck_y), (CHART_R, neck_y)],
+                      fill=col("yellow", 200), width=LW_TREND)
             right_label(neck_y, "Neckline 颈线", solid("yellow"), col("yellow", 200))
 
-        # ── Double top/bottom — minimal ───────────────────
+        # ── Double top/bottom ─────────────────────────────
         elif atype == "pattern_double":
             peak_y = yp(ann.get("peak_y", "upper_quarter"))
             neck_y = yp(ann.get("neck_y", "lower_third"))
-            r = max(14, int(w / 95))
-            for cx in [int(w*0.30), int(w*0.65)]:
+            r = max(12, int(w / 105))
+            for cx in [int(w*0.28), int(w*0.62)]:
                 draw.ellipse([cx-r, peak_y-r, cx+r, peak_y+r],
-                             outline=col(cname, 200), width=LW_PAT)
-            draw.line([(int(w*0.22), neck_y), (int(w*0.82), neck_y)],
-                      fill=col("yellow", 200), width=LW_PAT)
+                             outline=col(cname, 200), width=LW_TREND)
+            draw.line([(int(w*0.15), neck_y), (CHART_R, neck_y)],
+                      fill=col("yellow", 200), width=LW_TREND)
             right_label(neck_y, "Neckline 颈线", solid("yellow"), col("yellow", 200))
 
-        # ── Pattern name banner — small, top-left ─────────
-        elif atype == "pattern_label":
-            y  = yp(ann.get("y_position", "top"))
-            try:
-                bbox = font_sm.getbbox(label)
-                tw = bbox[2] - bbox[0] + 24
-            except Exception:
-                tw = len(label) * 11 + 24
-            th = fs_sm + 12
-            draw.rectangle([10, y - th//2, 10 + tw, y + th//2],
-                           fill=(8, 8, 20, 210), outline=col(cname, 200), width=2)
-            draw.text((18, y - th//2 + 4), label, fill=solid(cname), font=font_sm)
+    # ═══════════════════════════════════════════════════════
+    # COLOUR LEGEND STRIP — top-left, shows what each colour means
+    # ═══════════════════════════════════════════════════════
+    legend_items = [
+        ("green",  "Bullish OB/Demand"),
+        ("red",    "Bearish OB/Supply"),
+        ("blue",   "FVG/Imbalance"),
+        ("yellow", "Liquidity Zone"),
+        ("teal",   "BOS"),
+        ("orange", "CHoCH"),
+    ]
+    leg_x, leg_y = 10, 10
+    leg_sw = max(10, int(w / 140))   # colour swatch width
+    leg_h  = fs_xs + 8
+    for lc, lt in legend_items:
+        r2, g2, b2 = C[lc]
+        # Colour swatch
+        draw.rectangle([leg_x, leg_y, leg_x + leg_sw, leg_y + leg_h],
+                       fill=(r2, g2, b2, 220))
+        # Text
+        draw.text((leg_x + leg_sw + 5, leg_y + 2), lt,
+                  fill=(r2, g2, b2, 230), font=font_xs)
+        try:
+            bbox = font_xs.getbbox(lt)
+            tw   = bbox[2] - bbox[0]
+        except Exception:
+            tw = len(lt) * 9
+        leg_x += leg_sw + tw + 18
 
     # ═══════════════════════════════════════════════════════
-    # TRADE SUMMARY CARD — compact, bottom-right corner
+    # SIGNAL BADGE — top-right corner (compact)
     # ═══════════════════════════════════════════════════════
-    cy0    = h
-    card_h = 0
     if signal in ("BUY", "SELL", "WAIT"):
-        sig_col  = "green" if signal == "BUY" else ("red" if signal == "SELL" else "yellow")
-        sig_icon = "▲ BUY" if signal == "BUY" else ("▼ SELL" if signal == "SELL" else "⏳ WAIT")
+        sc   = (10, 185, 60, 245) if signal == "BUY" else ((195, 28, 28, 245) if signal == "SELL" else (185, 125, 0, 245))
+        stxt = f"▲ {signal}" if signal == "BUY" else (f"▼ {signal}" if signal == "SELL" else f"⏳ {signal}")
+        bw2  = max(110, int(w * 0.085))
+        bh2  = fs_lg + 8
+        draw.rectangle([w - bw2 - 10, 10, w - 10, 10 + bh2],
+                       fill=sc, outline=(255, 255, 255, 190), width=2)
+        draw.text((w - bw2 + 5, 14), stxt, fill=(255, 255, 255, 255), font=font_lg)
 
-        rows = [(sig_icon, sig_col, True)]
-        for key, label_text in [
-            ("entry", "Entry"),
-            ("sl",    "SL   "),
-            ("tp1",   "TP1  "),
-            ("tp2",   "TP2  "),
-        ]:
-            val = meta.get(key, "")
-            if val:
-                rows.append((f"{label_text}: {val}", "white", False))
-
+        # Confidence indicator below signal badge
         conf = meta.get("confidence", 0)
         if conf:
-            conf_col = "green" if conf >= 7 else ("yellow" if conf >= 5 else "red")
-            rows.append((f"Conf: {conf}/10", conf_col, False))
-
-        row_h  = fs_xs + 10
-        pad    = 12
-        card_w = max(260, int(w * 0.18))
-        card_h = len(rows) * row_h + pad * 2
-        # Bottom-right placement so it doesn't block the candles
-        cx0 = w - card_w - 14
-        cy0 = h - card_h - 14
-
-        sig_border = C.get(sig_col, C["white"])
-        draw.rectangle([cx0, cy0, cx0 + card_w, cy0 + card_h],
-                       fill=(8, 8, 20, 220), outline=(*sig_border, 255), width=3)
-
-        for i, (text, color_name, bold) in enumerate(rows):
-            ty = cy0 + pad + i * row_h
-            fnt = font_b if bold else font_xs
-            if bold:
-                r2, g2, b2 = C.get(color_name, C["white"])
-                draw.rectangle([cx0 + 2, ty - 2, cx0 + card_w - 2, ty + row_h - 2],
-                               fill=(r2, g2, b2, 55))
-            draw.text((cx0 + 10, ty + 2), text, fill=solid(color_name), font=fnt)
-
-    # ── Signal badge — top-right corner ───────────────────
-    if signal in ("BUY", "SELL", "WAIT"):
-        sc   = (15, 190, 65, 245) if signal == "BUY" else ((200, 30, 30, 245) if signal == "SELL" else (190, 130, 0, 245))
-        stxt = f"▲ {signal}" if signal == "BUY" else (f"▼ {signal}" if signal == "SELL" else f"⏳ {signal}")
-        bw2 = max(120, int(w * 0.09))
-        bh2 = fs_lg + 8
-        draw.rectangle([w - bw2 - 12, 10, w - 12, 10 + bh2],
-                       fill=sc, outline=(255, 255, 255, 200), width=2)
-        draw.text((w - bw2 + 6, 14), stxt, fill=(255, 255, 255, 255), font=font_lg)
+            conf_col = (20, 200, 60) if conf >= 7 else ((210, 160, 0) if conf >= 5 else (200, 40, 40))
+            ctxt     = f"Conf {conf}/10"
+            draw.rectangle([w - bw2 - 10, 10 + bh2 + 4, w - 10, 10 + bh2 + fs_xs + 14],
+                           fill=(*conf_col, 210), outline=(255, 255, 255, 150), width=1)
+            draw.text((w - bw2 + 5, 10 + bh2 + 6), ctxt,
+                      fill=(255, 255, 255, 255), font=font_xs)
 
     # ── Watermark ─────────────────────────────────────────
     draw.text((10, h - fs_xs - 6), "TradingAI Analyst",
-              fill=(200, 200, 200, 70), font=font_xs)
+              fill=(200, 200, 200, 60), font=font_xs)
 
-    # ── Composite overlay onto chart ──────────────────────
+    # ── Composite and return ───────────────────────────────
     return Image.alpha_composite(img, overlay).convert("RGB")
 
 
