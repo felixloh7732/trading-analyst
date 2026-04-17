@@ -1702,10 +1702,13 @@ The AI will identify:<br><br>
 st.divider()
 st.markdown("## 🛠️ Trading Tools 交易工具")
 
-tool_tab1, tool_tab2, tool_tab3 = st.tabs([
-    "🧮 Position Size Calculator",
-    "📰 Economic Calendar",
-    "📡 Multi-Chart Scanner",
+tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6 = st.tabs([
+    "🧮 Position Size",
+    "📰 News Calendar",
+    "📡 Chart Scanner",
+    "🤖 AI Coach",
+    "📄 PDF Report",
+    "💹 Currency Strength",
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -1956,6 +1959,338 @@ Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
 </div>
 </div>
 """, unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# TOOL 4 — AI TRADING COACH
+# ════════════════════════════════════════════════════════════
+with tool_tab4:
+    st.markdown("### 🤖 AI Trading Coach 交易导师")
+    st.caption("Ask any trading question in English or Chinese. 用中文或英文问任何交易问题。")
+
+    # Initialise chat history
+    if "coach_messages" not in st.session_state:
+        st.session_state["coach_messages"] = [
+            {"role": "assistant", "content": (
+                "你好！我是你的AI交易导师 👋\n\n"
+                "你可以问我任何关于交易的问题，例如：\n"
+                "- 「什么是Smart Money Concepts？」\n"
+                "- 「Scalper应该用什么指标？」\n"
+                "- 「为什么止损总是被扫？」\n"
+                "- 「How do I identify a Wyckoff Spring?」\n\n"
+                "随时问，我都在！😊"
+            )}
+        ]
+
+    # Show chat history
+    for msg in st.session_state["coach_messages"]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # Chat input
+    if user_question := st.chat_input("问我任何交易问题... / Ask any trading question..."):
+        if not api_key:
+            st.warning("👈 请先在侧边栏输入API Key")
+        else:
+            # Add user message
+            st.session_state["coach_messages"].append({"role": "user", "content": user_question})
+            with st.chat_message("user"):
+                st.markdown(user_question)
+
+            # Get AI response
+            with st.chat_message("assistant"):
+                with st.spinner("思考中..."):
+                    try:
+                        coach_system = """You are an elite trading coach and mentor with 20+ years of experience.
+You specialise in SMC, Wyckoff, Price Action, Scalping, Day Trading, and Risk Management.
+You teach in both English and Chinese (Mandarin/Traditional Chinese) — match the language the student uses.
+Keep answers practical, clear, and educational. Use examples and bullet points when helpful.
+Always emphasise risk management and discipline. Never give specific financial advice or tell someone to buy/sell a specific asset.
+You are patient, encouraging, and explain complex concepts in simple terms."""
+
+                        if model_choice.startswith("gemini"):
+                            client_coach = google_genai.Client(api_key=api_key)
+                            # Build conversation history for context
+                            history_text = "\n".join([
+                                f"{'Student' if m['role']=='user' else 'Coach'}: {m['content']}"
+                                for m in st.session_state["coach_messages"][-8:]
+                            ])
+                            full_q = coach_system + "\n\nConversation so far:\n" + history_text
+                            coach_resp = client_coach.models.generate_content(
+                                model=model_choice,
+                                contents=[full_q],
+                            )
+                            answer = coach_resp.text
+                        else:
+                            client_coach = anthropic.Anthropic(api_key=api_key)
+                            history_msgs = [
+                                {"role": m["role"], "content": m["content"]}
+                                for m in st.session_state["coach_messages"]
+                                if m["role"] in ("user", "assistant")
+                            ][-10:]
+                            coach_resp = client_coach.messages.create(
+                                model=model_choice,
+                                max_tokens=1024,
+                                system=coach_system,
+                                messages=history_msgs,
+                            )
+                            answer = coach_resp.content[0].text
+
+                        st.markdown(answer)
+                        st.session_state["coach_messages"].append({"role": "assistant", "content": answer})
+
+                    except Exception as e:
+                        st.error(f"Error: {str(e)}")
+
+    if len(st.session_state["coach_messages"]) > 2:
+        if st.button("🗑️ Clear Chat 清除对话", key="clear_coach"):
+            st.session_state["coach_messages"] = [st.session_state["coach_messages"][0]]
+            st.rerun()
+
+
+# ════════════════════════════════════════════════════════════
+# TOOL 5 — PDF REPORT GENERATOR
+# ════════════════════════════════════════════════════════════
+with tool_tab5:
+    st.markdown("### 📄 PDF Report Generator 分析报告")
+    st.caption("Generate a professional PDF report from your latest analysis. 一键生成专业PDF交易分析报告。")
+
+    if "analysis" not in st.session_state:
+        st.info("👆 Run a chart analysis first, then come back here to generate the PDF report.")
+    else:
+        st.success("✅ Analysis found! Ready to generate PDF.")
+
+        report_trader_name = st.text_input("👤 Trader Name (optional)", placeholder="e.g. Chee")
+        report_notes       = st.text_area("📝 Personal Notes (optional)", placeholder="e.g. Waiting for NY session confirmation before entry...", height=80)
+
+        if st.button("📄 Generate PDF Report", use_container_width=True):
+            try:
+                from fpdf import FPDF
+                import datetime
+
+                analysis_text = st.session_state["analysis"]
+                clean_text    = re.sub(r"```json.*?```", "", analysis_text, flags=re.DOTALL).strip()
+                parsed        = parse_json_from_analysis(analysis_text)
+                sig           = parsed.get("signal", "WAIT")
+                conf          = parsed.get("confidence", 5)
+                pattern       = parsed.get("pattern_name", "N/A")
+                now_str       = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_auto_page_break(auto=True, margin=15)
+
+                # Header
+                pdf.set_fill_color(30, 30, 60)
+                pdf.rect(0, 0, 210, 32, 'F')
+                pdf.set_font("Helvetica", "B", 22)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_xy(10, 8)
+                pdf.cell(0, 10, "TradingAI Analyst - Chart Analysis Report", ln=True)
+                pdf.set_font("Helvetica", "", 11)
+                pdf.set_xy(10, 20)
+                pdf.cell(0, 8, f"Generated: {now_str}  |  Trader: {report_trader_name or 'Anonymous'}  |  {market_type}  {timeframe}", ln=True)
+
+                pdf.set_text_color(0, 0, 0)
+                pdf.ln(8)
+
+                # Signal box
+                sig_colors = {"BUY": (5,150,105), "SELL": (220,38,38), "WAIT": (180,130,0)}
+                sc = sig_colors.get(sig, (100,100,100))
+                pdf.set_fill_color(*sc)
+                pdf.set_text_color(255,255,255)
+                pdf.set_font("Helvetica","B",18)
+                pdf.cell(0, 14, f"  SIGNAL: {sig}   |   Confidence: {conf}/10   |   Pattern: {pattern}", ln=True, fill=True)
+                pdf.set_text_color(0,0,0)
+                pdf.ln(5)
+
+                # Annotated chart image
+                if st.session_state.get("annotated"):
+                    img_buf = io.BytesIO()
+                    st.session_state["annotated"].save(img_buf, format="PNG")
+                    img_buf.seek(0)
+                    tmp_img_path = "/tmp/report_chart.png"
+                    with open(tmp_img_path, "wb") as f:
+                        f.write(img_buf.read())
+                    try:
+                        pdf.image(tmp_img_path, x=10, w=190)
+                        pdf.ln(4)
+                    except Exception:
+                        pass
+
+                # Analysis text
+                pdf.set_font("Helvetica","B",13)
+                pdf.set_fill_color(240,240,255)
+                pdf.cell(0, 9, " AI Analysis", ln=True, fill=True)
+                pdf.set_font("Helvetica","",10)
+                pdf.ln(2)
+
+                for line in clean_text.split("\n"):
+                    line = line.strip()
+                    if not line:
+                        pdf.ln(2)
+                        continue
+                    # Strip markdown bold
+                    line = re.sub(r"\*\*(.*?)\*\*", r"\1", line)
+                    # Skip emoji-heavy lines that can't render
+                    safe_line = line.encode("latin-1", errors="replace").decode("latin-1")
+                    if line.startswith("**") or line.startswith("#"):
+                        pdf.set_font("Helvetica","B",11)
+                    else:
+                        pdf.set_font("Helvetica","",10)
+                    pdf.multi_cell(0, 6, safe_line)
+
+                # Personal notes
+                if report_notes:
+                    pdf.ln(4)
+                    pdf.set_font("Helvetica","B",12)
+                    pdf.set_fill_color(255,250,220)
+                    pdf.cell(0, 9, " Trader Notes", ln=True, fill=True)
+                    pdf.set_font("Helvetica","",10)
+                    safe_notes = report_notes.encode("latin-1", errors="replace").decode("latin-1")
+                    pdf.multi_cell(0, 6, safe_notes)
+
+                # Footer
+                pdf.ln(6)
+                pdf.set_font("Helvetica","I",8)
+                pdf.set_text_color(150,150,150)
+                pdf.cell(0, 5, "DISCLAIMER: For educational purposes only. Not financial advice. Always manage your own risk.", ln=True)
+
+                # Output
+                pdf_bytes = pdf.output(dest="S").encode("latin-1")
+                st.download_button(
+                    "⬇️ Download PDF Report",
+                    data=pdf_bytes,
+                    file_name=f"TradingAI_Report_{now_str[:10]}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+                st.success("✅ PDF ready! Click above to download.")
+
+            except ImportError:
+                st.error("PDF library not installed. Add 'fpdf2' to requirements.txt and redeploy.")
+            except Exception as e:
+                st.error(f"PDF generation error: {str(e)}")
+
+
+# ════════════════════════════════════════════════════════════
+# TOOL 6 — CURRENCY STRENGTH METER
+# ════════════════════════════════════════════════════════════
+with tool_tab6:
+    st.markdown("### 💹 Currency Strength Meter 货币强弱表")
+    st.caption("Upload H1 charts for each currency pair to compute relative strength. 上传各货币对H1图表，自动计算货币强弱。")
+
+    if not api_key:
+        st.warning("👈 Enter your API key in the sidebar first.")
+    else:
+        st.markdown("""
+<div style='background:#1e293b;border-radius:8px;padding:12px;margin-bottom:12px'>
+<p style='color:#94a3b8;font-size:13px;margin:0'>
+📋 <b style='color:#fbbf24'>How it works:</b> Upload H1 charts for any pairs below.
+AI analyses each one and scores each currency's strength from 1-10.
+The meter shows who's strongest today.<br>
+<span style='color:#86efac'>怎么用：上传下面任何货币对的H1图，AI分析后自动给每个货币打分，显示今天谁最强。</span>
+</p>
+</div>
+""", unsafe_allow_html=True)
+
+        csm_pairs = {
+            "EUR/USD": ("EUR", "USD"), "GBP/USD": ("GBP", "USD"),
+            "USD/JPY": ("USD", "JPY"), "AUD/USD": ("AUD", "USD"),
+            "USD/CAD": ("USD", "CAD"), "USD/CHF": ("USD", "CHF"),
+            "NZD/USD": ("NZD", "USD"), "XAU/USD": ("XAU", "USD"),
+        }
+
+        csm_cols = st.columns(4)
+        csm_uploads = {}
+        for idx, (pair, currencies) in enumerate(csm_pairs.items()):
+            with csm_cols[idx % 4]:
+                st.markdown(f"**{pair}**")
+                f = st.file_uploader("", type=["png","jpg","jpeg","webp"],
+                                     key=f"csm_{pair}", label_visibility="collapsed")
+                if f:
+                    csm_uploads[pair] = (Image.open(f), currencies)
+                    st.image(csm_uploads[pair][0], use_container_width=True)
+
+        if len(csm_uploads) >= 2:
+            if st.button(f"⚡ Calculate Strength from {len(csm_uploads)} pairs", use_container_width=True):
+                currency_scores = {}
+                prog = st.progress(0)
+                stat = st.empty()
+
+                for i, (pair, (img, (base_ccy, quote_ccy))) in enumerate(csm_uploads.items()):
+                    stat.text(f"Analysing {pair}...")
+                    prog.progress(i / len(csm_uploads))
+                    try:
+                        quick = f"""Analyse this {pair} H1 chart. Output ONLY this JSON:
+{{"signal": "BUY" or "SELL" or "WAIT", "confidence": 1-10, "trend": "Bullish/Bearish/Sideways"}}"""
+                        r = analyze_chart_with_ai(img, api_key, model_choice, pair, "H1", quick)
+                        m = re.search(r'\{.*?\}', r, re.DOTALL)
+                        if m:
+                            d = json.loads(m.group())
+                            sig_val = d.get("signal","WAIT")
+                            conf_val = d.get("confidence", 5)
+                            # Score: BUY = base strong, SELL = quote strong
+                            strength = conf_val if sig_val == "BUY" else (10 - conf_val if sig_val == "SELL" else 5)
+                            # Base currency gets strength, quote gets inverse
+                            currency_scores[base_ccy]  = currency_scores.get(base_ccy, []) + [strength]
+                            currency_scores[quote_ccy] = currency_scores.get(quote_ccy, []) + [10 - strength]
+                    except Exception:
+                        pass
+
+                prog.progress(1.0)
+                stat.empty()
+
+                if currency_scores:
+                    # Average scores
+                    avg_scores = {c: sum(v)/len(v) for c, v in currency_scores.items()}
+                    sorted_scores = sorted(avg_scores.items(), key=lambda x: x[1], reverse=True)
+                    st.session_state["csm_scores"] = sorted_scores
+
+        if "csm_scores" in st.session_state:
+            scores = st.session_state["csm_scores"]
+            st.markdown("#### 📊 Currency Strength Ranking 货币强弱排名")
+
+            max_score = max(s for _, s in scores) if scores else 10
+            for rank, (ccy, score) in enumerate(scores):
+                pct   = score / 10
+                bar_w = int(pct * 100)
+                if pct >= 0.70:
+                    bar_color = "#10b981"; label_color = "#6ee7b7"; tag = "STRONG 强势 💪"
+                elif pct >= 0.45:
+                    bar_color = "#f59e0b"; label_color = "#fcd34d"; tag = "NEUTRAL 中性 ➡️"
+                else:
+                    bar_color = "#ef4444"; label_color = "#fca5a5"; tag = "WEAK 弱势 📉"
+                medal = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣"][rank] if rank < 8 else ""
+                st.markdown(f"""
+<div style='background:#1e293b;border-radius:8px;padding:12px 16px;margin:6px 0'>
+<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>
+  <span style='color:white;font-weight:700;font-size:17px'>{medal} {ccy}</span>
+  <span style='color:{label_color};font-weight:600;font-size:13px'>{tag}</span>
+  <span style='color:#94a3b8;font-size:14px;font-weight:700'>{score:.1f}/10</span>
+</div>
+<div style='background:#334155;border-radius:4px;height:14px'>
+  <div style='background:{bar_color};width:{bar_w}%;height:14px;border-radius:4px;transition:width 0.5s'></div>
+</div>
+</div>
+""", unsafe_allow_html=True)
+
+            # Trading suggestions based on strength
+            if len(scores) >= 2:
+                strongest = scores[0][0]
+                weakest   = scores[-1][0]
+                st.markdown(f"""
+<div style='background:linear-gradient(135deg,#0f2027,#203a43);border:2px solid #3b82f6;border-radius:10px;padding:16px;margin-top:12px'>
+<p style='color:#60a5fa;font-weight:700;font-size:15px;margin:0 0 8px 0'>💡 Trading Suggestion 交易建议</p>
+<p style='color:#e2e8f0;margin:0'>
+Strongest: <b style='color:#10b981'>{strongest}</b> &nbsp;·&nbsp; Weakest: <b style='color:#ef4444'>{weakest}</b><br>
+<span style='color:#fbbf24'>➡️ Look for {strongest}/{weakest} pair — buy {strongest}, sell {weakest}</span><br>
+<span style='color:#86efac;font-size:13px'>寻找 {strongest}/{weakest} 货币对 — 买入{strongest}，卖出{weakest}</span>
+</p>
+</div>
+""", unsafe_allow_html=True)
+        elif len(csm_uploads) < 2:
+            st.info("👆 Upload at least 2 currency pair charts to calculate strength.")
+
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
