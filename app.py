@@ -1452,62 +1452,62 @@ if mtf_mode:
 else:
     left_col, right_col = st.columns([1, 1], gap="large")
 
-with left_col:
-    st.subheader("📸 Upload Chart Screenshot")
+    with left_col:
+        st.subheader("📸 Upload Chart Screenshot")
 
-    uploaded_file = st.file_uploader(
-        "Drop your chart here",
-        type=["png", "jpg", "jpeg", "webp"],
-        label_visibility="collapsed",
-    )
+        uploaded_file = st.file_uploader(
+            "Drop your chart here",
+            type=["png", "jpg", "jpeg", "webp"],
+            label_visibility="collapsed",
+        )
 
-    if uploaded_file:
-        original_image = Image.open(uploaded_file)
-        st.image(original_image, caption=f"{market_type} · {timeframe}", use_container_width=True)
+        if uploaded_file:
+            original_image = Image.open(uploaded_file)
+            st.image(original_image, caption=f"{market_type} · {timeframe}", use_container_width=True)
 
-        if not api_key:
-            st.warning("👈 Enter your API key in the sidebar to analyse this chart.")
+            if not api_key:
+                st.warning("👈 Enter your API key in the sidebar to analyse this chart.")
+            else:
+                run_btn = st.button("🚀 Analyse This Chart", use_container_width=True)
+
+                if run_btn:
+                    with st.spinner("🤖 AI is analysing your chart — this may take 15-30 seconds..."):
+                        try:
+                            result_text = analyze_chart_with_ai(
+                                original_image,
+                                api_key,
+                                model_choice,
+                                market_type,
+                                timeframe,
+                                additional_context,
+                            )
+                            st.session_state["analysis"]   = result_text
+                            st.session_state["image"]      = original_image
+                            st.session_state["annotated"]  = None
+                            st.success("✅ Analysis complete!")
+                        except anthropic.AuthenticationError:
+                            st.error("❌ Invalid API key. Please check your key and try again.")
+                        except anthropic.RateLimitError:
+                            st.error("❌ Rate limit reached. Wait a moment and try again.")
+                        except Exception as e:
+                            st.error(f"❌ Error: {str(e)}")
         else:
-            run_btn = st.button("🚀 Analyse This Chart", use_container_width=True)
+            st.info("👆 Upload a chart screenshot to begin analysis.")
 
-            if run_btn:
-                with st.spinner("🤖 AI is analysing your chart — this may take 15-30 seconds..."):
-                    try:
-                        result_text = analyze_chart_with_ai(
-                            original_image,
-                            api_key,
-                            model_choice,
-                            market_type,
-                            timeframe,
-                            additional_context,
-                        )
-                        st.session_state["analysis"]   = result_text
-                        st.session_state["image"]      = original_image
-                        st.session_state["annotated"]  = None
-                        st.success("✅ Analysis complete!")
-                    except anthropic.AuthenticationError:
-                        st.error("❌ Invalid API key. Please check your key and try again.")
-                    except anthropic.RateLimitError:
-                        st.error("❌ Rate limit reached. Wait a moment and try again.")
-                    except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
-    else:
-        st.info("👆 Upload a chart screenshot to begin analysis.")
-
-        with st.expander("📖 Quick Guide — How to Use"):
-            st.markdown("""
+            with st.expander("📖 Quick Guide — How to Use"):
+                st.markdown("""
 1. **Enter your API key** in the sidebar (free at console.anthropic.com)
 2. **Set the market and timeframe** to match your chart
 3. **Upload a screenshot** of any candlestick chart
 4. **Click Analyse** and wait ~20 seconds
 5. **Read the full analysis** — trend, patterns, entry, SL, TP
 6. **Download the annotated chart** if enabled
-            """)
+                """)
 
-        with st.expander("🗺️ Pattern Cheat Sheet"):
-            tab1, tab2, tab3 = st.tabs(["📈 Bullish", "📉 Bearish", "🔄 Reversal"])
-            with tab1:
-                st.markdown("""
+            with st.expander("🗺️ Pattern Cheat Sheet"):
+                tab1, tab2, tab3 = st.tabs(["📈 Bullish", "📉 Bearish", "🔄 Reversal"])
+                with tab1:
+                    st.markdown("""
 | Pattern | Signal | Key Rule |
 |---------|--------|----------|
 | Bull Flag | Continuation ↑ | Break above parallel channel |
@@ -1516,9 +1516,9 @@ with left_col:
 | Ascending Triangle | Continuation ↑ | Break above flat resistance |
 | Triple Bottom | Reversal ↑ | Break above neckline |
 | Measured Move Up | Continuation ↑ | Equal leg projection |
-                """)
-            with tab2:
-                st.markdown("""
+                    """)
+                with tab2:
+                    st.markdown("""
 | Pattern | Signal | Key Rule |
 |---------|--------|----------|
 | Bear Flag | Continuation ↓ | Break below parallel channel |
@@ -1527,9 +1527,9 @@ with left_col:
 | Descending Triangle | Continuation ↓ | Break below flat support |
 | Triple Top | Reversal ↓ | Break below neckline |
 | Measured Move Down | Continuation ↓ | Equal leg projection |
-                """)
-            with tab3:
-                st.markdown("""
+                    """)
+                with tab3:
+                    st.markdown("""
 | Pattern | Signal | Key Rule |
 |---------|--------|----------|
 | Double Bottom (W) | Reversal ↑ | Break above middle peak |
@@ -1540,7 +1540,7 @@ with left_col:
 | Diamond Top | Reversal ↓ | Break below lower right |
 | Rectangle Bottom | Reversal ↑ | Break above range |
 | Rectangle Top | Reversal ↓ | Break below range |
-                """)
+                    """)
 
     with right_col:
         st.subheader("🔍 Analysis Results")
