@@ -1,0 +1,25 @@
+# Secrets — NEVER upload these
+.streamlit/secrets.toml
+*.env
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/
+
+# Temp / logs
+*.log
+*.tmp
