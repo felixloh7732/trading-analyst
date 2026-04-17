@@ -1202,6 +1202,27 @@ with st.sidebar:
 
     st.divider()
 
+    st.markdown("### 📊 Analysis Mode")
+    mtf_mode = st.checkbox(
+        "🔭 Multi-Timeframe Mode (MTF)",
+        value=False,
+        help="Top-Down Analysis: D1 → H1 → Entry chart. Only trade when all timeframes align!"
+    )
+    if mtf_mode:
+        st.markdown("""
+<div style='background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:8px;padding:10px;margin-top:6px;border:1px solid #6366f1'>
+<p style='color:#a5b4fc;font-size:12px;margin:0;font-weight:600'>
+📋 MTF Flow:<br>
+① Upload D1 → Get HTF bias<br>
+② Upload H1 → Confirm direction<br>
+③ Upload Entry TF → Get precise signal<br><br>
+<span style='color:#fbbf24'>⚡ Only BUY/SELL when all 3 align!</span>
+</p>
+</div>
+""", unsafe_allow_html=True)
+
+    st.divider()
+
     st.markdown("### 📚 Strategies Active")
     strategies = [
         ("🏦", "Smart Money Concepts (SMC)"),
@@ -1221,7 +1242,215 @@ with st.sidebar:
 
 
 # ── Main Layout ────────────────────────────────────────────
-left_col, right_col = st.columns([1, 1], gap="large")
+
+# ════════════════════════════════════════════════════════════
+# MULTI-TIMEFRAME MODE
+# ════════════════════════════════════════════════════════════
+if mtf_mode:
+    st.markdown("## 🔭 Multi-Timeframe Top-Down Analysis")
+    st.markdown("""
+<div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border-radius:10px;padding:12px 18px;margin-bottom:18px;border:2px solid #3b82f6'>
+<p style='color:#93c5fd;font-size:14px;margin:0;font-weight:700'>
+📋 Strategy: <span style='color:#fbbf24'>Only enter a trade when D1 + H1 + Entry chart ALL point the same direction.</span><br>
+<span style='color:#86efac;font-size:12px'>⬇️ 按顺序上传图表：先日线 → 再1小时 → 最后进场时间框架</span>
+</p>
+</div>
+""", unsafe_allow_html=True)
+
+    step1_tab, step2_tab, step3_tab = st.tabs([
+        "① 📅 D1 — HTF Bias",
+        "② ⏰ H1 — Confirmation",
+        "③ ⚡ Entry — Signal",
+    ])
+
+    # ── Helper: render one MTF step ─────────────────────────
+    def render_mtf_step(tab, step_key, step_label, step_tf, step_hint, htf_context=""):
+        img_key  = f"mtf_{step_key}_image"
+        text_key = f"mtf_{step_key}_analysis"
+        ann_key  = f"mtf_{step_key}_annotated"
+
+        with tab:
+            st.markdown(f"### {step_label}")
+            st.caption(step_hint)
+
+            col_up, col_res = st.columns([1, 1], gap="large")
+
+            with col_up:
+                uploaded = st.file_uploader(
+                    f"Upload {step_tf} chart",
+                    type=["png", "jpg", "jpeg", "webp"],
+                    key=f"uploader_{step_key}",
+                    label_visibility="collapsed",
+                )
+                if uploaded:
+                    img = Image.open(uploaded)
+                    st.session_state[img_key] = img
+                    st.image(img, caption=f"{market_type} · {step_tf}", use_container_width=True)
+
+                if st.session_state.get(img_key) and api_key:
+                    if st.button(f"🔍 Analyse {step_tf} Chart", key=f"btn_{step_key}", use_container_width=True):
+                        ctx = htf_context + ("\n" + additional_context if additional_context else "")
+                        with st.spinner(f"🤖 Analysing {step_tf} chart..."):
+                            try:
+                                result = analyze_chart_with_ai(
+                                    st.session_state[img_key],
+                                    api_key, model_choice,
+                                    market_type, step_tf, ctx,
+                                )
+                                st.session_state[text_key]  = result
+                                st.session_state[ann_key]   = None
+                                st.success(f"✅ {step_tf} analysis done!")
+                            except Exception as e:
+                                st.error(f"❌ Error: {str(e)}")
+                elif st.session_state.get(img_key) and not api_key:
+                    st.warning("👈 Enter API key in sidebar first.")
+                elif not st.session_state.get(img_key):
+                    st.info(f"👆 Upload a {step_tf} chart screenshot above.")
+
+            with col_res:
+                if text_key in st.session_state:
+                    result_text = st.session_state[text_key]
+                    meta = parse_json_from_analysis(result_text)
+                    sig  = meta.get("signal", "WAIT").upper()
+                    conf = meta.get("confidence", 5)
+
+                    badge_html = {
+                        "BUY":  '<div class="buy-badge" style="font-size:18px;padding:10px 20px">🟢 BUY BIAS</div>',
+                        "SELL": '<div class="sell-badge" style="font-size:18px;padding:10px 20px">🔴 SELL BIAS</div>',
+                    }.get(sig, '<div class="wait-badge" style="font-size:18px;padding:10px 20px">⏳ NEUTRAL</div>')
+                    st.markdown(badge_html, unsafe_allow_html=True)
+
+                    bar_color = "#059669" if conf >= 7 else ("#d97706" if conf >= 5 else "#dc2626")
+                    st.markdown(f"""
+<div style="margin:8px 0 10px 0">
+  <span style="color:#1a1a2e;font-size:13px;font-weight:600">Confidence: <b style="color:{bar_color}">{conf}/10</b></span>
+  <div style="background:#e9d5ff;border-radius:6px;height:10px;margin-top:4px">
+    <div style="background:{bar_color};width:{conf*10}%;height:10px;border-radius:6px"></div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+                    # Annotate
+                    if annotate_chart_flag and meta.get("annotations") and st.session_state.get(ann_key) is None:
+                        with st.spinner("🎨 Drawing annotations..."):
+                            ann_img = annotate_chart(
+                                st.session_state[img_key],
+                                meta["annotations"], sig, meta,
+                            )
+                            st.session_state[ann_key] = ann_img
+
+                    if st.session_state.get(ann_key):
+                        st.image(st.session_state[ann_key], use_container_width=True)
+                        st.download_button(
+                            f"⬇️ Download {step_tf} Chart",
+                            data=pil_to_download_bytes(st.session_state[ann_key]),
+                            file_name=f"annotated_{step_tf}.png",
+                            mime="image/png",
+                            use_container_width=True,
+                            key=f"dl_{step_key}",
+                        )
+
+                    st.divider()
+                    clean = re.sub(r"```json.*?```", "", result_text, flags=re.DOTALL).strip()
+                    st.markdown(clean)
+
+        # Return signal for confluence check
+        if text_key in st.session_state:
+            return parse_json_from_analysis(st.session_state[text_key]).get("signal", "WAIT").upper()
+        return None
+
+    # ── Build HTF context strings for lower TFs ─────────────
+    d1_context_for_h1 = ""
+    if "mtf_d1_analysis" in st.session_state:
+        d1_meta = parse_json_from_analysis(st.session_state["mtf_d1_analysis"])
+        d1_sig  = d1_meta.get("signal", "WAIT").upper()
+        d1_context_for_h1 = (
+            f"[HTF CONTEXT — D1 Chart already analysed]\n"
+            f"D1 Signal: {d1_sig}. "
+            f"D1 Pattern: {d1_meta.get('pattern_name','N/A')}.\n"
+            f"Your job: Analyse the H1 chart and check if it CONFIRMS this D1 direction. "
+            f"If H1 is pulling back but D1 is bullish, that's normal — note it as 'pullback within uptrend'. "
+            f"Signal WAIT if H1 strongly contradicts D1."
+        )
+
+    h1_context_for_entry = ""
+    if "mtf_d1_analysis" in st.session_state and "mtf_h1_analysis" in st.session_state:
+        d1_meta = parse_json_from_analysis(st.session_state["mtf_d1_analysis"])
+        h1_meta = parse_json_from_analysis(st.session_state["mtf_h1_analysis"])
+        d1_sig  = d1_meta.get("signal", "WAIT").upper()
+        h1_sig  = h1_meta.get("signal", "WAIT").upper()
+        h1_context_for_entry = (
+            f"[MULTI-TIMEFRAME CONTEXT — Higher TFs already analysed]\n"
+            f"D1 Bias: {d1_sig} | H1 Bias: {h1_sig}\n"
+            f"Your job: Find a PRECISE entry on this lower timeframe chart.\n"
+            f"CRITICAL RULE: Only signal BUY if D1={d1_sig} AND H1={h1_sig} AND this chart also shows bullish entry.\n"
+            f"Only signal SELL if D1={d1_sig} AND H1={h1_sig} AND this chart shows bearish entry.\n"
+            f"If this chart contradicts the higher TF direction, signal WAIT — do not fight the trend.\n"
+            f"Focus on: exact entry trigger, tight SL below/above nearest structure, TP at HTF levels."
+        )
+
+    # ── Render all 3 steps ───────────────────────────────────
+    d1_sig    = render_mtf_step(step1_tab, "d1",    "📅 Step 1: Daily Chart (D1)", "D1",
+                                "Get the big picture — which direction is the market going long-term?  先看日线，判断大方向。",
+                                "")
+    h1_sig    = render_mtf_step(step2_tab, "h1",    "⏰ Step 2: 1-Hour Chart (H1)", "H1",
+                                "Confirm the D1 direction — is H1 aligned?  确认1小时方向与日线一致。",
+                                d1_context_for_h1)
+    entry_sig = render_mtf_step(step3_tab, "entry", "⚡ Step 3: Entry Chart", timeframe,
+                                f"Find the precise entry on {timeframe} — only enter if D1 + H1 confirm!  找进场点，只在高时间框架一致时入场。",
+                                h1_context_for_entry)
+
+    # ── MTF Confluence Summary Banner ───────────────────────
+    if d1_sig and h1_sig and entry_sig:
+        st.divider()
+        st.markdown("## 🎯 MTF Confluence Summary 多时间框架综合结论")
+
+        all_sigs = [d1_sig, h1_sig, entry_sig]
+        buy_count  = all_sigs.count("BUY")
+        sell_count = all_sigs.count("SELL")
+
+        if buy_count == 3:
+            final_html = """
+<div style='background:linear-gradient(135deg,#064e3b,#065f46);border:3px solid #10b981;border-radius:14px;padding:20px;text-align:center'>
+<p style='color:#6ee7b7;font-size:28px;font-weight:900;margin:0'>✅ STRONG BUY 强烈看涨</p>
+<p style='color:#a7f3d0;font-size:16px;margin:6px 0 0 0'>D1 ✅ BUY &nbsp;·&nbsp; H1 ✅ BUY &nbsp;·&nbsp; Entry ✅ BUY</p>
+<p style='color:#6ee7b7;font-size:14px;margin:8px 0 0 0'>全部时间框架一致看涨 — 高概率做多机会！</p>
+</div>"""
+        elif sell_count == 3:
+            final_html = """
+<div style='background:linear-gradient(135deg,#7f1d1d,#991b1b);border:3px solid #ef4444;border-radius:14px;padding:20px;text-align:center'>
+<p style='color:#fca5a5;font-size:28px;font-weight:900;margin:0'>✅ STRONG SELL 强烈看跌</p>
+<p style='color:#fecaca;font-size:16px;margin:6px 0 0 0'>D1 ✅ SELL &nbsp;·&nbsp; H1 ✅ SELL &nbsp;·&nbsp; Entry ✅ SELL</p>
+<p style='color:#fca5a5;font-size:14px;margin:8px 0 0 0'>全部时间框架一致看跌 — 高概率做空机会！</p>
+</div>"""
+        elif buy_count == 2:
+            final_html = f"""
+<div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border:3px solid #f59e0b;border-radius:14px;padding:20px;text-align:center'>
+<p style='color:#fcd34d;font-size:24px;font-weight:900;margin:0'>⚠️ PARTIAL BUY 部分看涨</p>
+<p style='color:#fde68a;font-size:15px;margin:6px 0 0 0'>D1: {d1_sig} &nbsp;·&nbsp; H1: {h1_sig} &nbsp;·&nbsp; Entry: {entry_sig}</p>
+<p style='color:#93c5fd;font-size:13px;margin:8px 0 0 0'>2/3 时间框架看涨 — 谨慎考虑，建议等待全部一致再入场。</p>
+</div>"""
+        elif sell_count == 2:
+            final_html = f"""
+<div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border:3px solid #f59e0b;border-radius:14px;padding:20px;text-align:center'>
+<p style='color:#fcd34d;font-size:24px;font-weight:900;margin:0'>⚠️ PARTIAL SELL 部分看跌</p>
+<p style='color:#fde68a;font-size:15px;margin:6px 0 0 0'>D1: {d1_sig} &nbsp;·&nbsp; H1: {h1_sig} &nbsp;·&nbsp; Entry: {entry_sig}</p>
+<p style='color:#93c5fd;font-size:13px;margin:8px 0 0 0'>2/3 时间框架看跌 — 谨慎考虑，建议等待全部一致再入场。</p>
+</div>"""
+        else:
+            final_html = f"""
+<div style='background:linear-gradient(135deg,#1a1a2e,#0f0f23);border:3px solid #6b7280;border-radius:14px;padding:20px;text-align:center'>
+<p style='color:#d1d5db;font-size:24px;font-weight:900;margin:0'>⏳ NO TRADE 暂时观望</p>
+<p style='color:#9ca3af;font-size:15px;margin:6px 0 0 0'>D1: {d1_sig} &nbsp;·&nbsp; H1: {h1_sig} &nbsp;·&nbsp; Entry: {entry_sig}</p>
+<p style='color:#6b7280;font-size:13px;margin:8px 0 0 0'>时间框架方向不一致 — 等待明确方向，不要强行入场。</p>
+</div>"""
+
+        st.markdown(final_html, unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# SINGLE CHART MODE (original)
+# ════════════════════════════════════════════════════════════
+else:
+    left_col, right_col = st.columns([1, 1], gap="large")
 
 with left_col:
     st.subheader("📸 Upload Chart Screenshot")
@@ -1313,31 +1542,30 @@ with left_col:
 | Rectangle Top | Reversal ↓ | Break below range |
                 """)
 
+    with right_col:
+        st.subheader("🔍 Analysis Results")
 
-with right_col:
-    st.subheader("🔍 Analysis Results")
+        if "analysis" in st.session_state:
+            text = st.session_state["analysis"]
+            meta = parse_json_from_analysis(text)
+            signal     = meta.get("signal", "WAIT").upper()
+            confidence = meta.get("confidence", 5)
+            pattern    = meta.get("pattern_name", "")
 
-    if "analysis" in st.session_state:
-        text = st.session_state["analysis"]
-        meta = parse_json_from_analysis(text)
-        signal     = meta.get("signal", "WAIT").upper()
-        confidence = meta.get("confidence", 5)
-        pattern    = meta.get("pattern_name", "")
+            # ── Signal badge ──────────────────────────────
+            badge_html = {
+                "BUY":  '<div class="buy-badge">🟢 BUY SIGNAL</div>',
+                "SELL": '<div class="sell-badge">🔴 SELL SIGNAL</div>',
+            }.get(signal, '<div class="wait-badge">⏳ WAIT — NO CLEAR SETUP</div>')
+            st.markdown(badge_html, unsafe_allow_html=True)
 
-        # ── Signal badge ──────────────────────────────────
-        badge_html = {
-            "BUY":  '<div class="buy-badge">🟢 BUY SIGNAL</div>',
-            "SELL": '<div class="sell-badge">🔴 SELL SIGNAL</div>',
-        }.get(signal, '<div class="wait-badge">⏳ WAIT — NO CLEAR SETUP</div>')
-        st.markdown(badge_html, unsafe_allow_html=True)
+            if pattern:
+                st.markdown(f"<p style='color:#7c3aed;font-weight:700;font-size:15px;margin:4px 0'>📐 Pattern: {pattern}</p>",
+                            unsafe_allow_html=True)
 
-        if pattern:
-            st.markdown(f"<p style='color:#7c3aed;font-weight:700;font-size:15px;margin:4px 0'>📐 Pattern: {pattern}</p>",
-                        unsafe_allow_html=True)
-
-        # ── Confidence bar ────────────────────────────────
-        bar_color = "#059669" if confidence >= 7 else ("#d97706" if confidence >= 5 else "#dc2626")
-        st.markdown(f"""
+            # ── Confidence bar ────────────────────────────
+            bar_color = "#059669" if confidence >= 7 else ("#d97706" if confidence >= 5 else "#dc2626")
+            st.markdown(f"""
 <div style="margin:8px 0 12px 0">
   <span style="color:#1a1a2e;font-size:14px;font-weight:600">
     Confidence: <b style="color:{bar_color};font-size:16px">{confidence}/10</b>
@@ -1347,38 +1575,38 @@ with right_col:
   </div>
 </div>""", unsafe_allow_html=True)
 
-        # ── Build + show annotated chart first ────────────
-        if annotate_chart_flag and meta.get("annotations"):
-            if st.session_state.get("annotated") is None:
-                with st.spinner("🎨 Drawing annotations on chart..."):
-                    ann_img = annotate_chart(
-                        st.session_state["image"],
-                        meta["annotations"],
-                        signal,
-                        meta,
-                    )
-                    st.session_state["annotated"] = ann_img
+            # ── Build + show annotated chart first ────────
+            if annotate_chart_flag and meta.get("annotations"):
+                if st.session_state.get("annotated") is None:
+                    with st.spinner("🎨 Drawing annotations on chart..."):
+                        ann_img = annotate_chart(
+                            st.session_state["image"],
+                            meta["annotations"],
+                            signal,
+                            meta,
+                        )
+                        st.session_state["annotated"] = ann_img
 
-        if st.session_state.get("annotated") is not None:
-            st.image(st.session_state["annotated"],
-                     caption="AI-annotated chart — Entry / SL / TP / Patterns drawn",
-                     use_container_width=True)
-            st.download_button(
-                "⬇️ Download Annotated Chart",
-                data=pil_to_download_bytes(st.session_state["annotated"]),
-                file_name="annotated_chart.png",
-                mime="image/png",
-                use_container_width=True,
-            )
+            if st.session_state.get("annotated") is not None:
+                st.image(st.session_state["annotated"],
+                         caption="AI-annotated chart — Entry / SL / TP / Patterns drawn",
+                         use_container_width=True)
+                st.download_button(
+                    "⬇️ Download Annotated Chart",
+                    data=pil_to_download_bytes(st.session_state["annotated"]),
+                    file_name="annotated_chart.png",
+                    mime="image/png",
+                    use_container_width=True,
+                )
 
-        st.divider()
+            st.divider()
 
-        # ── Short analysis text (json block stripped) ─────
-        clean_text = re.sub(r"```json.*?```", "", text, flags=re.DOTALL).strip()
-        st.markdown(clean_text)
+            # ── Analysis text (json block stripped) ───────
+            clean_text = re.sub(r"```json.*?```", "", text, flags=re.DOTALL).strip()
+            st.markdown(clean_text)
 
-    else:
-        st.markdown("""
+        else:
+            st.markdown("""
 <div class="info-box">
 <p style="color:#5b21b6;text-align:center;margin-top:40px;font-size:17px;font-weight:700">
 📊 Analysis results will appear here after you upload a chart and click Analyse.
@@ -1391,7 +1619,7 @@ The AI will identify:<br><br>
 🎯 Entry &nbsp;·&nbsp; 🛑 Stop Loss &nbsp;·&nbsp; ✅ Take Profit 1 &nbsp;·&nbsp; 🚀 Take Profit 2
 </p>
 </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
