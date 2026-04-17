@@ -12,6 +12,84 @@ import base64
 import io
 import json
 import re
+import os
+
+# ============================================================
+# FONT SETUP — download if system fonts not available
+# ============================================================
+_FONT_BOLD_PATH    = "/tmp/trading_font_bold.ttf"
+_FONT_REGULAR_PATH = "/tmp/trading_font_regular.ttf"
+
+def _ensure_fonts():
+    """Download fonts to /tmp if not already available. Called once at startup."""
+    import requests as _req
+
+    SYSTEM_BOLD = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+    ]
+    SYSTEM_REG = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ]
+
+    def _first_existing(paths):
+        for p in paths:
+            if os.path.exists(p):
+                return p
+        return None
+
+    # Bold
+    if not os.path.exists(_FONT_BOLD_PATH):
+        src = _first_existing(SYSTEM_BOLD)
+        if src:
+            import shutil; shutil.copy(src, _FONT_BOLD_PATH)
+        else:
+            try:
+                url = "https://github.com/liberationfonts/liberation-fonts/raw/main/src/LiberationSans-Bold.ttf"
+                r = _req.get(url, timeout=15)
+                r.raise_for_status()
+                with open(_FONT_BOLD_PATH, "wb") as f: f.write(r.content)
+            except Exception:
+                pass
+
+    # Regular
+    if not os.path.exists(_FONT_REGULAR_PATH):
+        src = _first_existing(SYSTEM_REG)
+        if src:
+            import shutil; shutil.copy(src, _FONT_REGULAR_PATH)
+        else:
+            try:
+                url = "https://github.com/liberationfonts/liberation-fonts/raw/main/src/LiberationSans-Regular.ttf"
+                r = _req.get(url, timeout=15)
+                r.raise_for_status()
+                with open(_FONT_REGULAR_PATH, "wb") as f: f.write(r.content)
+            except Exception:
+                pass
+
+def _load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """Load a font at given size. Falls back gracefully."""
+    path = _FONT_BOLD_PATH if bold else _FONT_REGULAR_PATH
+    if os.path.exists(path):
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            pass
+    # Pillow 10+ built-in fallback with size
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
+
+# Run font setup at import time (cached to /tmp)
+try:
+    _ensure_fonts()
+except Exception:
+    pass
 
 # ============================================================
 # COMPREHENSIVE TRADING KNOWLEDGE BASE (System Prompt)
@@ -616,38 +694,36 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
     """Draw clean, sharp trading annotations on the chart image."""
     img = image.copy().convert("RGBA")
 
-    # ── Scale up small images so annotations are sharp ────
-    MIN_W = 1800
+    # ── Scale up images for sharp annotations ─────────────
+    MIN_W = 2200
     w_orig, h_orig = img.size
     if w_orig < MIN_W:
-        scale  = MIN_W / w_orig
-        img    = img.resize((int(w_orig * scale), int(h_orig * scale)), Image.LANCZOS)
+        scale = MIN_W / w_orig
+        img   = img.resize((int(w_orig * scale), int(h_orig * scale)), Image.LANCZOS)
 
     w, h = img.size
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw    = ImageDraw.Draw(overlay)
 
-    # ── Font sizes — much larger for readability ──────────
-    fs_b  = max(22, int(w / 65))   # bold labels
-    fs_sm = max(19, int(w / 75))   # normal labels
-    fs_lg = max(28, int(w / 50))   # big pattern banners
-    fs_xs = max(17, int(w / 90))   # small right-edge tags
+    # ── Font sizes — large and clear ──────────────────────
+    fs_b  = max(26, int(w / 60))   # bold labels
+    fs_sm = max(22, int(w / 70))   # normal labels
+    fs_lg = max(32, int(w / 45))   # big pattern banners
+    fs_xs = max(20, int(w / 85))   # right-edge tags
 
-    try:
-        font_b  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs_b)
-        font_sm = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      fs_sm)
-        font_lg = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs_lg)
-        font_xs = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      fs_xs)
-    except Exception:
-        font_b = font_sm = font_lg = font_xs = ImageFont.load_default()
+    # Use robust font loader (works on Streamlit Cloud)
+    font_b  = _load_font(fs_b,  bold=True)
+    font_sm = _load_font(fs_sm, bold=False)
+    font_lg = _load_font(fs_lg, bold=True)
+    font_xs = _load_font(fs_xs, bold=False)
 
     # ── Line thickness scales with image width ────────────
-    LW_MAIN  = max(4, int(w / 360))   # main lines (SL, TP, entry)
-    LW_ZONE  = max(3, int(w / 450))   # zone borders
-    LW_PAT   = max(4, int(w / 360))   # pattern lines
-    LW_DIAG  = max(4, int(w / 360))   # trendlines
-    DASH_LEN = max(18, int(w / 80))
-    GAP_LEN  = max(9,  int(w / 160))
+    LW_MAIN  = max(6, int(w / 280))   # main lines (SL, TP, entry)
+    LW_ZONE  = max(5, int(w / 340))   # zone borders
+    LW_PAT   = max(6, int(w / 280))   # pattern lines
+    LW_DIAG  = max(6, int(w / 280))   # trendlines
+    DASH_LEN = max(22, int(w / 70))
+    GAP_LEN  = max(11, int(w / 140))
 
     # ── Vivid, high-contrast colour palette ───────────────
     C = {
@@ -710,22 +786,22 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
     right_label_y_used = []
 
     def right_label(y, text, txt_col, line_col):
-        label_h = fs_xs + 10
+        label_h = fs_xs + 14
         adjusted_y = y
         for used_y in right_label_y_used:
-            if abs(adjusted_y - used_y) < label_h + 4:
-                adjusted_y = used_y + label_h + 5
+            if abs(adjusted_y - used_y) < label_h + 6:
+                adjusted_y = used_y + label_h + 7
         right_label_y_used.append(adjusted_y)
         try:
             bbox = font_xs.getbbox(text)
-            tw = bbox[2] - bbox[0] + 18
+            tw = bbox[2] - bbox[0] + 24
         except Exception:
-            tw = len(text) * 9 + 18
+            tw = len(text) * 12 + 24
         half = label_h // 2
-        rx = w - tw - 8
+        rx = w - tw - 10
         draw.rectangle([rx, adjusted_y - half, w - 4, adjusted_y + half],
-                       fill=(10, 10, 10, 230), outline=line_col, width=2)
-        draw.text((rx + 8, adjusted_y - half + 3), text, fill=txt_col, font=font_xs)
+                       fill=(5, 5, 15, 240), outline=line_col, width=3)
+        draw.text((rx + 10, adjusted_y - half + 4), text, fill=txt_col, font=font_xs)
 
     # ═══════════════════════════════════════════════════════
     # DRAW ANNOTATIONS
