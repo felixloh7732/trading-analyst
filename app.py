@@ -301,6 +301,64 @@ Score <5/10 = Skip or wait
 - TP1 at 1:1.5 R:R (move SL to breakeven after hit)
 - TP2 at 1:3 R:R
 - TP3 at 1:5+ R:R (if strong trend)
+- Partial TP strategy: Close 50% at TP1, move SL to breakeven, let 50% run to TP2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 WYCKOFF METHOD (威科夫分析法)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Wyckoff identifies 4 market phases using price + volume:
+
+**Phase 1 — ACCUMULATION (积累/吸筹)**
+- Smart money quietly buying at lows
+- Signs: Selling climax (SC), Automatic Rally (AR), Secondary Test (ST), Spring (false breakdown below support)
+- Price action: Range-bound after a downtrend, decreasing volume on drops
+- Bias: Prepare for BUY after Spring + Sign of Strength (SOS)
+
+**Phase 2 — MARKUP (上涨阶段)**
+- Price trending up, institutions already loaded
+- Signs: Higher highs and higher lows, strong BOS upward
+- Bias: BUY on pullbacks to Last Point of Support (LPS)
+
+**Phase 3 — DISTRIBUTION (派发/出货)**
+- Smart money quietly selling at highs
+- Signs: Buying climax (BC), Automatic Reaction (AR), Upthrust (UT) — false breakout above resistance
+- Price action: Range-bound after an uptrend, decreasing volume on rallies
+- Bias: Prepare for SELL after Upthrust After Distribution (UTAD) + Sign of Weakness (SOW)
+
+**Phase 4 — MARKDOWN (下跌阶段)**
+- Price trending down
+- Signs: Lower highs and lower lows, strong BOS downward
+- Bias: SELL on rallies to Last Point of Supply (LPSY)
+
+**How to use in analysis:**
+- Always identify which Wyckoff phase the chart is in
+- Look for Spring/Upthrust as the highest-probability entry triggers
+- Volume confirmation is key: rising volume on impulse, falling volume on correction
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💵 DXY CORRELATION GUIDE (美元指数关联)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The US Dollar Index (DXY) measures USD strength. It inversely correlates with most instruments:
+
+**STRONG NEGATIVE correlation (DXY up = these go DOWN):**
+- Gold (XAUUSD) — correlation: -0.85 to -0.95
+- EUR/USD — correlation: -0.90 to -0.98
+- GBP/USD — correlation: -0.75 to -0.88
+- AUD/USD — correlation: -0.70 to -0.82
+- Most commodities (Oil, Silver, Copper)
+
+**STRONG POSITIVE correlation (DXY up = these go UP):**
+- USD/JPY — correlation: +0.75 to +0.88
+- USD/CAD — correlation: +0.65 to +0.78
+- USD/CHF — correlation: +0.70 to +0.85
+
+**Rules for DXY analysis:**
+- If DXY is Bullish → Expect Gold/EUR/GBP pairs to face headwinds (bearish pressure)
+- If DXY is Bearish → Expect Gold/EUR/GBP pairs to have tailwinds (bullish pressure)
+- DXY at key HTF resistance + Gold at key support = HIGH probability Gold bounce
+- Always mention DXY context when analysing Gold or major USD pairs
 """
 
 # ============================================================
@@ -361,6 +419,22 @@ Give a SHORT, combined analysis. Write EVERY section in BOTH English AND Chinese
 **SMC 智能资金:**
 [EN] Order Blocks, FVGs, BOS/CHoCH, liquidity sweeps visible? 1-2 lines.
 [中文] 可见的订单块、公允价值缺口、结构突破/变化、流动性扫描？1-2行。
+
+**WYCKOFF 威科夫:**
+[EN] Which Wyckoff phase is this chart in? (Accumulation / Markup / Distribution / Markdown). Any Spring, Upthrust, SC, BC visible? 1-2 lines.
+[中文] 此图处于哪个威科夫阶段？（积累/上涨/派发/下跌）。是否有弹簧位、上冲、卖出高潮、买入高潮？1-2行。
+
+**WYCKOFF 威科夫:**
+[EN] Which Wyckoff phase? Any Spring/Upthrust/Selling Climax/Buying Climax visible? 1-2 lines.
+[中文] 威科夫哪个阶段？有弹簧位/上冲/卖出高潮/买入高潮吗？1-2行。
+
+**CANDLESTICK PATTERNS 单K线形态:**
+[EN] Identify any significant single or multi-candle patterns on the LAST 3-5 candles: Doji, Hammer, Shooting Star, Engulfing (Bullish/Bearish), Morning Star, Evening Star, Pin Bar, Marubozu, Harami, Tweezer Top/Bottom. If none significant: "No key candle pattern."
+[中文] 识别最近3-5根K线的重要形态：十字星、锤子线、流星线、吞没（看涨/看跌）、晨星、暮星、钉线、大阳/大阴线、孕线、镊子顶/底。若无：「无明显K线形态」。
+
+**DXY CORRELATION 美元指数关联:** (skip this section if instrument has no USD correlation)
+[EN] Is DXY bullish or bearish based on chart context? How does this affect the current instrument? 1 line.
+[中文] 根据图表背景，美元指数是强势还是弱势？这对当前交易品种有何影响？1行。
 
 **TRADE SETUP 交易方案:**
 - Signal 信号: BUY 🟢 / SELL 🔴 / WAIT ⏳
@@ -1620,6 +1694,268 @@ The AI will identify:<br><br>
 </p>
 </div>
             """, unsafe_allow_html=True)
+
+
+# ============================================================
+# EXTRA TOOLS SECTION
+# ============================================================
+st.divider()
+st.markdown("## 🛠️ Trading Tools 交易工具")
+
+tool_tab1, tool_tab2, tool_tab3 = st.tabs([
+    "🧮 Position Size Calculator",
+    "📰 Economic Calendar",
+    "📡 Multi-Chart Scanner",
+])
+
+# ════════════════════════════════════════════════════════════
+# TOOL 1 — POSITION SIZE CALCULATOR
+# ════════════════════════════════════════════════════════════
+with tool_tab1:
+    st.markdown("### 🧮 Position Size Calculator 仓位计算器")
+    st.caption("Calculate exact lot size based on your account risk. 根据账户风险计算精确手数。")
+
+    pc1, pc2, pc3 = st.columns(3)
+    with pc1:
+        ps_balance   = st.number_input("💰 Account Balance ($)", min_value=10.0, value=1000.0, step=100.0)
+        ps_risk_pct  = st.number_input("⚠️ Risk per Trade (%)", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
+    with pc2:
+        ps_instrument = st.selectbox("📈 Instrument Type", [
+            "Forex (Major Pairs)",
+            "Gold (XAUUSD)",
+            "Silver (XAGUSD)",
+            "BTC/USD",
+            "ETH/USD",
+            "US30 / NAS100 (Index)",
+            "Oil (WTI/Brent)",
+        ])
+        ps_account_currency = st.selectbox("💵 Account Currency", ["USD", "EUR", "GBP", "MYR", "SGD", "AUD"])
+    with pc3:
+        ps_entry = st.number_input("🎯 Entry Price", min_value=0.0001, value=1.1000, format="%.5f")
+        ps_sl    = st.number_input("❌ Stop Loss Price", min_value=0.0001, value=1.0950, format="%.5f")
+
+    if st.button("⚡ Calculate Position Size", use_container_width=True):
+        sl_distance = abs(ps_entry - ps_sl)
+        risk_amount = ps_balance * (ps_risk_pct / 100)
+
+        if sl_distance == 0:
+            st.error("Stop loss cannot equal entry price!")
+        else:
+            # Pip/point values per lot
+            if ps_instrument == "Forex (Major Pairs)":
+                pip_value_per_lot = 10.0   # $10 per pip per standard lot (USD account)
+                sl_pips = sl_distance * 10000
+                lot_size = risk_amount / (sl_pips * pip_value_per_lot)
+                unit = "lots"
+                pip_label = f"{sl_pips:.1f} pips"
+            elif ps_instrument == "Gold (XAUUSD)":
+                pip_value_per_lot = 100.0  # $1 per 0.01 move, lot=100oz
+                sl_pips = sl_distance * 100
+                lot_size = risk_amount / (sl_distance * 100)
+                unit = "lots"
+                pip_label = f"${sl_distance:.2f}/oz × 100oz"
+            elif ps_instrument in ["BTC/USD", "ETH/USD"]:
+                lot_size = risk_amount / sl_distance
+                unit = "units"
+                pip_label = f"${sl_distance:.2f} price move"
+            elif ps_instrument in ["US30 / NAS100 (Index)"]:
+                pip_value_per_lot = 1.0
+                lot_size = risk_amount / sl_distance
+                unit = "units"
+                pip_label = f"{sl_distance:.1f} points"
+            else:
+                lot_size = risk_amount / sl_distance
+                unit = "units"
+                pip_label = f"${sl_distance:.4f} move"
+
+            # MYR/SGD conversion approximation
+            fx_note = ""
+            if ps_account_currency == "MYR":
+                risk_amount_local = risk_amount * 4.7
+                fx_note = f" (≈ RM {risk_amount_local:.2f})"
+            elif ps_account_currency == "SGD":
+                risk_amount_local = risk_amount * 1.35
+                fx_note = f" (≈ SGD {risk_amount_local:.2f})"
+
+            rr2_tp = ps_entry + (ps_entry - ps_sl) * 2 if ps_entry > ps_sl else ps_entry - (ps_sl - ps_entry) * 2
+            rr3_tp = ps_entry + (ps_entry - ps_sl) * 3 if ps_entry > ps_sl else ps_entry - (ps_sl - ps_entry) * 3
+
+            st.markdown(f"""
+<div style='background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);border-radius:12px;padding:20px;margin-top:10px;border:2px solid #3b82f6'>
+<h3 style='color:#60a5fa;margin:0 0 12px 0'>📊 Calculation Results 计算结果</h3>
+<table style='width:100%;color:white;font-size:15px'>
+<tr><td style='padding:5px 0;color:#94a3b8'>Account Risk 风险金额</td>
+    <td style='color:#fbbf24;font-weight:700;font-size:18px'>${risk_amount:.2f}{fx_note}</td></tr>
+<tr><td style='padding:5px 0;color:#94a3b8'>SL Distance 止损距离</td>
+    <td style='color:#f87171;font-weight:600'>{pip_label}</td></tr>
+<tr><td style='padding:5px 0;color:#94a3b8'>Position Size 仓位大小</td>
+    <td style='color:#34d399;font-weight:700;font-size:22px'>{lot_size:.3f} {unit}</td></tr>
+<tr><td style='padding:5px 0;color:#94a3b8'>TP1 (1:2 R:R)</td>
+    <td style='color:#86efac;font-weight:600'>{rr2_tp:.5f} → Profit: ${risk_amount*2:.2f}</td></tr>
+<tr><td style='padding:5px 0;color:#94a3b8'>TP2 (1:3 R:R)</td>
+    <td style='color:#6ee7b7;font-weight:600'>{rr3_tp:.5f} → Profit: ${risk_amount*3:.2f}</td></tr>
+</table>
+<p style='color:#64748b;font-size:11px;margin:10px 0 0 0'>⚠️ Approximate values. Always verify with your broker. 以上为参考值，请以券商为准。</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# TOOL 2 — ECONOMIC CALENDAR
+# ════════════════════════════════════════════════════════════
+with tool_tab2:
+    st.markdown("### 📰 Economic Calendar 经济日历")
+    st.caption("Check upcoming high-impact news before trading. 交易前查看高影响力新闻。")
+
+    cal_col1, cal_col2 = st.columns([1, 2])
+    with cal_col1:
+        if st.button("🔄 Load This Week's News", use_container_width=True):
+            try:
+                import requests
+                response = requests.get(
+                    "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+                    timeout=8
+                )
+                if response.status_code == 200:
+                    events = response.json()
+                    # Filter high impact only
+                    high_impact = [e for e in events if e.get("impact") == "High"]
+                    st.session_state["calendar_events"] = high_impact
+                    st.success(f"✅ Loaded {len(high_impact)} high-impact events!")
+                else:
+                    st.error("Failed to load calendar. Try again.")
+            except Exception as e:
+                st.error(f"Network error: {str(e)}")
+                st.info("💡 Try visiting https://www.forexfactory.com/calendar for news manually.")
+
+    with cal_col2:
+        filter_currency = st.multiselect(
+            "Filter by Currency",
+            ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "CNY", "XAU"],
+            default=["USD", "EUR", "GBP"],
+        )
+
+    if "calendar_events" in st.session_state:
+        events = st.session_state["calendar_events"]
+        shown = 0
+        for ev in events:
+            if not filter_currency or ev.get("currency") in filter_currency:
+                title    = ev.get("title", "")
+                currency = ev.get("currency", "")
+                date_str = ev.get("date", "")
+                impact   = ev.get("impact", "")
+                forecast = ev.get("forecast", "—")
+                previous = ev.get("previous", "—")
+
+                impact_color = "#ef4444" if impact == "High" else ("#f59e0b" if impact == "Medium" else "#6b7280")
+                st.markdown(f"""
+<div style='background:#1e293b;border-left:4px solid {impact_color};border-radius:6px;padding:10px 14px;margin:6px 0'>
+<span style='color:{impact_color};font-weight:700;font-size:13px'>🔴 HIGH IMPACT</span>
+<span style='color:#94a3b8;font-size:12px;margin-left:10px'>{date_str}</span><br>
+<span style='color:white;font-weight:600;font-size:15px'>{currency} — {title}</span><br>
+<span style='color:#64748b;font-size:12px'>Forecast: {forecast} &nbsp;|&nbsp; Previous: {previous}</span>
+</div>
+""", unsafe_allow_html=True)
+                shown += 1
+        if shown == 0:
+            st.info("No high-impact events found for selected currencies this week.")
+    else:
+        st.markdown("""
+<div style='background:#1e293b;border-radius:10px;padding:20px;text-align:center'>
+<p style='color:#94a3b8;font-size:15px'>📅 Click "Load This Week\'s News" to see upcoming high-impact events.<br><br>
+<span style='color:#fbbf24'>⚡ Rule: Avoid opening trades 30 mins before and after red news events!</span><br>
+<span style='color:#86efac;font-size:13px'>规则：高影响力新闻发布前后30分钟内不要开仓！</span>
+</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# TOOL 3 — MULTI-CHART SCANNER
+# ════════════════════════════════════════════════════════════
+with tool_tab3:
+    st.markdown("### 📡 Multi-Chart Scanner 多图扫描")
+    st.caption("Upload up to 5 charts — AI ranks them by signal strength. 上传最多5张图，AI自动排名最佳机会。")
+
+    if not api_key:
+        st.warning("👈 Enter your API key in the sidebar first.")
+    else:
+        scan_cols = st.columns(5)
+        scan_images = {}
+        scan_labels = {}
+
+        for i, col in enumerate(scan_cols):
+            with col:
+                st.markdown(f"**Chart {i+1}**")
+                lbl = st.text_input(f"Label", value=f"Chart {i+1}", key=f"scan_lbl_{i}", label_visibility="collapsed")
+                img_file = st.file_uploader("Upload", type=["png","jpg","jpeg","webp"],
+                                            key=f"scan_img_{i}", label_visibility="collapsed")
+                if img_file:
+                    scan_images[i] = Image.open(img_file)
+                    scan_labels[i] = lbl
+                    st.image(scan_images[i], use_container_width=True)
+
+        if len(scan_images) > 0:
+            if st.button(f"🔍 Scan All {len(scan_images)} Charts", use_container_width=True):
+                scan_results = []
+                progress = st.progress(0)
+                status_text = st.empty()
+
+                for idx, (i, img) in enumerate(scan_images.items()):
+                    lbl = scan_labels.get(i, f"Chart {i+1}")
+                    status_text.text(f"🤖 Analysing {lbl}...")
+                    progress.progress((idx) / len(scan_images))
+
+                    # Quick scan prompt
+                    quick_prompt = f"""
+Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
+{{"signal": "BUY" or "SELL" or "WAIT", "confidence": 1-10, "pattern": "pattern name or none",
+"trend": "Bullish/Bearish/Sideways", "wyckoff_phase": "Accumulation/Markup/Distribution/Markdown/Unknown",
+"key_level": "one key price level description", "reason": "one sentence max"}}
+"""
+                    try:
+                        quick_analysis = analyze_chart_with_ai(
+                            img, api_key, model_choice, market_type, timeframe, quick_prompt
+                        )
+                        # Try parse JSON
+                        json_match = re.search(r'\{.*?\}', quick_analysis, re.DOTALL)
+                        if json_match:
+                            data = json.loads(json_match.group())
+                        else:
+                            data = {"signal": "WAIT", "confidence": 5, "pattern": "N/A",
+                                    "trend": "Unknown", "reason": "Parse error"}
+                        data["label"] = lbl
+                        data["image_idx"] = i
+                        scan_results.append(data)
+                    except Exception as e:
+                        scan_results.append({"label": lbl, "signal": "ERROR", "confidence": 0,
+                                             "pattern": "Error", "trend": "N/A", "reason": str(e)[:60]})
+
+                progress.progress(1.0)
+                status_text.text("✅ Scan complete! Ranking results...")
+                st.session_state["scan_results"] = scan_results
+
+        if "scan_results" in st.session_state:
+            results = sorted(st.session_state["scan_results"],
+                             key=lambda x: x.get("confidence", 0), reverse=True)
+            st.markdown("#### 🏆 Ranked Results — Best Setups First")
+
+            for rank, r in enumerate(results):
+                sig   = r.get("signal", "WAIT")
+                conf  = r.get("confidence", 5)
+                sig_color = "#10b981" if sig == "BUY" else ("#ef4444" if sig == "SELL" else "#6b7280")
+                medal = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][rank] if rank < 5 else ""
+
+                st.markdown(f"""
+<div style='background:#1e293b;border:2px solid {sig_color};border-radius:10px;padding:14px 18px;margin:8px 0;display:flex;align-items:center;gap:16px'>
+<span style='font-size:28px'>{medal}</span>
+<div style='flex:1'>
+  <span style='color:white;font-weight:700;font-size:17px'>{r.get("label","")}</span>
+  <span style='margin-left:12px;background:{sig_color};color:white;padding:3px 10px;border-radius:20px;font-weight:700;font-size:13px'>{sig}</span>
+  <span style='margin-left:8px;color:#fbbf24;font-weight:600'>{conf}/10</span><br>
+  <span style='color:#94a3b8;font-size:13px'>📐 {r.get("pattern","N/A")} &nbsp;·&nbsp; 📈 {r.get("trend","N/A")} &nbsp;·&nbsp; 🔄 {r.get("wyckoff_phase","N/A")}</span><br>
+  <span style='color:#cbd5e1;font-size:13px'>💬 {r.get("reason","")}</span>
+</div>
+</div>
+""", unsafe_allow_html=True)
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
