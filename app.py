@@ -1041,6 +1041,139 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
     return Image.alpha_composite(img, overlay).convert("RGB")
 
 
+def get_news_warning(symbol_label: str) -> list:
+    """Return list of high-impact events in the next 2 hours relevant to the symbol.
+    Uses cached calendar_events from session_state if available, else fetches silently."""
+    from datetime import datetime, timezone, timedelta
+    events = st.session_state.get("calendar_events", [])
+    if not events:
+        try:
+            import requests as _req
+            r = _req.get("https://nfs.faireconomy.media/ff_calendar_thisweek.json", timeout=5)
+            if r.status_code == 200:
+                events = [e for e in r.json() if e.get("impact") == "High"]
+                st.session_state["calendar_events"] = events
+        except Exception:
+            return []
+
+    # Extract currencies from symbol (e.g. "EUR/USD" → ["EUR","USD"], "Gold" → ["XAU","USD"])
+    sym_up = symbol_label.upper()
+    curs = []
+    for pair in [sym_up, sym_up.replace(" ", "")]:
+        if "/" in pair:
+            curs += pair.split("/")[:2]
+    if not curs:
+        # Map common names
+        _map = {"GOLD": ["XAU", "USD"], "SILVER": ["XAG", "USD"],
+                "OIL": ["USD"], "BTC": ["USD"], "ETH": ["USD"]}
+        for k, v in _map.items():
+            if k in sym_up:
+                curs = v
+                break
+    curs = [c[:3] for c in curs if c]
+
+    now_utc = datetime.now(timezone.utc)
+    window  = now_utc + timedelta(hours=2)
+    warnings = []
+    for ev in events:
+        try:
+            ev_dt = datetime.fromisoformat(ev.get("date","").replace("Z","+00:00"))
+            if now_utc <= ev_dt <= window:
+                ev_cur = ev.get("currency","").upper()
+                if not curs or ev_cur in curs:
+                    warnings.append({
+                        "currency": ev_cur,
+                        "title":    ev.get("title",""),
+                        "date":     ev_dt.strftime("%H:%M UTC"),
+                        "impact":   ev.get("impact",""),
+                    })
+        except Exception:
+            continue
+    return warnings
+
+
+def render_news_warning_banner(warnings: list):
+    """Show a big red warning banner if high-impact news is imminent."""
+    if not warnings:
+        return
+    items_html = "".join([
+        f"<li style='margin:4px 0'><b style='color:#fbbf24'>{w['currency']}</b> — "
+        f"{w['title']} <span style='color:#94a3b8'>@ {w['date']}</span></li>"
+        for w in warnings
+    ])
+    st.markdown(f"""
+<div style='background:linear-gradient(135deg,#7f1d1d,#991b1b);border:3px solid #ef4444;
+border-radius:12px;padding:16px 20px;margin:12px 0;animation:pulse 2s infinite'>
+<h3 style='color:#fef2f2;margin:0 0 8px 0'>⚠️ HIGH IMPACT NEWS PENDING · 高影响力新闻即将发布</h3>
+<ul style='color:#fca5a5;margin:0;padding-left:20px;font-size:14px'>{items_html}</ul>
+<p style='color:#fca5a5;margin:10px 0 0 0;font-size:13px;font-weight:700'>
+🚫 DO NOT OPEN NEW TRADES until news passes! · 新闻发布前后30分钟内不要开仓！</p>
+</div>
+""", unsafe_allow_html=True)
+
+
+def generate_chart_image_from_df(df, symbol_label: str, tf_label: str) -> Image.Image:
+    """Generate a matplotlib candlestick chart from a DataFrame. Returns PIL Image."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
+    ema20 = df["Close"].ewm(span=20, adjust=False).mean()
+    ema50 = df["Close"].ewm(span=50, adjust=False).mean()
+    _df   = df.reset_index()
+    n     = len(_df)
+    W     = 0.4
+
+    fig_c, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 10),
+        gridspec_kw={"height_ratios": [4, 1]}, facecolor="#0f172a")
+    ax1.set_facecolor("#0f172a")
+    ax2.set_facecolor("#0f172a")
+
+    for i, row in _df.iterrows():
+        _o, _h, _l, _c = float(row["Open"]), float(row["High"]), float(row["Low"]), float(row["Close"])
+        color = "#10b981" if _c >= _o else "#ef4444"
+        ax1.plot([i, i], [_l, _h], color=color, linewidth=0.8, zorder=1)
+        ax1.add_patch(mpatches.FancyBboxPatch(
+            (i - W, min(_o, _c)), 2 * W, max(abs(_c - _o), 1e-9),
+            boxstyle="square,pad=0", linewidth=0, facecolor=color, zorder=2,
+        ))
+
+    ax1.plot(list(range(n)), ema20.values, color="#fbbf24", linewidth=1.2, label="EMA20", alpha=0.85)
+    ax1.plot(list(range(n)), ema50.values, color="#818cf8", linewidth=1.2, label="EMA50", alpha=0.85)
+    ax1.legend(loc="upper left", facecolor="#1e293b", labelcolor="#f1f5f9", fontsize=9)
+
+    tick_step = max(1, n // 10)
+    ticks     = list(range(0, n, tick_step))
+    date_col  = _df.columns[0]
+    ax1.set_xticks(ticks)
+    ax1.set_xticklabels([str(_df.iloc[i][date_col])[:16] for i in ticks],
+                        rotation=30, ha="right", color="#94a3b8", fontsize=7)
+    ax1.set_xlim(-1, n)
+    ax1.tick_params(colors="#94a3b8")
+    ax1.yaxis.tick_right()
+    ax1.yaxis.set_tick_params(labelcolor="#94a3b8")
+    ax1.grid(color="#1e293b", linewidth=0.5)
+    ax1.set_title(f"{symbol_label}  {tf_label}  ({n} candles)", color="#f1f5f9", fontsize=13, pad=8)
+
+    for i, row in _df.iterrows():
+        _o, _c = float(row["Open"]), float(row["Close"])
+        _v = float(row.get("Volume", 0) or 0)
+        ax2.bar(i, _v, color="#10b981" if _c >= _o else "#ef4444", alpha=0.5, width=0.8)
+    ax2.tick_params(colors="#94a3b8", labelsize=7)
+    ax2.yaxis.tick_right()
+    ax2.set_xlim(-1, n)
+    ax2.set_ylabel("Vol", color="#94a3b8", fontsize=8)
+    ax2.grid(color="#1e293b", linewidth=0.3)
+
+    plt.tight_layout(pad=0.5)
+    buf = io.BytesIO()
+    fig_c.savefig(buf, format="PNG", dpi=130, bbox_inches="tight", facecolor="#0f172a")
+    plt.close(fig_c)
+    buf.seek(0)
+    return Image.open(buf).copy()
+
+
 def pil_to_download_bytes(image: Image.Image) -> bytes:
     """Return lossless PNG bytes — pass these to st.image() to avoid Streamlit re-encoding."""
     buf = io.BytesIO()
@@ -1803,6 +1936,10 @@ else:
             }.get(signal, '<div class="wait-badge">⏳ WAIT — NO CLEAR SETUP</div>')
             st.markdown(badge_html, unsafe_allow_html=True)
 
+            # ── News warning overlay ───────────────────────
+            _news_warns = get_news_warning(market_type)
+            render_news_warning_banner(_news_warns)
+
             if pattern:
                 st.markdown(f"<p style='color:#7c3aed;font-weight:700;font-size:15px;margin:4px 0'>📐 Pattern: {pattern}</p>",
                             unsafe_allow_html=True)
@@ -1848,6 +1985,81 @@ else:
             # ── Analysis text (json block stripped) ───────
             clean_text = re.sub(r"```json.*?```", "", text, flags=re.DOTALL).strip()
             st.markdown(clean_text)
+
+            st.divider()
+
+            # ── Follow-up Q&A on this analysis ────────────
+            st.markdown("#### 💬 Ask a follow-up question · 追问")
+            st.caption("Ask anything about this analysis — e.g. 'Where exactly is the liquidity swept?' or 'What if DXY pumps?'")
+
+            # Init per-analysis chat (reset when new analysis runs)
+            _analysis_id = hash(text[:100])
+            if st.session_state.get("analysis_chat_id") != _analysis_id:
+                st.session_state["analysis_chat_id"]  = _analysis_id
+                st.session_state["analysis_chat"]     = []
+
+            # Render conversation
+            for _msg in st.session_state["analysis_chat"]:
+                with st.chat_message(_msg["role"]):
+                    st.markdown(_msg["content"])
+
+            # Chat input
+            if _followup_q := st.chat_input("Ask about this analysis...", key="analysis_followup_input"):
+                if not api_key:
+                    st.warning("👈 Enter your API key first.")
+                else:
+                    st.session_state["analysis_chat"].append({"role": "user", "content": _followup_q})
+                    with st.chat_message("user"):
+                        st.markdown(_followup_q)
+
+                    with st.chat_message("assistant"):
+                        with st.spinner("Thinking..."):
+                            try:
+                                _sys = f"""You are an elite trading analyst. You have just completed a full analysis of a {market_type} chart on the {timeframe} timeframe.
+
+Your analysis summary:
+{clean_text[:2000]}
+
+Now the trader is asking follow-up questions about your analysis. Answer specifically and precisely — refer back to exact price levels, patterns, and structures you identified. Be direct. Use the same language the trader uses (English or Chinese)."""
+
+                                _chat_hist = st.session_state["analysis_chat"]
+                                if model_choice.startswith("gemini"):
+                                    _gc = google_genai.Client(api_key=api_key)
+                                    _hist_text = "\n".join([
+                                        f"{'Trader' if m['role']=='user' else 'Analyst'}: {m['content']}"
+                                        for m in _chat_hist
+                                    ])
+                                    _fa = _gc.models.generate_content(
+                                        model=model_choice,
+                                        contents=[_sys + "\n\nConversation:\n" + _hist_text],
+                                    )
+                                    _ans = _fa.text
+                                else:
+                                    _ac = anthropic.Anthropic(api_key=api_key)
+                                    _api_msgs = [{"role": m["role"], "content": m["content"]}
+                                                 for m in _chat_hist if m["role"] in ("user","assistant")]
+                                    # Include the chart image in the first message for Claude
+                                    if len(_api_msgs) == 1 and st.session_state.get("image"):
+                                        _img_b64 = encode_image_to_base64(st.session_state["image"])
+                                        _api_msgs[0] = {
+                                            "role": "user",
+                                            "content": [
+                                                {"type": "image", "source": {"type": "base64",
+                                                 "media_type": "image/jpeg", "data": _img_b64}},
+                                                {"type": "text", "text": _followup_q},
+                                            ]
+                                        }
+                                    _fa = _ac.messages.create(
+                                        model=model_choice, max_tokens=1200,
+                                        system=_sys, messages=_api_msgs[-12:],
+                                    )
+                                    _ans = _fa.content[0].text
+
+                                st.markdown(_ans)
+                                st.session_state["analysis_chat"].append({"role": "assistant", "content": _ans})
+                            except Exception as _e:
+                                st.error(f"Error: {_e}")
+                    st.rerun()
 
         else:
             st.markdown("""
@@ -2047,11 +2259,176 @@ with tool_tab2:
 # ════════════════════════════════════════════════════════════
 with tool_tab3:
     st.markdown("### 📡 Multi-Chart Scanner 多图扫描")
-    st.caption("Upload up to 5 charts — AI ranks them by signal strength. 上传最多5张图，AI自动排名最佳机会。")
+
+    scan_mode = st.radio(
+        "Scan mode · 扫描模式",
+        ["📤 Manual Upload", "🤖 Auto Scan (Live Data)"],
+        horizontal=True,
+        key="scan_mode_radio",
+    )
+    st.divider()
 
     if not api_key:
         st.warning("👈 Enter your API key in the sidebar first.")
+
+    # ── AUTO SCAN MODE ────────────────────────────────────────
+    elif scan_mode == "🤖 Auto Scan (Live Data)":
+        st.caption("App auto-fetches live charts for your watchlist and ranks the best setups. 自动拉取实时图表，找出最佳机会。")
+
+        # Watchlist picker
+        AUTO_WATCHLIST = {
+            "EUR/USD": ("EUR/USD", "EURUSD=X"),
+            "GBP/USD": ("GBP/USD", "GBPUSD=X"),
+            "USD/JPY": ("USD/JPY", "USDJPY=X"),
+            "AUD/USD": ("AUD/USD", "AUDUSD=X"),
+            "NZD/USD": ("NZD/USD", "NZDUSD=X"),
+            "USD/CAD": ("USD/CAD", "USDCAD=X"),
+            "USD/CHF": ("USD/CHF", "USDCHF=X"),
+            "GBP/JPY": ("GBP/JPY", "GBPJPY=X"),
+            "Gold (XAU/USD)": ("XAU/USD", "GC=F"),
+            "Silver (XAG/USD)": ("XAG/USD", "SI=F"),
+            "BTC/USD": ("BTC/USD", "BTC-USD"),
+            "ETH/USD": ("ETH/USD", "ETH-USD"),
+        }
+        AUTO_TF_MAP = {
+            "M15": ("15min", "15m", "5d"),
+            "M30": ("30min", "30m", "10d"),
+            "H1":  ("1h",    "1h",  "30d"),
+            "H4":  ("4h",    "1h",  "60d"),
+            "D1":  ("1day",  "1d",  "180d"),
+        }
+
+        as_col1, as_col2, as_col3 = st.columns([3, 1, 1])
+        with as_col1:
+            selected_pairs = st.multiselect(
+                "📋 Select watchlist · 选择监控列表",
+                list(AUTO_WATCHLIST.keys()),
+                default=["EUR/USD", "GBP/USD", "Gold (XAU/USD)", "BTC/USD"],
+                key="auto_scan_pairs",
+            )
+        with as_col2:
+            auto_tf = st.selectbox("⏱️ Timeframe", list(AUTO_TF_MAP.keys()),
+                                   index=2, key="auto_scan_tf")
+        with as_col3:
+            auto_candles = st.selectbox("🕯️ Candles", [50, 100], index=1, key="auto_scan_candles")
+
+        if st.button("🚀 Run Auto Scan", use_container_width=True, type="primary", key="auto_scan_btn"):
+            if not selected_pairs:
+                st.warning("Select at least one pair from the watchlist.")
+            else:
+                td_int, yf_int, yf_period = AUTO_TF_MAP[auto_tf]
+                auto_results = []
+                prog = st.progress(0)
+                stat = st.empty()
+                total = len(selected_pairs)
+
+                for idx, pair_name in enumerate(selected_pairs):
+                    stat.text(f"📡 Fetching & analysing {pair_name}... ({idx+1}/{total})")
+                    prog.progress(idx / total)
+                    try:
+                        td_sym_a, yf_sym_a = AUTO_WATCHLIST[pair_name]
+
+                        # Fetch data
+                        if twelve_data_key:
+                            import requests as _req2, pandas as _pd2
+                            _url = "https://api.twelvedata.com/time_series"
+                            _p   = {"symbol": td_sym_a, "interval": td_int,
+                                    "outputsize": auto_candles, "apikey": twelve_data_key, "format": "JSON"}
+                            _r   = _req2.get(_url, params=_p, timeout=12)
+                            _d   = _r.json()
+                            if _d.get("status") == "error":
+                                raise ValueError(_d.get("message", "API error"))
+                            _rows = [{"Datetime": v["datetime"],
+                                      "Open": float(v["open"]), "High": float(v["high"]),
+                                      "Low": float(v["low"]), "Close": float(v["close"]),
+                                      "Volume": float(v.get("volume", 0))}
+                                     for v in _d.get("values", [])]
+                            df_a = _pd2.DataFrame(_rows)
+                            df_a["Datetime"] = _pd2.to_datetime(df_a["Datetime"])
+                            df_a = df_a.sort_values("Datetime").set_index("Datetime")
+                        else:
+                            import yfinance as _yf2
+                            _raw = _yf2.download(yf_sym_a, period=yf_period,
+                                                 interval=yf_int, auto_adjust=True, progress=False)
+                            if _raw.empty:
+                                raise ValueError(f"No data for {yf_sym_a}")
+                            if hasattr(_raw.columns, "levels"):
+                                _raw.columns = _raw.columns.get_level_values(0)
+                            if auto_tf == "H4":
+                                _raw = _raw.resample("4h").agg({"Open":"first","High":"max",
+                                                                 "Low":"min","Close":"last","Volume":"sum"}).dropna()
+                            _raw.index = _raw.index.tz_localize(None) if _raw.index.tzinfo else _raw.index
+                            df_a = _raw.tail(auto_candles).copy()
+
+                        # Generate chart image
+                        chart_img_a = generate_chart_image_from_df(df_a, pair_name, auto_tf)
+
+                        # AI quick scan
+                        _last = float(df_a["Close"].iloc[-1])
+                        _qp   = f"""Analyse this {pair_name} chart on {auto_tf} timeframe. Current price: {_last:.5g}.
+Output ONLY this JSON, nothing else:
+{{"signal": "BUY" or "SELL" or "WAIT", "confidence": 1-10, "pattern": "pattern name or none",
+"trend": "Bullish/Bearish/Sideways", "wyckoff_phase": "Accumulation/Markup/Distribution/Markdown/Unknown",
+"key_level": "one key price level as price", "reason": "one sentence max"}}"""
+
+                        _qa = analyze_chart_with_ai(chart_img_a, api_key, model_choice,
+                                                     pair_name, auto_tf, _qp)
+                        _jm = re.search(r'\{.*?\}', _qa, re.DOTALL)
+                        _data = json.loads(_jm.group()) if _jm else {
+                            "signal": "WAIT", "confidence": 5, "pattern": "N/A",
+                            "trend": "Unknown", "reason": "Parse error"}
+                        _data["label"]      = pair_name
+                        _data["last_price"] = f"{_last:.5g}"
+                        # News warning flag
+                        _warns = get_news_warning(pair_name)
+                        _data["news_warn"]  = len(_warns) > 0
+                        _data["news_items"] = _warns
+                        auto_results.append(_data)
+
+                    except Exception as _ae:
+                        auto_results.append({"label": pair_name, "signal": "ERROR", "confidence": 0,
+                                             "pattern": "—", "trend": "—", "reason": str(_ae)[:80],
+                                             "last_price": "—", "news_warn": False, "news_items": []})
+
+                prog.progress(1.0)
+                stat.text("✅ Auto scan complete!")
+                st.session_state["auto_scan_results"] = auto_results
+
+        # Show auto scan results
+        if "auto_scan_results" in st.session_state:
+            _ares = sorted(st.session_state["auto_scan_results"],
+                           key=lambda x: x.get("confidence", 0), reverse=True)
+            st.markdown("#### 🏆 Ranked Setups · 最佳机会排名")
+            st.caption(f"Sorted by confidence · Timeframe: {auto_tf if 'auto_tf' in dir() else ''} · "
+                       f"{'🟢 Twelve Data real-time' if twelve_data_key else '🟡 yfinance delayed'}")
+
+            for rank, r in enumerate(_ares):
+                sig   = r.get("signal", "WAIT")
+                conf  = r.get("confidence", 5)
+                sc    = "#10b981" if sig == "BUY" else ("#ef4444" if sig == "SELL" else "#6b7280")
+                medal = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][rank] if rank < 10 else ""
+                news_badge = " &nbsp;<span style='background:#dc2626;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700'>⚠️ NEWS</span>" if r.get("news_warn") else ""
+                high_conf  = conf >= 8
+                border_w   = "3px" if high_conf else "1px"
+                border_c   = sc if high_conf else "#334155"
+                st.markdown(f"""
+<div style='background:#1e293b;border:{border_w} solid {border_c};border-radius:10px;padding:14px 18px;margin:6px 0;display:flex;align-items:center;gap:16px'>
+<span style='font-size:26px'>{medal}</span>
+<div style='flex:1'>
+  <span style='color:white;font-weight:700;font-size:16px'>{r.get("label","")}</span>
+  <span style='color:#94a3b8;font-size:12px;margin-left:8px'>@ {r.get("last_price","")}</span>
+  <span style='margin-left:10px;background:{sc};color:white;padding:2px 10px;border-radius:20px;font-weight:700;font-size:13px'>{sig}</span>
+  <span style='margin-left:6px;color:#fbbf24;font-weight:600'>{conf}/10</span>{news_badge}<br>
+  <span style='color:#94a3b8;font-size:12px'>📐 {r.get("pattern","—")} &nbsp;·&nbsp; 📈 {r.get("trend","—")} &nbsp;·&nbsp; 🔄 {r.get("wyckoff_phase","—")}</span><br>
+  <span style='color:#cbd5e1;font-size:12px'>💬 {r.get("reason","")}</span>
+  {''.join([f"<br><span style='color:#fca5a5;font-size:11px'>⚠️ {w['currency']} {w['title']} @ {w['date']}</span>" for w in r.get("news_items",[])])}
+</div>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── MANUAL UPLOAD MODE ────────────────────────────────────
     else:
+        st.caption("Upload up to 5 charts — AI ranks them by signal strength. 上传最多5张图，AI自动排名最佳机会。")
         scan_cols = st.columns(5)
         scan_images = {}
         scan_labels = {}
@@ -2078,7 +2455,6 @@ with tool_tab3:
                     status_text.text(f"🤖 Analysing {lbl}...")
                     progress.progress((idx) / len(scan_images))
 
-                    # Quick scan prompt
                     quick_prompt = f"""
 Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
 {{"signal": "BUY" or "SELL" or "WAIT", "confidence": 1-10, "pattern": "pattern name or none",
@@ -2089,7 +2465,6 @@ Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
                         quick_analysis = analyze_chart_with_ai(
                             img, api_key, model_choice, market_type, timeframe, quick_prompt
                         )
-                        # Try parse JSON
                         json_match = re.search(r'\{.*?\}', quick_analysis, re.DOTALL)
                         if json_match:
                             data = json.loads(json_match.group())
@@ -3279,6 +3654,9 @@ with tool_tab7:
 
             # ── Show analysis result ──────────────────────────
             if "ld_analysis" in st.session_state:
+                # News warning for live data
+                _ld_news = get_news_warning(st.session_state.get("ld_symbol", ""))
+                render_news_warning_banner(_ld_news)
                 st.markdown(st.session_state["ld_analysis"])
 
                 # Offer to annotate the chart
@@ -3291,9 +3669,14 @@ with tool_tab7:
                     if "ld_chart_pil" in st.session_state:
                         with st.spinner("Annotating market structure..."):
                             try:
+                                _ld_meta   = parse_json_from_analysis(st.session_state["ld_analysis"])
+                                _ld_signal = _ld_meta.get("signal", "WAIT").upper()
+                                _ld_anns   = _ld_meta.get("annotations", [])
                                 ann_img = annotate_chart(
                                     st.session_state["ld_chart_pil"],
-                                    st.session_state["ld_analysis"],
+                                    _ld_anns,
+                                    _ld_signal,
+                                    _ld_meta,
                                 )
                                 st.image(
                                     pil_to_download_bytes(ann_img),
