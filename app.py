@@ -1047,8 +1047,10 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
 
 
 def pil_to_download_bytes(image: Image.Image) -> bytes:
+    """Return lossless PNG bytes — pass these to st.image() to avoid Streamlit re-encoding."""
     buf = io.BytesIO()
     image.save(buf, format="PNG", compress_level=1)   # lossless, fast
+    buf.seek(0)
     return buf.getvalue()
 
 
@@ -1463,7 +1465,7 @@ if mtf_mode:
                             st.session_state[ann_key] = ann_img
 
                     if st.session_state.get(ann_key):
-                        st.image(st.session_state[ann_key], use_container_width=True)
+                        st.image(pil_to_download_bytes(st.session_state[ann_key]), use_container_width=True)
                         st.download_button(
                             f"⬇️ Download {step_tf} Chart",
                             data=pil_to_download_bytes(st.session_state[ann_key]),
@@ -1712,8 +1714,8 @@ else:
                         st.session_state["annotated"] = ann_img
 
             if st.session_state.get("annotated") is not None:
-                st.image(st.session_state["annotated"],
-                         caption="AI-annotated chart — Entry / SL / TP / Patterns drawn",
+                st.image(pil_to_download_bytes(st.session_state["annotated"]),
+                         caption="Market Structure Analysis — OB / FVG / BOS / CHoCH / S&R / Liquidity",
                          use_container_width=True)
                 st.download_button(
                     "⬇️ Download Annotated Chart",
@@ -2015,86 +2017,272 @@ Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
 # ════════════════════════════════════════════════════════════
 with tool_tab4:
     st.markdown("### 🤖 AI Trading Coach 交易导师")
-    st.caption("Ask any trading question in English or Chinese. 用中文或英文问任何交易问题。")
 
-    # Initialise chat history
-    if "coach_messages" not in st.session_state:
-        st.session_state["coach_messages"] = [
-            {"role": "assistant", "content": (
-                "你好！我是你的AI交易导师 👋\n\n"
-                "你可以问我任何关于交易的问题，例如：\n"
-                "- 「什么是Smart Money Concepts？」\n"
-                "- 「Scalper应该用什么指标？」\n"
-                "- 「为什么止损总是被扫？」\n"
-                "- 「How do I identify a Wyckoff Spring?」\n\n"
-                "随时问，我都在！😊"
-            )}
-        ]
+    # ── Coach mode selector ────────────────────────────────
+    coach_mode = st.radio(
+        "选择模式 / Select mode",
+        ["💬 Ask anything", "🔍 Review my analysis"],
+        horizontal=True,
+        key="coach_mode",
+        help="Ask anything = general Q&A | Review = upload YOUR chart and get expert feedback on your analysis",
+    )
+    st.divider()
 
-    # Show chat history
-    for msg in st.session_state["coach_messages"]:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    # ══════════════════════════════════════════════════════
+    # MODE 1 — Ask Anything (general Q&A chat)
+    # ══════════════════════════════════════════════════════
+    if coach_mode == "💬 Ask anything":
+        st.caption("用中文或英文问任何交易问题 · Ask any trading question in English or Chinese")
 
-    # Chat input
-    if user_question := st.chat_input("问我任何交易问题... / Ask any trading question..."):
-        if not api_key:
-            st.warning("👈 请先在侧边栏输入API Key")
-        else:
-            # Add user message
-            st.session_state["coach_messages"].append({"role": "user", "content": user_question})
-            with st.chat_message("user"):
-                st.markdown(user_question)
+        # Initialise chat history
+        if "coach_messages" not in st.session_state:
+            st.session_state["coach_messages"] = [
+                {"role": "assistant", "content": (
+                    "你好！我是你的AI交易导师 👋\n\n"
+                    "我专注于 **SMC / Wyckoff / Price Action / Scalping / Risk Management**。\n\n"
+                    "你可以问我：\n"
+                    "- 「什么是 Order Block？怎么画？」\n"
+                    "- 「CHoCH 和 BOS 有什么区别？」\n"
+                    "- 「Scalper 应该在什么时候进场？」\n"
+                    "- 「How do I identify a liquidity sweep?」\n\n"
+                    "随时问，我都在！😊"
+                )}
+            ]
 
-            # Get AI response
-            with st.chat_message("assistant"):
-                with st.spinner("思考中..."):
+        for msg in st.session_state["coach_messages"]:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        if user_question := st.chat_input("问我任何交易问题... / Ask any trading question...", key="coach_qa_input"):
+            if not api_key:
+                st.warning("👈 请先在侧边栏输入 API Key")
+            else:
+                st.session_state["coach_messages"].append({"role": "user", "content": user_question})
+                with st.chat_message("user"):
+                    st.markdown(user_question)
+
+                with st.chat_message("assistant"):
+                    with st.spinner("思考中..."):
+                        try:
+                            coach_system = """You are an elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices.
+You specialise in SMC (Smart Money Concepts), Wyckoff Method, Price Action, ICT concepts, Scalping, Day Trading, and Risk Management.
+You respond in the same language the student uses (English or Chinese/Mandarin). If they mix languages, respond in Chinese primarily.
+Keep answers practical, clear, and educational. Use bullet points and examples where helpful.
+Always emphasise risk management and discipline. Be direct — tell students clearly when something is right or wrong.
+Never give specific financial advice or tell someone to buy/sell a specific real asset."""
+
+                            if model_choice.startswith("gemini"):
+                                client_coach = google_genai.Client(api_key=api_key)
+                                history_text = "\n".join([
+                                    f"{'Student' if m['role']=='user' else 'Coach'}: {m['content']}"
+                                    for m in st.session_state["coach_messages"][-10:]
+                                ])
+                                full_q = coach_system + "\n\nConversation:\n" + history_text
+                                coach_resp = client_coach.models.generate_content(
+                                    model=model_choice, contents=[full_q])
+                                answer = coach_resp.text
+                            else:
+                                client_coach = anthropic.Anthropic(api_key=api_key)
+                                history_msgs = [
+                                    {"role": m["role"], "content": m["content"]}
+                                    for m in st.session_state["coach_messages"]
+                                    if m["role"] in ("user", "assistant")
+                                ][-12:]
+                                coach_resp = client_coach.messages.create(
+                                    model=model_choice, max_tokens=1500,
+                                    system=coach_system, messages=history_msgs)
+                                answer = coach_resp.content[0].text
+
+                            st.markdown(answer)
+                            st.session_state["coach_messages"].append({"role": "assistant", "content": answer})
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+
+        if len(st.session_state.get("coach_messages", [])) > 2:
+            if st.button("🗑️ Clear Chat 清除对话", key="clear_coach"):
+                st.session_state["coach_messages"] = [st.session_state["coach_messages"][0]]
+                st.rerun()
+
+    # ══════════════════════════════════════════════════════
+    # MODE 2 — Review My Analysis
+    # ══════════════════════════════════════════════════════
+    else:
+        st.caption("上传你自己画好分析线的图表，AI导师会帮你检查对不对，并解释原因。")
+        st.caption("Upload YOUR chart with your own drawn analysis. The coach will tell you what's right, what's wrong, and why.")
+
+        # ── Upload chart ──────────────────────────────────
+        review_img_file = st.file_uploader(
+            "📷 Upload your chart (with your own drawings) · 上传你的分析图",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="coach_review_img",
+        )
+
+        if review_img_file:
+            review_img = Image.open(review_img_file)
+            st.image(review_img, caption="Your chart · 你的图表", use_container_width=True)
+
+        # ── User describes their analysis ─────────────────
+        st.markdown("**Describe your analysis · 描述你的分析：**")
+        review_description = st.text_area(
+            label="analysis_desc",
+            label_visibility="collapsed",
+            placeholder=(
+                "例如：\n"
+                "- 我画了一条下降趋势线，从左上到右下\n"
+                "- 我认为这里有一个 Bearish OB（看跌订单块）\n"
+                "- 我认为这是 CHoCH，因为价格打破了低点\n"
+                "- I drew support at the recent low and resistance at the swing high\n"
+                "- I think this is a bullish flag pattern forming"
+            ),
+            height=140,
+            key="coach_review_desc",
+        )
+
+        # ── Review options ────────────────────────────────
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            review_focus = st.selectbox(
+                "Review focus · 重点检查",
+                [
+                    "Overall analysis · 整体分析",
+                    "Trend & structure · 趋势与结构",
+                    "Order Blocks & FVG",
+                    "BOS & CHoCH identification",
+                    "Support & Resistance levels",
+                    "Trendlines · 趋势线画法",
+                    "Liquidity zones · 流动性",
+                    "Pattern identification · 形态识别",
+                ],
+                key="coach_review_focus",
+            )
+        with col_r2:
+            review_lang = st.selectbox(
+                "Response language · 回复语言",
+                ["中文为主 (Chinese)", "English", "两种都用 (Both)"],
+                key="coach_review_lang",
+            )
+
+        # ── Submit for review ─────────────────────────────
+        if st.button("🔍 Review My Analysis · 帮我检查分析", use_container_width=True, key="coach_review_btn"):
+            if not api_key:
+                st.warning("👈 请先在侧边栏输入 API Key")
+            elif not review_img_file:
+                st.warning("👆 请先上传你的图表 / Please upload your chart first")
+            elif not review_description.strip():
+                st.warning("📝 请先描述你的分析 / Please describe your analysis first")
+            else:
+                with st.spinner("导师正在审查你的分析... Reviewing your analysis..."):
                     try:
-                        coach_system = """You are an elite trading coach and mentor with 20+ years of experience.
-You specialise in SMC, Wyckoff, Price Action, Scalping, Day Trading, and Risk Management.
-You teach in both English and Chinese (Mandarin/Traditional Chinese) — match the language the student uses.
-Keep answers practical, clear, and educational. Use examples and bullet points when helpful.
-Always emphasise risk management and discipline. Never give specific financial advice or tell someone to buy/sell a specific asset.
-You are patient, encouraging, and explain complex concepts in simple terms."""
+                        lang_instruction = {
+                            "中文为主 (Chinese)": "Respond primarily in Chinese (Mandarin). Use English only for technical terms.",
+                            "English": "Respond in English.",
+                            "两种都用 (Both)": "Respond in both English and Chinese — write each point in English first, then Chinese translation.",
+                        }.get(review_lang, "Respond in Chinese.")
+
+                        review_system = f"""You are a strict but fair elite trading coach and mentor with 20+ years of experience.
+Your role is to REVIEW a student's chart analysis and give them honest, detailed expert feedback.
+
+{lang_instruction}
+
+REVIEW FORMAT — always follow this exact structure:
+
+## ✅ What You Got Right · 做对的地方
+[For each correct element: explain WHY it is correct and what makes it a valid analysis]
+
+## ❌ What Is Wrong or Needs Improvement · 需要改正的地方
+[For each mistake: be SPECIFIC about what is wrong, WHY it is wrong, and the CORRECT way to do it]
+[If a trend line is drawn incorrectly, explain the rule they broke]
+[If an OB is misidentified, explain what a real OB looks like vs what they drew]
+[If BOS/CHoCH is wrong, explain the correct criteria]
+
+## 💡 What You Missed · 你没有注意到的
+[Point out important structures, zones, or signals that are visible but the student did not mention]
+
+## 📝 How to Improve · 改进建议
+[Specific, actionable advice for this student based on their mistakes]
+[Give them the RULE or PRINCIPLE they need to remember]
+
+## 🎯 Overall Score · 整体评分
+[Score their analysis from 1-10 with justification]
+[Example: "6/10 — Good trend identification but OB placement needs work"]
+
+Be honest and direct. If something is wrong, say it clearly. Do not be vague or overly positive.
+Focus on the specific area: {review_focus}"""
+
+                        img_b64 = encode_image_to_base64(review_img)
+                        user_review_msg = f"""Please review my chart analysis.
+
+My analysis / 我的分析：
+{review_description}
+
+Focus area: {review_focus}
+
+Please tell me what I got right, what I got wrong, what I missed, and how to improve."""
 
                         if model_choice.startswith("gemini"):
                             client_coach = google_genai.Client(api_key=api_key)
-                            # Build conversation history for context
-                            history_text = "\n".join([
-                                f"{'Student' if m['role']=='user' else 'Coach'}: {m['content']}"
-                                for m in st.session_state["coach_messages"][-8:]
-                            ])
-                            full_q = coach_system + "\n\nConversation so far:\n" + history_text
-                            coach_resp = client_coach.models.generate_content(
+                            img_buf_r = io.BytesIO()
+                            review_img_rgb = review_img.copy()
+                            if review_img_rgb.mode in ("RGBA", "P"):
+                                review_img_rgb = review_img_rgb.convert("RGB")
+                            review_img_rgb.save(img_buf_r, format="JPEG", quality=92)
+                            img_bytes_r = img_buf_r.getvalue()
+
+                            full_prompt_r = review_system + "\n\n" + user_review_msg
+                            coach_resp_r = client_coach.models.generate_content(
                                 model=model_choice,
-                                contents=[full_q],
+                                contents=[
+                                    full_prompt_r,
+                                    google_types.Part.from_bytes(data=img_bytes_r, mime_type="image/jpeg"),
+                                ],
                             )
-                            answer = coach_resp.text
+                            review_answer = coach_resp_r.text
+
                         else:
                             client_coach = anthropic.Anthropic(api_key=api_key)
-                            history_msgs = [
-                                {"role": m["role"], "content": m["content"]}
-                                for m in st.session_state["coach_messages"]
-                                if m["role"] in ("user", "assistant")
-                            ][-10:]
-                            coach_resp = client_coach.messages.create(
+                            coach_resp_r = client_coach.messages.create(
                                 model=model_choice,
-                                max_tokens=1024,
-                                system=coach_system,
-                                messages=history_msgs,
+                                max_tokens=2000,
+                                system=review_system,
+                                messages=[{
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "image", "source": {
+                                            "type": "base64",
+                                            "media_type": "image/jpeg",
+                                            "data": img_b64,
+                                        }},
+                                        {"type": "text", "text": user_review_msg},
+                                    ],
+                                }],
                             )
-                            answer = coach_resp.content[0].text
+                            review_answer = coach_resp_r.content[0].text
 
-                        st.markdown(answer)
-                        st.session_state["coach_messages"].append({"role": "assistant", "content": answer})
+                        # Show review result in a styled box
+                        st.markdown("---")
+                        st.markdown("### 📋 Coach Review · 导师点评")
+                        st.markdown(review_answer)
+
+                        # Save to review history
+                        if "coach_review_history" not in st.session_state:
+                            st.session_state["coach_review_history"] = []
+                        st.session_state["coach_review_history"].append({
+                            "description": review_description,
+                            "focus": review_focus,
+                            "review": review_answer,
+                        })
 
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
 
-    if len(st.session_state["coach_messages"]) > 2:
-        if st.button("🗑️ Clear Chat 清除对话", key="clear_coach"):
-            st.session_state["coach_messages"] = [st.session_state["coach_messages"][0]]
-            st.rerun()
+        # ── Show past reviews ─────────────────────────────
+        if st.session_state.get("coach_review_history"):
+            with st.expander(f"📚 Past Reviews · 历史点评 ({len(st.session_state['coach_review_history'])} reviews)", expanded=False):
+                for i, rev in enumerate(reversed(st.session_state["coach_review_history"][-5:]), 1):
+                    st.markdown(f"**Review {i}** — Focus: {rev['focus']}")
+                    st.caption(f"Analysis: {rev['description'][:120]}...")
+                    st.markdown(rev["review"])
+                    st.divider()
 
 
 # ════════════════════════════════════════════════════════════
