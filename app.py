@@ -2096,7 +2096,7 @@ The AI will identify:<br><br>
 st.divider()
 st.markdown("## 🛠️ Trading Tools 交易工具")
 
-tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7 = st.tabs([
+tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, tool_tab8 = st.tabs([
     "🧮 Position Size",
     "📰 News Calendar",
     "📡 Chart Scanner",
@@ -2104,6 +2104,7 @@ tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7 = st
     "📄 PDF Report",
     "💹 Currency Strength",
     "📈 Live Data",
+    "🔭 MTF Panel",
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -3697,6 +3698,271 @@ with tool_tab7:
                                 )
                             except Exception as _ann_e:
                                 st.error(f"Annotation error: {_ann_e}")
+
+# ════════════════════════════════════════════════════════════
+# TOOL 8 — MULTI-TIMEFRAME STRUCTURE PANEL
+# ════════════════════════════════════════════════════════════
+with tool_tab8:
+    st.markdown("### 🔭 Multi-Timeframe Structure Panel")
+    st.caption("One click → AI analyses D1 + H4 + H1 + M15 simultaneously. See if all timeframes agree before you trade.")
+
+    if not api_key:
+        st.warning("👈 Enter your API key in the sidebar first.")
+    else:
+        # ── Symbol selector ───────────────────────────────────
+        MTF_SYMBOLS = {
+            "EUR/USD":          ("EUR/USD",  "EURUSD=X"),
+            "GBP/USD":          ("GBP/USD",  "GBPUSD=X"),
+            "USD/JPY":          ("USD/JPY",  "USDJPY=X"),
+            "AUD/USD":          ("AUD/USD",  "AUDUSD=X"),
+            "NZD/USD":          ("NZD/USD",  "NZDUSD=X"),
+            "USD/CAD":          ("USD/CAD",  "USDCAD=X"),
+            "USD/CHF":          ("USD/CHF",  "USDCHF=X"),
+            "GBP/JPY":          ("GBP/JPY",  "GBPJPY=X"),
+            "EUR/JPY":          ("EUR/JPY",  "EURJPY=X"),
+            "Gold (XAU/USD)":   ("XAU/USD",  "GC=F"),
+            "Silver (XAG/USD)": ("XAG/USD",  "SI=F"),
+            "BTC/USD":          ("BTC/USD",  "BTC-USD"),
+            "ETH/USD":          ("ETH/USD",  "ETH-USD"),
+            "S&P 500":          ("SPX",      "^GSPC"),
+            "Nasdaq 100":       ("NDX",      "^NDX"),
+        }
+
+        # Timeframes to scan: label → (td_interval, yf_interval, yf_period, candles)
+        MTF_TFS = [
+            ("D1",  "1day",  "1d",  "180d", 80),
+            ("H4",  "4h",    "1h",  "60d",  80),
+            ("H1",  "1h",    "1h",  "30d",  80),
+            ("M15", "15min", "15m", "5d",   80),
+        ]
+
+        mtf_c1, mtf_c2 = st.columns([3, 1])
+        with mtf_c1:
+            mtf_symbol = st.selectbox("📌 Select Symbol", list(MTF_SYMBOLS.keys()),
+                                       index=0, key="mtf_symbol")
+        with mtf_c2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            mtf_run_btn = st.button("🚀 Run MTF Analysis", use_container_width=True,
+                                     type="primary", key="mtf_run_btn")
+
+        td_sym_mtf, yf_sym_mtf = MTF_SYMBOLS[mtf_symbol]
+
+        # ── News warning for this symbol ──────────────────────
+        _mtf_news = get_news_warning(mtf_symbol)
+        render_news_warning_banner(_mtf_news)
+
+        # ── Run analysis across all 4 TFs ─────────────────────
+        if mtf_run_btn:
+            mtf_results = {}
+            prog_mtf = st.progress(0)
+            stat_mtf = st.empty()
+
+            for idx, (tf_label, td_int, yf_int, yf_period, n_candles) in enumerate(MTF_TFS):
+                stat_mtf.text(f"📡 Fetching {mtf_symbol} {tf_label}... ({idx+1}/4)")
+                prog_mtf.progress(idx / 4)
+
+                try:
+                    # ── Fetch data ────────────────────────────
+                    import pandas as _pd_mtf
+                    if twelve_data_key:
+                        import requests as _rq_mtf
+                        _url = "https://api.twelvedata.com/time_series"
+                        _p   = {"symbol": td_sym_mtf, "interval": td_int,
+                                "outputsize": n_candles, "apikey": twelve_data_key, "format": "JSON"}
+                        _r   = _rq_mtf.get(_url, params=_p, timeout=15)
+                        _d   = _r.json()
+                        if _d.get("status") == "error":
+                            raise ValueError(_d.get("message", "Twelve Data error"))
+                        _rows = [{"Datetime": v["datetime"],
+                                  "Open": float(v["open"]), "High": float(v["high"]),
+                                  "Low": float(v["low"]), "Close": float(v["close"]),
+                                  "Volume": float(v.get("volume", 0))}
+                                 for v in _d.get("values", [])]
+                        df_mtf = _pd_mtf.DataFrame(_rows)
+                        df_mtf["Datetime"] = _pd_mtf.to_datetime(df_mtf["Datetime"])
+                        df_mtf = df_mtf.sort_values("Datetime").set_index("Datetime")
+                    else:
+                        import yfinance as _yf_mtf
+                        _raw = _yf_mtf.download(yf_sym_mtf, period=yf_period,
+                                                interval=yf_int, auto_adjust=True, progress=False)
+                        if _raw.empty:
+                            raise ValueError(f"No data for {yf_sym_mtf}")
+                        if hasattr(_raw.columns, "levels"):
+                            _raw.columns = _raw.columns.get_level_values(0)
+                        if tf_label == "H4":
+                            _raw = _raw.resample("4h").agg({"Open":"first","High":"max",
+                                                             "Low":"min","Close":"last","Volume":"sum"}).dropna()
+                        _raw.index = _raw.index.tz_localize(None) if _raw.index.tzinfo else _raw.index
+                        df_mtf = _raw.tail(n_candles).copy()
+
+                    # ── Generate chart image ──────────────────
+                    chart_pil_mtf = generate_chart_image_from_df(df_mtf, mtf_symbol, tf_label)
+
+                    # ── AI quick scan ─────────────────────────
+                    _last_mtf = float(df_mtf["Close"].iloc[-1])
+                    _qp_mtf = f"""Analyse this {mtf_symbol} chart on the {tf_label} timeframe. Price: {_last_mtf:.5g}.
+Output ONLY this JSON — nothing else:
+{{"signal": "BUY" or "SELL" or "WAIT",
+  "confidence": 1-10,
+  "trend": "Strongly Bullish" or "Bullish" or "Neutral" or "Bearish" or "Strongly Bearish",
+  "structure": "one sentence — what is the dominant market structure right now?",
+  "key_level": "the single most important price level right now",
+  "pattern": "chart pattern name or None",
+  "action": "what should a trader watch for on this timeframe? one sentence"}}"""
+
+                    _qa_mtf = analyze_chart_with_ai(chart_pil_mtf, api_key, model_choice,
+                                                     mtf_symbol, tf_label, _qp_mtf)
+                    _jm = re.search(r'\{.*?\}', _qa_mtf, re.DOTALL)
+                    _data_mtf = json.loads(_jm.group()) if _jm else {
+                        "signal": "WAIT", "confidence": 5, "trend": "Neutral",
+                        "structure": "Could not parse", "key_level": "—",
+                        "pattern": "None", "action": "—"}
+                    _data_mtf["last_price"] = f"{_last_mtf:.5g}"
+                    _data_mtf["tf"]         = tf_label
+                    mtf_results[tf_label]   = _data_mtf
+
+                except Exception as _mtf_e:
+                    mtf_results[tf_label] = {
+                        "signal": "ERROR", "confidence": 0, "trend": "—",
+                        "structure": str(_mtf_e)[:80], "key_level": "—",
+                        "pattern": "—", "action": "—",
+                        "last_price": "—", "tf": tf_label,
+                    }
+
+            prog_mtf.progress(1.0)
+            stat_mtf.text("✅ MTF analysis complete!")
+            st.session_state["mtf_panel_results"] = mtf_results
+            st.session_state["mtf_panel_symbol"]  = mtf_symbol
+
+        # ── Display MTF results ───────────────────────────────
+        if "mtf_panel_results" in st.session_state:
+            res       = st.session_state["mtf_panel_results"]
+            sym_shown = st.session_state.get("mtf_panel_symbol", mtf_symbol)
+
+            # ── Confluence summary banner ─────────────────────
+            signals   = [r.get("signal","WAIT") for r in res.values() if r.get("signal") != "ERROR"]
+            buys      = signals.count("BUY")
+            sells     = signals.count("SELL")
+            waits     = signals.count("WAIT")
+            avg_conf  = sum(r.get("confidence",5) for r in res.values()) / max(len(res),1)
+
+            if buys >= 3:
+                conf_bg   = "linear-gradient(135deg,#064e3b,#065f46)"
+                conf_bdr  = "#10b981"
+                conf_icon = "🟢"
+                conf_txt  = f"STRONG BUY · {buys}/4 Timeframes Bullish"
+                conf_sub  = "High-probability long setup — all major TFs aligned."
+            elif sells >= 3:
+                conf_bg   = "linear-gradient(135deg,#7f1d1d,#991b1b)"
+                conf_bdr  = "#ef4444"
+                conf_icon = "🔴"
+                conf_txt  = f"STRONG SELL · {sells}/4 Timeframes Bearish"
+                conf_sub  = "High-probability short setup — all major TFs aligned."
+            elif buys >= 2 and sells == 0:
+                conf_bg   = "linear-gradient(135deg,#052e16,#064e3b)"
+                conf_bdr  = "#34d399"
+                conf_icon = "🟡"
+                conf_txt  = f"CAUTIOUS BUY · {buys}/4 TFs Bullish, wait for confirmation"
+                conf_sub  = "Bias is bullish but not all TFs agree yet."
+            elif sells >= 2 and buys == 0:
+                conf_bg   = "linear-gradient(135deg,#450a0a,#7f1d1d)"
+                conf_bdr  = "#f87171"
+                conf_icon = "🟡"
+                conf_txt  = f"CAUTIOUS SELL · {sells}/4 TFs Bearish, wait for confirmation"
+                conf_sub  = "Bias is bearish but not all TFs agree yet."
+            else:
+                conf_bg   = "linear-gradient(135deg,#1e1b4b,#312e81)"
+                conf_bdr  = "#818cf8"
+                conf_icon = "⏳"
+                conf_txt  = "NO CLEAR CONFLUENCE — WAIT"
+                conf_sub  = "Timeframes are mixed. No high-probability setup. Stay patient."
+
+            st.markdown(f"""
+<div style='background:{conf_bg};border:2px solid {conf_bdr};border-radius:14px;
+padding:18px 24px;margin:12px 0 20px 0;text-align:center'>
+<h2 style='color:white;margin:0 0 6px 0;font-size:22px'>
+  {conf_icon} {sym_shown} — {conf_txt}
+</h2>
+<p style='color:#cbd5e1;margin:0;font-size:14px'>{conf_sub}</p>
+<p style='color:#94a3b8;margin:6px 0 0 0;font-size:13px'>
+  Average confidence: <b style='color:#fbbf24'>{avg_conf:.1f}/10</b> &nbsp;·&nbsp;
+  BUY: {buys} &nbsp;|&nbsp; SELL: {sells} &nbsp;|&nbsp; WAIT: {waits}
+</p>
+</div>
+""", unsafe_allow_html=True)
+
+            # ── 4 TF cards in 2×2 grid ────────────────────────
+            row1 = st.columns(2)
+            row2 = st.columns(2)
+            grid = [("D1", row1[0]), ("H4", row1[1]), ("H1", row2[0]), ("M15", row2[1])]
+
+            for tf_lbl, col_cell in grid:
+                r = res.get(tf_lbl, {})
+                sig   = r.get("signal", "WAIT")
+                conf  = r.get("confidence", 5)
+                trend = r.get("trend", "—")
+                struc = r.get("structure", "—")
+                klvl  = r.get("key_level", "—")
+                pat   = r.get("pattern", "None")
+                act   = r.get("action", "—")
+                price = r.get("last_price", "—")
+
+                sig_col = "#10b981" if sig == "BUY" else ("#ef4444" if sig == "SELL" else "#6b7280")
+                sig_ico = "▲" if sig == "BUY" else ("▼" if sig == "SELL" else "⏳")
+                bar_c   = "#059669" if conf >= 7 else ("#d97706" if conf >= 5 else "#dc2626")
+                trend_ico = {"Strongly Bullish":"🟢","Bullish":"🟩","Neutral":"🟡",
+                             "Bearish":"🟥","Strongly Bearish":"🔴"}.get(trend, "⬜")
+
+                with col_cell:
+                    st.markdown(f"""
+<div style='background:#1e293b;border:2px solid {sig_col};border-radius:12px;
+padding:16px;margin:4px 0;min-height:220px'>
+
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
+    <span style='color:#f1f5f9;font-size:20px;font-weight:900'>{tf_lbl}</span>
+    <span style='background:{sig_col};color:white;padding:4px 14px;border-radius:20px;
+    font-weight:800;font-size:15px'>{sig_ico} {sig}</span>
+  </div>
+
+  <div style='margin-bottom:8px'>
+    <div style='background:#334155;border-radius:4px;height:8px'>
+      <div style='background:{bar_c};width:{conf*10}%;height:8px;border-radius:4px'></div>
+    </div>
+    <span style='color:#94a3b8;font-size:12px'>Confidence: <b style='color:{bar_c}'>{conf}/10</b></span>
+  </div>
+
+  <p style='color:#94a3b8;font-size:12px;margin:4px 0'>
+    {trend_ico} <b style='color:#e2e8f0'>{trend}</b>
+    &nbsp;·&nbsp; Price: <b style='color:#fbbf24'>{price}</b>
+  </p>
+  <p style='color:#cbd5e1;font-size:12px;margin:4px 0'>
+    🏗️ <i>{struc}</i>
+  </p>
+  <p style='color:#94a3b8;font-size:12px;margin:4px 0'>
+    🎯 Key level: <b style='color:#a78bfa'>{klvl}</b>
+  </p>
+  {"" if not pat or pat in ("None","none","—") else f"<p style='color:#fbbf24;font-size:12px;margin:4px 0'>📐 Pattern: <b>{pat}</b></p>"}
+  <p style='color:#64748b;font-size:11px;margin:6px 0 0 0;border-top:1px solid #334155;padding-top:6px'>
+    👁️ {act}
+  </p>
+</div>
+""", unsafe_allow_html=True)
+
+            # ── Trading decision guide ────────────────────────
+            st.markdown("#### 📋 How to use this panel · 怎么用")
+            st.markdown("""
+<div style='background:#0f172a;border-radius:10px;padding:16px 20px;margin-top:8px;border:1px solid #334155'>
+<p style='color:#94a3b8;font-size:13px;margin:0;line-height:1.8'>
+<b style='color:#fbbf24'>Top-Down Rule 顶底分析原则:</b><br>
+① <b style='color:#f1f5f9'>D1</b> tells you the <b style='color:#10b981'>overall bias</b> — only trade in this direction<br>
+② <b style='color:#f1f5f9'>H4</b> confirms the <b style='color:#10b981'>trend structure</b> — look for pullbacks to key levels<br>
+③ <b style='color:#f1f5f9'>H1</b> shows the <b style='color:#10b981'>entry zone</b> — BOS/CHoCH forming here = setup<br>
+④ <b style='color:#f1f5f9'>M15</b> gives the <b style='color:#10b981'>precise entry trigger</b> — wait for confirmation candle<br><br>
+<span style='color:#ef4444'>⚡ Only enter if D1 + H4 + H1 all agree. Use M15 just for timing.</span><br>
+<span style='color:#86efac;font-size:12px'>只有当D1+H4+H1方向一致时才进场，M15只用于精确入场时机。</span>
+</p>
+</div>
+""", unsafe_allow_html=True)
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
