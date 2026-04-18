@@ -14,6 +14,15 @@ import json
 import re
 import os
 
+# ── localStorage persistence (browser-side) ──────────────────
+try:
+    from streamlit_local_storage import LocalStorage as _LocalStorageClass
+    _ls = _LocalStorageClass()
+    _LS_AVAILABLE = True
+except Exception:
+    _ls = None
+    _LS_AVAILABLE = False
+
 # ============================================================
 # FONT SETUP — download if system fonts not available
 # ============================================================
@@ -1051,6 +1060,33 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Restore persisted state from localStorage (runs once per session) ──
+if _LS_AVAILABLE and not st.session_state.get("_ls_loaded"):
+    try:
+        saved = _ls.getItem("trading_analyst_prefs")
+        if saved and isinstance(saved, dict):
+            # API key
+            if saved.get("api_key") and "saved_api_key" not in st.session_state:
+                st.session_state["saved_api_key"] = saved["api_key"]
+            # Settings
+            for _k in ("model_choice", "market_type", "timeframe"):
+                if saved.get(_k) and _k not in st.session_state:
+                    st.session_state[f"saved_{_k}"] = saved[_k]
+    except Exception:
+        pass
+
+    try:
+        saved_chat = _ls.getItem("trading_analyst_chat")
+        if saved_chat and isinstance(saved_chat, list) and "coach_messages" not in st.session_state:
+            # Only restore text messages (no image data)
+            clean = [m for m in saved_chat if isinstance(m.get("content"), str)]
+            if clean:
+                st.session_state["coach_messages"] = clean
+    except Exception:
+        pass
+
+    st.session_state["_ls_loaded"] = True
+
 # Dark trading terminal CSS
 st.markdown("""
 <style>
@@ -1251,6 +1287,9 @@ with st.sidebar:
     except Exception:
         pass
 
+    # ── Resolve saved API key from localStorage ──
+    _saved_api_key = st.session_state.get("saved_api_key", "")
+
     if _secret_key:
         st.success("✅ API Key loaded automatically (cloud mode)")
         api_key = _secret_key
@@ -1264,44 +1303,74 @@ with st.sidebar:
         api_key = st.text_input(
             "🔑 Paste Your API Key Here",
             type="password",
+            value=_saved_api_key,
             placeholder="Gemini: AIza...   or   Claude: sk-ant-...",
             help="Gemini key from aistudio.google.com (FREE) or Claude key from console.anthropic.com (paid)",
+            key="api_key_input",
         )
+
+    # ── Remember settings checkbox (defined here, save logic runs after all widgets) ──
+    if _LS_AVAILABLE and not _secret_key:
+        _remember = st.checkbox(
+            "🔒 Remember my API key & settings",
+            value=bool(_saved_api_key),
+            help="Saves your API key and preferences in this browser only (localStorage). Never sent anywhere.",
+            key="remember_settings",
+        )
+    else:
+        _remember = False
+
+    # ── AI Model selector ─────────────────────────────────────
+    _model_options = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "claude-opus-4-5",
+        "claude-sonnet-4-5",
+    ]
+    _saved_model = st.session_state.get("saved_model_choice", "gemini-2.0-flash")
+    _model_idx = _model_options.index(_saved_model) if _saved_model in _model_options else 0
 
     model_choice = st.selectbox(
         "🤖 AI Model",
-        [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
-            "claude-opus-4-5",
-            "claude-sonnet-4-5",
-        ],
-        index=0,
+        _model_options,
+        index=_model_idx,
         help="✅ Gemini models = FREE  |  Claude models = paid",
+        key="model_select",
     )
 
     st.divider()
 
+    _market_options = [
+        "Forex (EUR/USD, GBP/USD, etc.)",
+        "Gold (XAUUSD)",
+        "Silver (XAGUSD)",
+        "BTC/USD (Bitcoin)",
+        "ETH/USD (Ethereum)",
+        "Other Crypto",
+        "US Stocks",
+        "Index (S&P500, Nasdaq, etc.)",
+        "Oil (WTI/Brent)",
+    ]
+    _saved_market = st.session_state.get("saved_market_type", "Forex (EUR/USD, GBP/USD, etc.)")
+    _market_idx = _market_options.index(_saved_market) if _saved_market in _market_options else 0
+
     market_type = st.selectbox(
         "📈 Market / Instrument",
-        [
-            "Forex (EUR/USD, GBP/USD, etc.)",
-            "Gold (XAUUSD)",
-            "Silver (XAGUSD)",
-            "BTC/USD (Bitcoin)",
-            "ETH/USD (Ethereum)",
-            "Other Crypto",
-            "US Stocks",
-            "Index (S&P500, Nasdaq, etc.)",
-            "Oil (WTI/Brent)",
-        ],
+        _market_options,
+        index=_market_idx,
+        key="market_select",
     )
+
+    _tf_options = ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"]
+    _saved_tf = st.session_state.get("saved_timeframe", "H1")
+    _tf_idx = _tf_options.index(_saved_tf) if _saved_tf in _tf_options else 4
 
     timeframe = st.selectbox(
         "⏱️ Timeframe",
-        ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"],
-        index=4,
+        _tf_options,
+        index=_tf_idx,
+        key="timeframe_select",
     )
 
     additional_context = st.text_area(
@@ -1350,6 +1419,43 @@ with st.sidebar:
         st.markdown(f"{icon} {name}")
 
     st.divider()
+
+    # ── Persist settings to localStorage (after all widgets are resolved) ──
+    if _LS_AVAILABLE and not _secret_key:
+        if _remember and api_key:
+            try:
+                _ls.setItem("trading_analyst_prefs", {
+                    "api_key":      api_key,
+                    "model_choice": model_choice,
+                    "market_type":  market_type,
+                    "timeframe":    timeframe,
+                })
+                st.session_state["saved_api_key"]    = api_key
+                st.session_state["saved_model_choice"] = model_choice
+                st.session_state["saved_market_type"] = market_type
+                st.session_state["saved_timeframe"]  = timeframe
+            except Exception:
+                pass
+        elif not _remember and _saved_api_key:
+            # User un-ticked — wipe saved prefs
+            try:
+                _ls.deleteItem("trading_analyst_prefs")
+                for _k in ("saved_api_key", "saved_model_choice", "saved_market_type", "saved_timeframe"):
+                    st.session_state.pop(_k, None)
+            except Exception:
+                pass
+
+        if st.button("🗑️ Clear all saved data", help="Removes your saved API key and chat history from this browser", key="clear_ls_btn"):
+            try:
+                _ls.deleteItem("trading_analyst_prefs")
+                _ls.deleteItem("trading_analyst_chat")
+                for _k in ("saved_api_key", "saved_model_choice", "saved_market_type", "saved_timeframe", "coach_messages"):
+                    st.session_state.pop(_k, None)
+                st.success("✅ Saved data cleared!")
+                st.rerun()
+            except Exception as _e:
+                st.error(f"Could not clear: {_e}")
+
     st.caption("⚠️ For educational purposes only.\nAlways manage your own risk.")
 
 
@@ -2081,12 +2187,24 @@ Never give specific financial advice or tell someone to buy/sell a specific real
 
                             st.markdown(answer)
                             st.session_state["coach_messages"].append({"role": "assistant", "content": answer})
+                            # ── Persist chat to localStorage ──
+                            if _LS_AVAILABLE:
+                                try:
+                                    _ls.setItem("trading_analyst_chat",
+                                                st.session_state["coach_messages"][-40:])
+                                except Exception:
+                                    pass
                         except Exception as e:
                             st.error(f"Error: {str(e)}")
 
         if len(st.session_state.get("coach_messages", [])) > 2:
             if st.button("🗑️ Clear Chat 清除对话", key="clear_coach"):
                 st.session_state["coach_messages"] = [st.session_state["coach_messages"][0]]
+                if _LS_AVAILABLE:
+                    try:
+                        _ls.deleteItem("trading_analyst_chat")
+                    except Exception:
+                        pass
                 st.rerun()
 
     # ══════════════════════════════════════════════════════
