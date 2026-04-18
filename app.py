@@ -2989,7 +2989,7 @@ with tool_tab7:
         # ── Helper: fetch via Twelve Data ─────────────────────
         def _fetch_twelve_data(symbol, interval, outputsize, api_key_td):
             """Fetch OHLCV from Twelve Data REST API. Returns a pandas DataFrame."""
-            import pandas as pd
+            import requests, pandas as pd
             url = "https://api.twelvedata.com/time_series"
             params = {
                 "symbol":     symbol,
