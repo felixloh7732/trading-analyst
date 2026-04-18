@@ -3812,11 +3812,15 @@ Output ONLY this JSON — nothing else:
 
                     _qa_mtf = analyze_chart_with_ai(chart_pil_mtf, api_key, model_choice,
                                                      mtf_symbol, tf_label, _qp_mtf)
-                    _jm = re.search(r'\{.*?\}', _qa_mtf, re.DOTALL)
-                    _data_mtf = json.loads(_jm.group()) if _jm else {
-                        "signal": "WAIT", "confidence": 5, "trend": "Neutral",
-                        "structure": "Could not parse", "key_level": "—",
-                        "pattern": "None", "action": "—"}
+                    _jm = re.search(r'\{.*\}', _qa_mtf, re.DOTALL)
+                    try:
+                        _data_mtf = json.loads(_jm.group()) if _jm else {}
+                    except Exception:
+                        _data_mtf = {}
+                    if not _data_mtf.get("signal"):
+                        _data_mtf = {"signal": "WAIT", "confidence": 5, "trend": "Neutral",
+                                     "structure": "Could not parse AI response", "key_level": "—",
+                                     "pattern": "None", "action": "—"}
                     _data_mtf["last_price"] = f"{_last_mtf:.5g}"
                     _data_mtf["tf"]         = tf_label
                     mtf_results[tf_label]   = _data_mtf
@@ -3840,54 +3844,64 @@ Output ONLY this JSON — nothing else:
             sym_shown = st.session_state.get("mtf_panel_symbol", mtf_symbol)
 
             # ── Confluence summary banner ─────────────────────
-            signals   = [r.get("signal","WAIT") for r in res.values() if r.get("signal") != "ERROR"]
+            signals   = [r.get("signal","WAIT") for r in res.values() if r.get("signal") not in ("ERROR","—")]
             buys      = signals.count("BUY")
             sells     = signals.count("SELL")
             waits     = signals.count("WAIT")
-            avg_conf  = sum(r.get("confidence",5) for r in res.values()) / max(len(res),1)
+            avg_conf  = sum(r.get("confidence",0) for r in res.values() if isinstance(r.get("confidence"),int)) / max(len([r for r in res.values() if isinstance(r.get("confidence"),int)]),1)
 
             if buys >= 3:
-                conf_bg   = "linear-gradient(135deg,#064e3b,#065f46)"
-                conf_bdr  = "#10b981"
+                conf_bg   = "#0a2e1a"
+                conf_bdr  = "#22c55e"
+                conf_txt_color = "#4ade80"
                 conf_icon = "🟢"
-                conf_txt  = f"STRONG BUY · {buys}/4 Timeframes Bullish"
-                conf_sub  = "High-probability long setup — all major TFs aligned."
+                conf_label = "STRONG BUY"
+                conf_detail = f"{buys}/4 Timeframes Bullish — High-probability long setup"
             elif sells >= 3:
-                conf_bg   = "linear-gradient(135deg,#7f1d1d,#991b1b)"
+                conf_bg   = "#2e0a0a"
                 conf_bdr  = "#ef4444"
+                conf_txt_color = "#f87171"
                 conf_icon = "🔴"
-                conf_txt  = f"STRONG SELL · {sells}/4 Timeframes Bearish"
-                conf_sub  = "High-probability short setup — all major TFs aligned."
+                conf_label = "STRONG SELL"
+                conf_detail = f"{sells}/4 Timeframes Bearish — High-probability short setup"
             elif buys >= 2 and sells == 0:
-                conf_bg   = "linear-gradient(135deg,#052e16,#064e3b)"
-                conf_bdr  = "#34d399"
+                conf_bg   = "#0a1f12"
+                conf_bdr  = "#86efac"
+                conf_txt_color = "#86efac"
                 conf_icon = "🟡"
-                conf_txt  = f"CAUTIOUS BUY · {buys}/4 TFs Bullish, wait for confirmation"
-                conf_sub  = "Bias is bullish but not all TFs agree yet."
+                conf_label = "CAUTIOUS BUY"
+                conf_detail = f"{buys}/4 TFs Bullish — Wait for M15 confirmation before entering"
             elif sells >= 2 and buys == 0:
-                conf_bg   = "linear-gradient(135deg,#450a0a,#7f1d1d)"
-                conf_bdr  = "#f87171"
+                conf_bg   = "#1f0a0a"
+                conf_bdr  = "#fca5a5"
+                conf_txt_color = "#fca5a5"
                 conf_icon = "🟡"
-                conf_txt  = f"CAUTIOUS SELL · {sells}/4 TFs Bearish, wait for confirmation"
-                conf_sub  = "Bias is bearish but not all TFs agree yet."
+                conf_label = "CAUTIOUS SELL"
+                conf_detail = f"{sells}/4 TFs Bearish — Wait for M15 confirmation before entering"
             else:
-                conf_bg   = "linear-gradient(135deg,#1e1b4b,#312e81)"
-                conf_bdr  = "#818cf8"
+                conf_bg   = "#0f0f1a"
+                conf_bdr  = "#6366f1"
+                conf_txt_color = "#a5b4fc"
                 conf_icon = "⏳"
-                conf_txt  = "NO CLEAR CONFLUENCE — WAIT"
-                conf_sub  = "Timeframes are mixed. No high-probability setup. Stay patient."
+                conf_label = "NO CONFLUENCE — WAIT"
+                conf_detail = "Timeframes are mixed. No high-probability setup right now. Stay patient."
 
             st.markdown(f"""
-<div style='background:{conf_bg};border:2px solid {conf_bdr};border-radius:14px;
-padding:18px 24px;margin:12px 0 20px 0;text-align:center'>
-<h2 style='color:white;margin:0 0 6px 0;font-size:22px'>
-  {conf_icon} {sym_shown} — {conf_txt}
-</h2>
-<p style='color:#cbd5e1;margin:0;font-size:14px'>{conf_sub}</p>
-<p style='color:#94a3b8;margin:6px 0 0 0;font-size:13px'>
-  Average confidence: <b style='color:#fbbf24'>{avg_conf:.1f}/10</b> &nbsp;·&nbsp;
-  BUY: {buys} &nbsp;|&nbsp; SELL: {sells} &nbsp;|&nbsp; WAIT: {waits}
-</p>
+<div style='background:{conf_bg};border:2px solid {conf_bdr};border-radius:16px;
+padding:22px 28px;margin:16px 0 24px 0;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.4)'>
+  <div style='font-size:13px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px'>
+    {sym_shown} · MTF Confluence
+  </div>
+  <div style='font-size:26px;font-weight:900;color:{conf_txt_color};margin-bottom:8px'>
+    {conf_icon} {conf_label}
+  </div>
+  <div style='font-size:14px;color:#e2e8f0;margin-bottom:12px'>{conf_detail}</div>
+  <div style='display:flex;justify-content:center;gap:28px;flex-wrap:wrap'>
+    <span style='background:#14532d;color:#86efac;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>▲ BUY: {buys}</span>
+    <span style='background:#7f1d1d;color:#fca5a5;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>▼ SELL: {sells}</span>
+    <span style='background:#1e293b;color:#94a3b8;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>⏳ WAIT: {waits}</span>
+    <span style='background:#1e1b4b;color:#a5b4fc;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>⚡ Avg Conf: {avg_conf:.1f}/10</span>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -3895,72 +3909,124 @@ padding:18px 24px;margin:12px 0 20px 0;text-align:center'>
             row1 = st.columns(2)
             row2 = st.columns(2)
             grid = [("D1", row1[0]), ("H4", row1[1]), ("H1", row2[0]), ("M15", row2[1])]
+            tf_icons = {"D1": "📅", "H4": "🕓", "H1": "🕐", "M15": "⚡"}
 
             for tf_lbl, col_cell in grid:
                 r = res.get(tf_lbl, {})
                 sig   = r.get("signal", "WAIT")
-                conf  = r.get("confidence", 5)
+                conf  = r.get("confidence", 0)
                 trend = r.get("trend", "—")
                 struc = r.get("structure", "—")
                 klvl  = r.get("key_level", "—")
                 pat   = r.get("pattern", "None")
                 act   = r.get("action", "—")
                 price = r.get("last_price", "—")
+                tf_ico = tf_icons.get(tf_lbl, "")
 
-                sig_col = "#10b981" if sig == "BUY" else ("#ef4444" if sig == "SELL" else "#6b7280")
-                sig_ico = "▲" if sig == "BUY" else ("▼" if sig == "SELL" else "⏳")
-                bar_c   = "#059669" if conf >= 7 else ("#d97706" if conf >= 5 else "#dc2626")
-                trend_ico = {"Strongly Bullish":"🟢","Bullish":"🟩","Neutral":"🟡",
-                             "Bearish":"🟥","Strongly Bearish":"🔴"}.get(trend, "⬜")
+                if sig == "BUY":
+                    sig_bg = "#14532d"; sig_txt = "#4ade80"; sig_bdr = "#22c55e"; sig_ico = "▲"
+                elif sig == "SELL":
+                    sig_bg = "#7f1d1d"; sig_txt = "#fca5a5"; sig_bdr = "#ef4444"; sig_ico = "▼"
+                elif sig == "ERROR":
+                    sig_bg = "#1c1917"; sig_txt = "#f59e0b"; sig_bdr = "#78716c"; sig_ico = "⚠"
+                else:
+                    sig_bg = "#1e293b"; sig_txt = "#94a3b8"; sig_bdr = "#475569"; sig_ico = "⏳"
+
+                conf_int = int(conf) if isinstance(conf, (int, float)) else 0
+                bar_c = "#22c55e" if conf_int >= 7 else ("#f59e0b" if conf_int >= 5 else "#ef4444")
+
+                trend_map = {
+                    "Strongly Bullish": ("🔼", "#4ade80"),
+                    "Bullish":          ("▲",  "#86efac"),
+                    "Neutral":          ("➡",  "#fbbf24"),
+                    "Bearish":          ("▼",  "#f87171"),
+                    "Strongly Bearish": ("🔽", "#ef4444"),
+                }
+                trend_ico, trend_col = trend_map.get(trend, ("—", "#94a3b8"))
+
+                has_pat = pat and pat.lower() not in ("none", "—", "")
+                pat_row = f"<div style='background:#1e1b4b;border-radius:6px;padding:5px 10px;margin-top:6px;font-size:12px;color:#c7d2fe'>📐 <b>{pat}</b></div>" if has_pat else ""
 
                 with col_cell:
                     st.markdown(f"""
-<div style='background:#1e293b;border:2px solid {sig_col};border-radius:12px;
-padding:16px;margin:4px 0;min-height:220px'>
+<div style='background:#0f172a;border:2px solid {sig_bdr};border-radius:14px;
+padding:18px;margin:6px 0;box-shadow:0 2px 12px rgba(0,0,0,0.5)'>
 
-  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
-    <span style='color:#f1f5f9;font-size:20px;font-weight:900'>{tf_lbl}</span>
-    <span style='background:{sig_col};color:white;padding:4px 14px;border-radius:20px;
-    font-weight:800;font-size:15px'>{sig_ico} {sig}</span>
-  </div>
-
-  <div style='margin-bottom:8px'>
-    <div style='background:#334155;border-radius:4px;height:8px'>
-      <div style='background:{bar_c};width:{conf*10}%;height:8px;border-radius:4px'></div>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
+    <div>
+      <span style='font-size:22px;font-weight:900;color:#f1f5f9'>{tf_ico} {tf_lbl}</span>
+      <div style='font-size:11px;color:#64748b;margin-top:1px'>Price: <b style='color:#fbbf24'>{price}</b></div>
     </div>
-    <span style='color:#94a3b8;font-size:12px'>Confidence: <b style='color:{bar_c}'>{conf}/10</b></span>
+    <span style='background:{sig_bg};color:{sig_txt};border:1px solid {sig_bdr};
+    padding:6px 16px;border-radius:20px;font-weight:800;font-size:15px'>
+      {sig_ico} {sig}
+    </span>
   </div>
 
-  <p style='color:#94a3b8;font-size:12px;margin:4px 0'>
-    {trend_ico} <b style='color:#e2e8f0'>{trend}</b>
-    &nbsp;·&nbsp; Price: <b style='color:#fbbf24'>{price}</b>
-  </p>
-  <p style='color:#cbd5e1;font-size:12px;margin:4px 0'>
-    🏗️ <i>{struc}</i>
-  </p>
-  <p style='color:#94a3b8;font-size:12px;margin:4px 0'>
-    🎯 Key level: <b style='color:#a78bfa'>{klvl}</b>
-  </p>
-  {"" if not pat or pat in ("None","none","—") else f"<p style='color:#fbbf24;font-size:12px;margin:4px 0'>📐 Pattern: <b>{pat}</b></p>"}
-  <p style='color:#64748b;font-size:11px;margin:6px 0 0 0;border-top:1px solid #334155;padding-top:6px'>
+  <div style='margin-bottom:10px'>
+    <div style='display:flex;justify-content:space-between;margin-bottom:4px'>
+      <span style='color:#94a3b8;font-size:12px'>Confidence</span>
+      <b style='color:{bar_c};font-size:12px'>{conf_int}/10</b>
+    </div>
+    <div style='background:#1e293b;border-radius:6px;height:10px'>
+      <div style='background:{bar_c};width:{conf_int*10}%;height:10px;border-radius:6px;
+      transition:width 0.3s'></div>
+    </div>
+  </div>
+
+  <div style='background:#1e293b;border-radius:8px;padding:10px 12px;margin-bottom:8px'>
+    <div style='font-size:12px;color:#64748b;margin-bottom:4px'>TREND</div>
+    <div style='font-size:13px;font-weight:700;color:{trend_col}'>{trend_ico} {trend}</div>
+  </div>
+
+  <div style='font-size:12px;color:#cbd5e1;margin:6px 0;line-height:1.5'>
+    🏗️ {struc}
+  </div>
+
+  <div style='background:#1e293b;border-radius:6px;padding:6px 10px;margin-top:6px;
+  font-size:12px;color:#e2e8f0'>
+    🎯 Key Level: <b style='color:#a78bfa'>{klvl}</b>
+  </div>
+
+  {pat_row}
+
+  <div style='border-top:1px solid #1e293b;margin-top:10px;padding-top:8px;
+  font-size:11px;color:#64748b;line-height:1.5'>
     👁️ {act}
-  </p>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
             # ── Trading decision guide ────────────────────────
-            st.markdown("#### 📋 How to use this panel · 怎么用")
+            st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("""
-<div style='background:#0f172a;border-radius:10px;padding:16px 20px;margin-top:8px;border:1px solid #334155'>
-<p style='color:#94a3b8;font-size:13px;margin:0;line-height:1.8'>
-<b style='color:#fbbf24'>Top-Down Rule 顶底分析原则:</b><br>
-① <b style='color:#f1f5f9'>D1</b> tells you the <b style='color:#10b981'>overall bias</b> — only trade in this direction<br>
-② <b style='color:#f1f5f9'>H4</b> confirms the <b style='color:#10b981'>trend structure</b> — look for pullbacks to key levels<br>
-③ <b style='color:#f1f5f9'>H1</b> shows the <b style='color:#10b981'>entry zone</b> — BOS/CHoCH forming here = setup<br>
-④ <b style='color:#f1f5f9'>M15</b> gives the <b style='color:#10b981'>precise entry trigger</b> — wait for confirmation candle<br><br>
-<span style='color:#ef4444'>⚡ Only enter if D1 + H4 + H1 all agree. Use M15 just for timing.</span><br>
-<span style='color:#86efac;font-size:12px'>只有当D1+H4+H1方向一致时才进场，M15只用于精确入场时机。</span>
-</p>
+<div style='background:#0a0f1e;border:1px solid #1e3a5f;border-radius:14px;padding:20px 24px;margin-top:4px'>
+  <div style='font-size:15px;font-weight:700;color:#fbbf24;margin-bottom:14px'>
+    📋 How to Read This Panel &nbsp;·&nbsp; 如何使用
+  </div>
+  <table style='width:100%;border-collapse:collapse'>
+    <tr>
+      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#f1f5f9;font-weight:700;width:60px'>D1</td>
+      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:13px'>Overall <b style='color:#4ade80'>Bias</b> — only trade in this direction. 大方向判断.</td>
+    </tr>
+    <tr>
+      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#f1f5f9;font-weight:700'>H4</td>
+      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:13px'>Trend <b style='color:#4ade80'>Structure</b> — look for pullbacks to key levels. 趋势结构.</td>
+    </tr>
+    <tr>
+      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#f1f5f9;font-weight:700'>H1</td>
+      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:13px'>Entry <b style='color:#4ade80'>Zone</b> — BOS/CHoCH forming here = setup confirmed. 入场区域.</td>
+    </tr>
+    <tr>
+      <td style='padding:8px 12px;color:#f1f5f9;font-weight:700'>M15</td>
+      <td style='padding:8px 12px;color:#94a3b8;font-size:13px'>Entry <b style='color:#4ade80'>Trigger</b> — precise timing only. Wait for confirmation candle. 精确入场.</td>
+    </tr>
+  </table>
+  <div style='margin-top:14px;background:#1a0a0a;border:1px solid #ef4444;border-radius:8px;
+  padding:10px 14px;font-size:13px;color:#fca5a5'>
+    ⚡ <b>Golden Rule:</b> Only enter when D1 + H4 + H1 ALL agree on direction. Use M15 for timing only.<br>
+    <span style='color:#86efac;font-size:12px'>黄金法则：只有D1+H4+H1三个时间框架方向一致时才进场，M15仅用于确定入场时机。</span>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
