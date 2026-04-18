@@ -2403,12 +2403,13 @@ Please give me your full review — what I got right, what is wrong, what I miss
                                     )
                                     followup_answer = coach_resp_fu.content[0].text
 
-                                st.markdown(followup_answer)
                                 conv.append({"role": "assistant", "content": followup_answer})
                                 st.session_state["coach_review_conv"] = conv
 
                             except Exception as e:
                                 st.error(f"Error: {str(e)}")
+
+                    st.rerun()   # re-render page so chat_input reappears
 
         # ── Past session history ───────────────────────────
         if not active and st.session_state.get("coach_review_history"):
