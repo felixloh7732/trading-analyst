@@ -2282,7 +2282,7 @@ Please give me your full review — what I got right, what is wrong, what I miss
                             st.session_state["coach_review_system"]    = review_system
                             st.session_state["coach_review_img_b64"]   = img_b64
                             st.session_state["coach_review_img_bytes"] = img_disp_buf.getvalue()
-                            st.session_state["coach_review_focus"]     = review_focus
+                            st.session_state["coach_active_focus"]     = review_focus
                             # Conversation history: user's first message + coach's initial review
                             st.session_state["coach_review_conv"] = [
                                 {"role": "user",      "content": first_user_msg},
@@ -2297,7 +2297,7 @@ Please give me your full review — what I got right, what is wrong, what I miss
         # SUB-PHASE B — Active conversation
         # ══════════════════════════════════════════════════
         else:
-            focus_label = st.session_state.get("coach_review_focus", "")
+            focus_label = st.session_state.get("coach_active_focus", "")
 
             # ── Header bar with focus + stop button ───────
             hdr_col1, hdr_col2 = st.columns([3, 1])
@@ -2316,7 +2316,7 @@ Please give me your full review — what I got right, what is wrong, what I miss
                     # Clear active session
                     for k in ["coach_review_active", "coach_review_conv",
                               "coach_review_img_b64", "coach_review_img_bytes",
-                              "coach_review_system"]:
+                              "coach_review_system", "coach_active_focus"]:
                         st.session_state.pop(k, None)
                     st.success("✅ 对话已结束，已保存到历史记录。/ Session ended and saved to history.")
                     st.rerun()
