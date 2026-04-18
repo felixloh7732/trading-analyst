@@ -7,3 +7,4 @@ fpdf2>=2.7.0
 streamlit-local-storage>=0.0.1
 yfinance>=0.2.36
 plotly>=5.18.0
+matplotlib>=3.7.0
