@@ -2420,7 +2420,8 @@ Please give me your full review — what I got right, what is wrong, what I miss
                     # Clear active session
                     for k in ["coach_review_active", "coach_review_conv",
                               "coach_review_img_b64", "coach_review_img_bytes",
-                              "coach_review_system", "coach_active_focus"]:
+                              "coach_review_system", "coach_active_focus",
+                              "coach_extra_img_counter"]:
                         st.session_state.pop(k, None)
                     st.success("✅ 对话已结束，已保存到历史记录。/ Session ended and saved to history.")
                     st.rerun()
@@ -2444,7 +2445,26 @@ Please give me your full review — what I got right, what is wrong, what I miss
                         st.markdown("\n".join(desc_lines[:8]))
                 else:
                     with st.chat_message(role):
+                        # Show attached image thumbnail if present
+                        if role == "user" and msg.get("extra_img_b64"):
+                            try:
+                                extra_thumb = base64.b64decode(msg["extra_img_b64"])
+                                st.image(extra_thumb, width=220, caption="📎 Chart attached")
+                            except Exception:
+                                pass
                         st.markdown(msg["content"])
+
+            # ── Optional image attachment for follow-up ────
+            st.markdown("<br>", unsafe_allow_html=True)
+            _extra_counter = st.session_state.get("coach_extra_img_counter", 0)
+            extra_img_file = st.file_uploader(
+                "📎 Attach a new chart (optional) · 可选：上传新图表",
+                type=["png", "jpg", "jpeg", "webp"],
+                key=f"coach_extra_img_{_extra_counter}",
+                help="Upload another chart — e.g. your updated drawing or a result screenshot",
+            )
+            if extra_img_file:
+                st.caption("✅ Image attached — it will be sent with your next message.")
 
             # ── Follow-up chat input ───────────────────────
             followup = st.chat_input(
@@ -2456,10 +2476,42 @@ Please give me your full review — what I got right, what is wrong, what I miss
                 if not api_key:
                     st.warning("👈 请先在侧边栏输入 API Key")
                 else:
-                    # Add user message to history and display it
-                    conv.append({"role": "user", "content": followup})
+                    # Encode extra image if attached
+                    extra_img_b64 = None
+                    extra_img_bytes_send = None
+                    if extra_img_file:
+                        try:
+                            _extra_pil = Image.open(extra_img_file)
+                            _extra_buf = io.BytesIO()
+                            _extra_rgb = _extra_pil.copy()
+                            if _extra_rgb.mode in ("RGBA", "P"):
+                                _extra_rgb = _extra_rgb.convert("RGB")
+                            _extra_rgb.save(_extra_buf, format="JPEG", quality=92)
+                            extra_img_bytes_send = _extra_buf.getvalue()
+                            extra_img_b64 = base64.b64encode(extra_img_bytes_send).decode("utf-8")
+                            # Bump counter so uploader resets after send
+                            st.session_state["coach_extra_img_counter"] = _extra_counter + 1
+                        except Exception:
+                            pass
+
+                    # Build display text for the user message
+                    user_display = followup
+                    if extra_img_b64:
+                        user_display = followup  # image shown via extra_img_b64 field
+
+                    # Add user message to history
+                    user_conv_entry = {"role": "user", "content": followup}
+                    if extra_img_b64:
+                        user_conv_entry["extra_img_b64"] = extra_img_b64
+                    conv.append(user_conv_entry)
                     st.session_state["coach_review_conv"] = conv
+
                     with st.chat_message("user"):
+                        if extra_img_b64:
+                            try:
+                                st.image(base64.b64decode(extra_img_b64), width=220, caption="📎 Chart attached")
+                            except Exception:
+                                pass
                         st.markdown(followup)
 
                     with st.chat_message("assistant"):
@@ -2470,35 +2522,39 @@ Please give me your full review — what I got right, what is wrong, what I miss
 
                                 if model_choice.startswith("gemini"):
                                     client_coach = google_genai.Client(api_key=api_key)
-                                    # Build full history text for Gemini (no native multi-turn with image)
+                                    # Build full history text for Gemini
                                     history_text = "\n\n".join([
                                         f"{'Student' if m['role']=='user' else 'Coach'}:\n{m['content']}"
                                         for m in conv
                                     ])
                                     full_q = review_sys + "\n\n---\nConversation so far:\n" + history_text
-                                    # Re-include image bytes for context
-                                    img_buf_fu = io.BytesIO(st.session_state.get("coach_review_img_bytes", b""))
-                                    img_fu_bytes = img_buf_fu.getvalue()
-                                    if img_fu_bytes:
-                                        coach_resp_fu = client_coach.models.generate_content(
-                                            model=model_choice,
-                                            contents=[
-                                                full_q,
-                                                google_types.Part.from_bytes(data=img_fu_bytes, mime_type="image/png"),
-                                            ],
+                                    # Build contents list
+                                    gemini_contents = [full_q]
+                                    # Include original chart for context
+                                    orig_img_bytes = st.session_state.get("coach_review_img_bytes", b"")
+                                    if orig_img_bytes:
+                                        gemini_contents.append(
+                                            google_types.Part.from_bytes(data=orig_img_bytes, mime_type="image/png")
                                         )
-                                    else:
-                                        coach_resp_fu = client_coach.models.generate_content(
-                                            model=model_choice, contents=[full_q])
+                                    # Include new chart if attached
+                                    if extra_img_bytes_send:
+                                        gemini_contents.append(
+                                            google_types.Part.from_bytes(data=extra_img_bytes_send, mime_type="image/jpeg")
+                                        )
+                                        gemini_contents[0] += "\n\n[The student has attached a NEW chart image above. Please analyse it in the context of your conversation.]"
+                                    coach_resp_fu = client_coach.models.generate_content(
+                                        model=model_choice,
+                                        contents=gemini_contents,
+                                    )
                                     followup_answer = coach_resp_fu.text
 
                                 else:
-                                    # Claude: first message carries the image, rest are plain text
+                                    # Claude: first message carries original image; extra image goes in current user message
                                     client_coach = anthropic.Anthropic(api_key=api_key)
                                     api_msgs = []
                                     for i, m in enumerate(conv):
                                         if i == 0 and m["role"] == "user" and img_b64_key:
-                                            # First user message: include image
+                                            # First message: include original image
                                             api_msgs.append({
                                                 "role": "user",
                                                 "content": [
@@ -2510,6 +2566,19 @@ Please give me your full review — what I got right, what is wrong, what I miss
                                                     {"type": "text", "text": m["content"]},
                                                 ],
                                             })
+                                        elif m["role"] == "user" and m.get("extra_img_b64") and i == len(conv) - 1:
+                                            # Current user message with new image attached
+                                            api_msgs.append({
+                                                "role": "user",
+                                                "content": [
+                                                    {"type": "image", "source": {
+                                                        "type": "base64",
+                                                        "media_type": "image/jpeg",
+                                                        "data": m["extra_img_b64"],
+                                                    }},
+                                                    {"type": "text", "text": m["content"]},
+                                                ],
+                                            })
                                         else:
                                             api_msgs.append({"role": m["role"], "content": m["content"]})
 
@@ -2517,7 +2586,7 @@ Please give me your full review — what I got right, what is wrong, what I miss
                                         model=model_choice,
                                         max_tokens=1800,
                                         system=review_sys,
-                                        messages=api_msgs[-20:],  # keep last 20 turns
+                                        messages=api_msgs[-20:],
                                     )
                                     followup_answer = coach_resp_fu.content[0].text
 
