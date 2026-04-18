@@ -224,17 +224,6 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 🏦 SMART MONEY CONCEPTS (SMC)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Order Blocks (OB)**
-- Bullish OB: Last bearish (red/down) candle before a strong bullish move. Price often returns here for retesting.
-- Bearish OB: Last bullish (green/up) candle before a strong bearish move.
-- Best OBs: Have high volume, sharp impulse away, and haven't been revisited multiple times.
-
-**Fair Value Gap (FVG) / Imbalance**
-- Bullish FVG: Gap between candle[1] HIGH and candle[3] LOW in a 3-candle bullish sequence.
-- Bearish FVG: Gap between candle[1] LOW and candle[3] HIGH in a 3-candle bearish sequence.
-- Price tends to retrace into FVG to fill it before continuing.
-- Key: Wait for price to reach 50% of FVG, look for rejection/confirmation there.
-
 **Break of Structure (BOS)**
 - Bullish BOS: Price closes ABOVE a previous swing high (confirms uptrend continuation).
 - Bearish BOS: Price closes BELOW a previous swing low (confirms downtrend continuation).
@@ -344,8 +333,6 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 - London Close: 16:00–18:00 UTC
 
 **Market Structure Shift (MSS)**: Similar to CHoCH — first opposite-direction BOS.
-**Breaker Blocks**: Failed order blocks that flip to opposite polarity.
-**Mitigation Block**: OB that has been partially tested.
 **Propulsion Block**: Strong engulfing candle that causes a structural break.
 **Power of 3 (PO3)**: Accumulation → Manipulation (fake move) → Distribution (real move).
 
@@ -355,14 +342,12 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 
 Score each trade setup from 0–10 based on number of confluences:
 - Trend alignment (HTF + LTF) = +2
-- Pattern confirmation = +1.5
+- Pattern confirmation = +2
 - Fibonacci level (61.8%/78.6% OTE) = +1.5
-- Order Block present = +1
-- FVG present = +1
-- S&R level = +1
-- RSI divergence/extreme = +0.5
+- S&R level (key swing high/low, flip zone) = +1.5
+- RSI divergence/extreme = +1
 - MACD confirmation = +0.5
-- Liquidity sweep before entry = +1
+- Liquidity sweep before entry = +1.5
 
 Score 7+/10 = High confidence trade
 Score 5-6/10 = Moderate confidence (trade with caution)
@@ -375,7 +360,7 @@ Score <5/10 = Skip or wait
 - Minimum R:R = 1:2 (risk $1 to make $2)
 - Ideal R:R = 1:3 or better
 - Never risk more than 1-2% of account per trade
-- SL placement: Beyond last swing point, OB, or key level
+- SL placement: Beyond last swing point or key S/R level
 - TP1 at 1:1.5 R:R (move SL to breakeven after hit)
 - TP2 at 1:3 R:R
 - TP3 at 1:5+ R:R (if strong trend)
@@ -495,8 +480,8 @@ Give a SHORT, combined analysis. Write EVERY section in BOTH English AND Chinese
 [中文] 2-3个最重要的支撑/阻力位，标注在图表上的位置。
 
 **SMC 智能资金:**
-[EN] Order Blocks, FVGs, BOS/CHoCH, liquidity sweeps visible? 1-2 lines.
-[中文] 可见的订单块、公允价值缺口、结构突破/变化、流动性扫描？1-2行。
+[EN] BOS/CHoCH, liquidity sweeps, supply/demand zones, equal highs/lows visible? 1-2 lines.
+[中文] 结构突破/变化、流动性扫描、供需区域、平顶/平底？1-2行。
 
 **WYCKOFF 威科夫:**
 [EN] Which Wyckoff phase is this chart in? (Accumulation / Markup / Distribution / Markdown). Any Spring, Upthrust, SC, BC visible? 1-2 lines.
@@ -537,10 +522,10 @@ ANNOTATION TYPES TO USE:
    - color: "teal" for BOS (trend continuation), "orange" for CHoCH (reversal signal)
    - label: "BOS ↑ 结构突破" or "CHoCH ↓ 结构变化"
 
-2. "zone_box" — for Order Blocks, FVGs, Liquidity zones, S/R zones
+2. "zone_box" — for Demand/Supply zones, Liquidity zones, S/R zones
    - Required: y_start, y_end, color, label
-   - color rules: green=Bullish OB/Demand, red=Bearish OB/Supply, blue=FVG, yellow=Liquidity
-   - label examples: "Bullish OB 看涨OB", "FVG 缺口", "Supply Zone", "Liquidity 流动性"
+   - color rules: green=Demand zone/Support, red=Supply zone/Resistance, yellow=Liquidity pool
+   - label examples: "Demand Zone 需求区", "Supply Zone 供给区", "Liquidity 流动性", "S/R Flip 翻转位"
 
 3. "horizontal_line" — for key S/R levels, equal highs/lows, swing points
    - color: green=support, red=resistance, yellow=equal highs/lows
@@ -555,35 +540,36 @@ ANNOTATION TYPES TO USE:
 6. "pattern_triangle" / "pattern_flag" — ONLY if pattern is still FORMING (price is inside it)
 
 COLOUR CONVENTION (match the legend on the chart):
-  green  = Bullish OB / Demand zone / Support
-  red    = Bearish OB / Supply zone / Resistance
-  blue   = FVG / Imbalance
-  yellow = Liquidity zone / Equal H&L
-  teal   = BOS (Break of Structure)
-  orange = CHoCH (Change of Character)
-  white  = Trendlines
+  green  = Demand zone / Support / Bullish structure
+  red    = Supply zone / Resistance / Bearish structure
+  yellow = Liquidity zone / Equal highs & lows
+  teal   = BOS (Break of Structure — trend continuation)
+  orange = CHoCH (Change of Character — potential reversal)
+  white  = Trendlines / general structure
+  purple = Fibonacci / Premium-Discount zones
 
 LABEL RULES — SHORT labels only (under 22 characters):
-  - "Bullish OB 看涨OB" ✅    "This is a very important bullish order block" ❌
-  - "FVG 缺口" ✅             "Fair Value Gap Imbalance Zone" ❌
-  - "BOS ↑ 结构突破" ✅       "Break of Structure Upward" ❌
-  - "CHoCH ↓ 变化" ✅
+  - "Demand Zone 需求区" ✅
+  - "Supply Zone 供给区" ✅
+  - "BOS ↑ 结构突破" ✅
+  - "CHoCH ↓ 结构变化" ✅
   - "Support 支撑" ✅
   - "Resistance 阻力" ✅
   - "Liquidity 流动性" ✅
   - "Equal Lows 平底" ✅
+  - "S/R Flip 翻转位" ✅
 
 WHAT TO LOOK FOR (in priority order):
-  1. BOS / CHoCH — where did market structure change? Mark these first.
-  2. Order Blocks — last bearish candle before bullish impulse (Bullish OB), last bullish candle before bearish impulse (Bearish OB)
-  3. FVG — gaps between candle 1 high and candle 3 low (or vice versa) that haven't been filled
-  4. Key S/R — obvious swing highs/lows that price has respected multiple times
-  5. Liquidity zones — equal highs or equal lows where stops are likely resting
-  6. Trendline — only if price has touched it 2+ times and it's still active
+  1. BOS / CHoCH — where did structure break or character change? Mark these first.
+  2. Key S/R levels — obvious swing highs/lows the market has respected multiple times
+  3. Demand / Supply zones — areas of strong buying or selling pressure shown by big impulse moves
+  4. Liquidity zones — equal highs or equal lows where stop losses are clustered
+  5. Active trendline — only if price has touched it 2+ times and it is still respected
+  6. Fibonacci — only if there is a clear, complete swing visible
 
 For y positions use: "top"(0.06), "upper_quarter"(0.20), "upper_third"(0.30), "middle"(0.50), "lower_third"(0.65), "lower_quarter"(0.78), "bottom"(0.93)
 
-Example — bullish structure with key zones:
+Example — bullish structure:
 ```json
 {{
   "signal": "BUY",
@@ -591,11 +577,11 @@ Example — bullish structure with key zones:
   "pattern_name": "ACCUMULATION — MARKUP PHASE",
   "annotations": [
     {{"type": "structure_break", "y_position": "upper_third", "color": "teal", "label": "BOS ↑ 结构突破", "direction": "bullish"}},
-    {{"type": "zone_box", "y_start": "lower_third", "y_end": "middle", "color": "green", "label": "Bullish OB 看涨OB"}},
-    {{"type": "zone_box", "y_start": "upper_third", "y_end": "upper_quarter", "color": "blue", "label": "FVG 缺口"}},
+    {{"type": "zone_box", "y_start": "lower_third", "y_end": "middle", "color": "green", "label": "Demand Zone 需求区"}},
     {{"type": "horizontal_line", "y_position": "upper_quarter", "color": "red", "label": "Resistance 阻力"}},
     {{"type": "horizontal_line", "y_position": "lower_third", "color": "green", "label": "Support 支撑"}},
-    {{"type": "zone_box", "y_start": "lower_quarter", "y_end": "bottom", "color": "yellow", "label": "Liquidity 流动性"}}
+    {{"type": "zone_box", "y_start": "lower_quarter", "y_end": "bottom", "color": "yellow", "label": "Liquidity 流动性"}},
+    {{"type": "diagonal_line", "x1": 0.05, "y1": "lower_quarter", "x2": 0.82, "y2": "upper_third", "color": "white", "label": "Uptrend 上升趋势"}}
   ]
 }}
 ```
@@ -608,10 +594,10 @@ Example — bearish structure with CHoCH:
   "pattern_name": "DISTRIBUTION — MARKDOWN PHASE",
   "annotations": [
     {{"type": "structure_break", "y_position": "middle", "color": "orange", "label": "CHoCH ↓ 结构变化", "direction": "bearish"}},
-    {{"type": "zone_box", "y_start": "upper_third", "y_end": "middle", "color": "red", "label": "Bearish OB 看跌OB"}},
-    {{"type": "zone_box", "y_start": "middle", "y_end": "lower_third", "color": "blue", "label": "FVG 缺口"}},
+    {{"type": "zone_box", "y_start": "upper_third", "y_end": "middle", "color": "red", "label": "Supply Zone 供给区"}},
     {{"type": "horizontal_line", "y_position": "upper_third", "color": "red", "label": "Supply Zone 供给"}},
     {{"type": "zone_box", "y_start": "top", "y_end": "upper_quarter", "color": "yellow", "label": "Equal Highs 平顶"}},
+    {{"type": "horizontal_line", "y_position": "lower_third", "color": "green", "label": "Support 支撑"}},
     {{"type": "diagonal_line", "x1": 0.05, "y1": "upper_quarter", "x2": 0.80, "y2": "middle", "color": "white", "label": "Downtrend 下降趋势"}}
   ]
 }}
@@ -706,7 +692,7 @@ def _label_box(draw, x, y, text, font, text_color, bg=(0, 0, 0, 190), padding=5)
 
 
 def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dict = {}) -> Image.Image:
-    """Draw market structure annotations — OB / FVG / BOS / CHoCH / S&R / Liquidity."""
+    """Draw market structure annotations — BOS / CHoCH / Supply & Demand / S&R / Liquidity."""
     img = image.copy().convert("RGBA")
 
     # ── Scale up for sharp annotations ────────────────────
@@ -741,9 +727,9 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
 
     # ── Colour palette ─────────────────────────────────────
     # Colour convention (shown in legend strip):
-    #   green  = Bullish OB / Demand zone / Support
-    #   red    = Bearish OB / Supply zone / Resistance
-    #   blue   = FVG / Imbalance / Fair Value Gap
+    #   green  = Demand zone / Support / Bullish structure
+    #   red    = Supply zone / Resistance / Bearish structure
+    #   blue   = (reserved / not used)
     #   yellow = Liquidity zone / Equal H&L / Liquidity pool
     #   teal   = BOS (Break of Structure — trend continuation)
     #   orange = CHoCH (Change of Character — potential reversal)
@@ -829,7 +815,7 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
     PRIORITY = {
         "structure_break": 0,   # BOS / CHoCH — most important context
         "horizontal_line": 1,   # S/R levels
-        "zone_box":        2,   # OB / FVG / liquidity zones
+        "zone_box":        2,   # Demand/Supply / liquidity zones
         "diagonal_line":   3,   # trendlines
         "fibonacci":       4,
         "pattern_triangle":5,
@@ -888,7 +874,7 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
             if label:
                 right_label(y, label, solid(cname), col(cname))
 
-        # ── Zone box: OB / FVG / Liquidity / S-R zone ─────
+        # ── Zone box: Demand / Supply / Liquidity / S-R zone ──
         elif atype == "zone_box":
             y1 = yp(ann.get("y_start", "upper_third"))
             y2 = yp(ann.get("y_end",   "upper_quarter"))
@@ -991,12 +977,12 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
     # COLOUR LEGEND STRIP — top-left, shows what each colour means
     # ═══════════════════════════════════════════════════════
     legend_items = [
-        ("green",  "Bullish OB/Demand"),
-        ("red",    "Bearish OB/Supply"),
-        ("blue",   "FVG/Imbalance"),
+        ("green",  "Demand/Support"),
+        ("red",    "Supply/Resistance"),
         ("yellow", "Liquidity Zone"),
-        ("teal",   "BOS"),
-        ("orange", "CHoCH"),
+        ("teal",   "BOS 结构突破"),
+        ("orange", "CHoCH 结构变化"),
+        ("white",  "Trendline"),
     ]
     leg_x, leg_y = 10, 10
     leg_sw = max(10, int(w / 140))   # colour swatch width
@@ -1351,14 +1337,14 @@ with st.sidebar:
 
     st.markdown("### 📚 Strategies Active")
     strategies = [
-        ("🏦", "Smart Money Concepts (SMC)"),
+        ("⚡", "BOS / CHoCH Market Structure"),
+        ("💧", "Liquidity Sweeps & Pools"),
+        ("🎯", "Supply & Demand Zones"),
         ("📐", "Fibonacci Retracement/Extension"),
         ("🎯", "Support & Resistance (SNR)"),
-        ("📦", "Fair Value Gaps (FVG)"),
-        ("⚡", "BOS / CHoCH Structure"),
         ("📊", "RSI & MACD Signals"),
         ("🕯️", "23 Chart Patterns"),
-        ("💧", "Liquidity Analysis"),
+        ("🔭", "Wyckoff Phase Analysis"),
     ]
     for icon, name in strategies:
         st.markdown(f"{icon} {name}")
@@ -1715,7 +1701,7 @@ else:
 
             if st.session_state.get("annotated") is not None:
                 st.image(pil_to_download_bytes(st.session_state["annotated"]),
-                         caption="Market Structure Analysis — OB / FVG / BOS / CHoCH / S&R / Liquidity",
+                         caption="Market Structure Analysis — BOS / CHoCH / Demand & Supply / S&R / Liquidity",
                          use_container_width=True)
                 st.download_button(
                     "⬇️ Download Annotated Chart",
@@ -1740,8 +1726,8 @@ else:
 <br>
 <p style="color:#1e40af;text-align:center;font-size:14px;font-weight:600">
 The AI will identify:<br><br>
-🔵 Trend &nbsp;·&nbsp; 🟣 Chart Patterns &nbsp;·&nbsp; 🟠 SMC Levels<br>
-📐 Fibonacci &nbsp;·&nbsp; 📦 Order Blocks &nbsp;·&nbsp; ⚡ FVGs<br><br>
+⚡ BOS / CHoCH &nbsp;·&nbsp; 💧 Liquidity &nbsp;·&nbsp; 🎯 Supply & Demand<br>
+📐 Fibonacci &nbsp;·&nbsp; 🕯️ Chart Patterns &nbsp;·&nbsp; 🔭 Wyckoff<br><br>
 🎯 Entry &nbsp;·&nbsp; 🛑 Stop Loss &nbsp;·&nbsp; ✅ Take Profit 1 &nbsp;·&nbsp; 🚀 Take Profit 2
 </p>
 </div>
@@ -2041,7 +2027,7 @@ with tool_tab4:
                     "你好！我是你的AI交易导师 👋\n\n"
                     "我专注于 **SMC / Wyckoff / Price Action / Scalping / Risk Management**。\n\n"
                     "你可以问我：\n"
-                    "- 「什么是 Order Block？怎么画？」\n"
+                    "- 「Supply & Demand Zone 跟 S/R 有什么区别？」\n"
                     "- 「CHoCH 和 BOS 有什么区别？」\n"
                     "- 「Scalper 应该在什么时候进场？」\n"
                     "- 「How do I identify a liquidity sweep?」\n\n"
@@ -2065,7 +2051,7 @@ with tool_tab4:
                     with st.spinner("思考中..."):
                         try:
                             coach_system = """You are an elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices.
-You specialise in SMC (Smart Money Concepts), Wyckoff Method, Price Action, ICT concepts, Scalping, Day Trading, and Risk Management.
+You specialise in Wyckoff Method, Price Action, Market Structure (BOS/CHoCH), Liquidity, Supply & Demand, Fibonacci, Scalping, Day Trading, and Risk Management.
 You respond in the same language the student uses (English or Chinese/Mandarin). If they mix languages, respond in Chinese primarily.
 Keep answers practical, clear, and educational. Use bullet points and examples where helpful.
 Always emphasise risk management and discipline. Be direct — tell students clearly when something is right or wrong.
@@ -2141,7 +2127,7 @@ Never give specific financial advice or tell someone to buy/sell a specific real
                 placeholder=(
                     "例如 / Example:\n"
                     "- 我画了一条下降趋势线，从左上到右下\n"
-                    "- 我认为中间那根大阴线是 Bearish OB\n"
+                    "- 我认为这里是一个 Supply Zone（供给区）\n"
                     "- 我认为价格在这里形成了 CHoCH，因为打破了低点\n"
                     "- I drew support at the recent swing low and resistance at the last swing high\n"
                     "- I think this is a bull flag consolidation"
@@ -2158,7 +2144,7 @@ Never give specific financial advice or tell someone to buy/sell a specific real
                     [
                         "Overall analysis · 整体分析",
                         "Trend & structure · 趋势与结构",
-                        "Order Blocks & FVG",
+                        "Supply & Demand Zones",
                         "BOS & CHoCH identification",
                         "Support & Resistance levels",
                         "Trendlines · 趋势线画法",
@@ -2192,7 +2178,7 @@ Never give specific financial advice or tell someone to buy/sell a specific real
                             }.get(review_lang, "Respond in Chinese.")
 
                             review_system = f"""You are a strict but fair elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices.
-You specialise in SMC, Wyckoff, ICT, Price Action, Order Blocks, FVG, BOS/CHoCH, Liquidity, and Scalping.
+You specialise in Wyckoff, Price Action, BOS/CHoCH, Liquidity, Supply & Demand, Fibonacci, and Scalping.
 
 {lang_instruction}
 
