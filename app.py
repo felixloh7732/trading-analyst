@@ -1420,6 +1420,32 @@ with st.sidebar:
 
     st.divider()
 
+    # ── Twelve Data API Key (for Live Data tab) ───────────────
+    st.markdown("### 📡 Live Data Key")
+    st.caption("For real-time forex/gold/crypto in the Live Data tab.")
+    _td_secret = ""
+    try:
+        _td_secret = st.secrets.get("TWELVE_DATA_API_KEY", "")
+    except Exception:
+        pass
+    if _td_secret:
+        st.success("✅ Twelve Data key loaded from secrets")
+        twelve_data_key = _td_secret
+        st.text_input("Twelve Data Key", value="••••••••••••••••••••",
+                      disabled=True, key="td_key_display")
+    else:
+        twelve_data_key = st.text_input(
+            "🔑 Twelve Data API Key",
+            type="password",
+            placeholder="Get free key at twelvedata.com",
+            help="Free at twelvedata.com — 800 requests/day. Gives real-time forex, gold, crypto.",
+            key="td_key_input",
+        )
+        if not twelve_data_key:
+            st.caption("Without this, Live Data uses yfinance (15-min delayed).")
+
+    st.divider()
+
     # ── Persist settings to localStorage (after all widgets are resolved) ──
     if _LS_AVAILABLE and not _secret_key:
         if _remember and api_key:
@@ -1846,13 +1872,14 @@ The AI will identify:<br><br>
 st.divider()
 st.markdown("## 🛠️ Trading Tools 交易工具")
 
-tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6 = st.tabs([
+tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7 = st.tabs([
     "🧮 Position Size",
     "📰 News Calendar",
     "📡 Chart Scanner",
     "🤖 AI Coach",
     "📄 PDF Report",
     "💹 Currency Strength",
+    "📈 Live Data",
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -2855,6 +2882,426 @@ Strongest: <b style='color:#10b981'>{strongest}</b> &nbsp;·&nbsp; Weakest: <b s
         elif len(csm_uploads) < 2:
             st.info("👆 Upload at least 2 currency pair charts to calculate strength.")
 
+
+# ════════════════════════════════════════════════════════════
+# TOOL 7 — LIVE DATA ANALYSIS
+# ════════════════════════════════════════════════════════════
+with tool_tab7:
+    st.markdown("### 📈 Live Data Analysis 实时数据分析")
+    st.caption("Fetch live candles directly — no chart upload needed. 直接拉取实时K线，无需上传图表。")
+
+    # ── Lazy imports ──────────────────────────────────────────
+    try:
+        import yfinance as yf
+        import plotly.graph_objects as go
+        _LIVE_AVAILABLE = True
+    except ImportError:
+        _LIVE_AVAILABLE = False
+        st.error("📦 Live Data requires `yfinance` and `plotly`. Please redeploy after updating requirements.txt.")
+
+    if _LIVE_AVAILABLE:
+        # ── Data source indicator ─────────────────────────────
+        if twelve_data_key:
+            st.success("🟢 **Real-time data** via Twelve Data · No delay")
+        else:
+            st.warning("🟡 Using yfinance (15-min delayed). Add Twelve Data key in sidebar for real-time.")
+
+        # ── Ticker presets ────────────────────────────────────
+        # Each entry: display_name → (twelve_data_symbol, yfinance_fallback)
+        TICKER_PRESETS = {
+            "EUR/USD":        ("EUR/USD",  "EURUSD=X"),
+            "GBP/USD":        ("GBP/USD",  "GBPUSD=X"),
+            "USD/JPY":        ("USD/JPY",  "USDJPY=X"),
+            "AUD/USD":        ("AUD/USD",  "AUDUSD=X"),
+            "NZD/USD":        ("NZD/USD",  "NZDUSD=X"),
+            "USD/CAD":        ("USD/CAD",  "USDCAD=X"),
+            "USD/CHF":        ("USD/CHF",  "USDCHF=X"),
+            "GBP/JPY":        ("GBP/JPY",  "GBPJPY=X"),
+            "EUR/JPY":        ("EUR/JPY",  "EURJPY=X"),
+            "Gold (XAU/USD)": ("XAU/USD",  "GC=F"),
+            "Silver (XAG/USD)":("XAG/USD", "SI=F"),
+            "WTI Oil":        ("WTI/USD",  "CL=F"),
+            "BTC/USD":        ("BTC/USD",  "BTC-USD"),
+            "ETH/USD":        ("ETH/USD",  "ETH-USD"),
+            "S&P 500":        ("SPX",      "^GSPC"),
+            "Nasdaq 100":     ("NDX",      "^NDX"),
+            "Custom ✏️":      ("__custom__", "__custom__"),
+        }
+
+        # Timeframe → (twelve_data_interval, yf_interval, yf_period)
+        TF_MAP = {
+            "M1":  ("1min",  "1m",  "1d"),
+            "M5":  ("5min",  "5m",  "5d"),
+            "M15": ("15min", "15m", "5d"),
+            "M30": ("30min", "30m", "10d"),
+            "H1":  ("1h",    "1h",  "30d"),
+            "H4":  ("4h",    "1h",  "60d"),
+            "D1":  ("1day",  "1d",  "180d"),
+            "W1":  ("1week", "1wk", "3y"),
+        }
+
+        # ── Controls row ──────────────────────────────────────
+        ctrl_c1, ctrl_c2, ctrl_c3, ctrl_c4 = st.columns([2, 1, 1, 1])
+
+        with ctrl_c1:
+            preset_choice = st.selectbox(
+                "📌 Symbol",
+                list(TICKER_PRESETS.keys()),
+                index=0,
+                key="ld_preset",
+            )
+            td_sym, yf_sym = TICKER_PRESETS[preset_choice]
+            if preset_choice == "Custom ✏️":
+                custom_input = st.text_input(
+                    "Twelve Data symbol (if key set) or yfinance ticker",
+                    placeholder="e.g. EUR/USD  or  AAPL",
+                    key="ld_custom_ticker",
+                ).strip().upper()
+                td_sym  = custom_input
+                yf_sym  = custom_input
+                ticker_sym = custom_input
+            else:
+                ticker_sym = td_sym if twelve_data_key else yf_sym
+                src_label  = "Twelve Data" if twelve_data_key else "yfinance"
+                st.caption(f"{src_label} symbol: `{ticker_sym}`")
+
+        with ctrl_c2:
+            ld_tf = st.selectbox(
+                "⏱️ Timeframe",
+                ["M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1"],
+                index=4,
+                key="ld_tf",
+            )
+
+        with ctrl_c3:
+            ld_candles = st.selectbox(
+                "🕯️ Candles",
+                [50, 100, 150, 200],
+                index=1,
+                key="ld_candles",
+            )
+
+        with ctrl_c4:
+            st.markdown("<br>", unsafe_allow_html=True)
+            fetch_btn = st.button("🔄 Fetch & Analyse", use_container_width=True,
+                                  key="ld_fetch_btn", type="primary")
+
+        # ── Helper: fetch via Twelve Data ─────────────────────
+        def _fetch_twelve_data(symbol, interval, outputsize, api_key_td):
+            """Fetch OHLCV from Twelve Data REST API. Returns a pandas DataFrame."""
+            import pandas as pd
+            url = "https://api.twelvedata.com/time_series"
+            params = {
+                "symbol":     symbol,
+                "interval":   interval,
+                "outputsize": outputsize,
+                "apikey":     api_key_td,
+                "format":     "JSON",
+            }
+            resp = requests.get(url, params=params, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("status") == "error":
+                raise ValueError(data.get("message", "Twelve Data API error"))
+            values = data.get("values", [])
+            if not values:
+                raise ValueError("No data returned — check symbol or interval.")
+            rows = []
+            for v in values:
+                rows.append({
+                    "Datetime": v["datetime"],
+                    "Open":   float(v["open"]),
+                    "High":   float(v["high"]),
+                    "Low":    float(v["low"]),
+                    "Close":  float(v["close"]),
+                    "Volume": float(v.get("volume", 0)),
+                })
+            df_td = pd.DataFrame(rows)
+            df_td["Datetime"] = pd.to_datetime(df_td["Datetime"])
+            df_td = df_td.sort_values("Datetime").reset_index(drop=True)
+            df_td = df_td.set_index("Datetime")
+            return df_td
+
+        # ── Fetch data ────────────────────────────────────────
+        if fetch_btn:
+            if not ticker_sym or ticker_sym == "__custom__":
+                st.warning("Please enter a symbol.")
+            elif not api_key:
+                st.warning("👈 Enter your AI API key in the sidebar first.")
+            else:
+                td_interval, yf_interval, yf_period = TF_MAP.get(ld_tf, ("1h", "1h", "30d"))
+                with st.spinner(f"Fetching {preset_choice} {ld_tf} data..."):
+                    try:
+                        if twelve_data_key:
+                            # ── Twelve Data (real-time) ───────
+                            df_raw = _fetch_twelve_data(
+                                td_sym if preset_choice != "Custom ✏️" else td_sym,
+                                td_interval,
+                                ld_candles,
+                                twelve_data_key,
+                            )
+                            st.session_state["ld_source"] = "Twelve Data 🟢 Real-time"
+                        else:
+                            # ── yfinance fallback (delayed) ───
+                            import pandas as pd
+                            raw = yf.download(
+                                yf_sym if preset_choice != "Custom ✏️" else yf_sym,
+                                period=yf_period,
+                                interval=yf_interval,
+                                auto_adjust=True,
+                                progress=False,
+                            )
+                            if raw.empty:
+                                raise ValueError(f"No data for `{yf_sym}`. Check the symbol.")
+                            # Flatten MultiIndex if present
+                            if hasattr(raw.columns, "levels"):
+                                raw.columns = raw.columns.get_level_values(0)
+                            # Resample H4
+                            if ld_tf == "H4":
+                                raw = raw.resample("4h").agg({
+                                    "Open": "first", "High": "max",
+                                    "Low": "min", "Close": "last",
+                                    "Volume": "sum",
+                                }).dropna()
+                            raw.index = raw.index.tz_localize(None) if raw.index.tzinfo else raw.index
+                            df_raw = raw.tail(ld_candles).copy()
+                            st.session_state["ld_source"] = "yfinance 🟡 15-min delayed"
+
+                        st.session_state["ld_df"]     = df_raw
+                        st.session_state["ld_symbol"] = preset_choice
+                        st.session_state["ld_tf_sel"] = ld_tf
+
+                    except Exception as _fe:
+                        st.error(f"Fetch error: {_fe}")
+
+        # ── Display chart + analysis if data is loaded ────────
+        if "ld_df" in st.session_state:
+            df         = st.session_state["ld_df"]
+            sym_label  = st.session_state.get("ld_symbol", ticker_sym)
+            tf_label   = st.session_state.get("ld_tf_sel", ld_tf)
+
+            # ── Stats bar ─────────────────────────────────────
+            last_close  = float(df["Close"].iloc[-1])
+            prev_close  = float(df["Close"].iloc[-2]) if len(df) > 1 else last_close
+            chg         = last_close - prev_close
+            chg_pct     = (chg / prev_close * 100) if prev_close else 0
+            high_val    = float(df["High"].max())
+            low_val     = float(df["Low"].min())
+            chg_color   = "#10b981" if chg >= 0 else "#ef4444"
+            arrow       = "▲" if chg >= 0 else "▼"
+
+            st.markdown(f"""
+<div style='display:flex;gap:20px;background:#1e293b;border-radius:10px;padding:14px 20px;margin:10px 0;flex-wrap:wrap'>
+  <div><span style='color:#94a3b8;font-size:12px'>Symbol</span><br>
+       <span style='color:#f1f5f9;font-weight:700;font-size:18px'>{sym_label}</span>
+       <span style='color:#94a3b8;font-size:11px;margin-left:6px'>{tf_label} · {len(df)} candles · {st.session_state.get("ld_source","")}</span></div>
+  <div><span style='color:#94a3b8;font-size:12px'>Last Price</span><br>
+       <span style='color:#f1f5f9;font-weight:700;font-size:18px'>{last_close:.5g}</span></div>
+  <div><span style='color:#94a3b8;font-size:12px'>Change</span><br>
+       <span style='color:{chg_color};font-weight:700;font-size:18px'>{arrow} {abs(chg):.5g} ({chg_pct:+.2f}%)</span></div>
+  <div><span style='color:#94a3b8;font-size:12px'>Period High</span><br>
+       <span style='color:#10b981;font-weight:600;font-size:16px'>{high_val:.5g}</span></div>
+  <div><span style='color:#94a3b8;font-size:12px'>Period Low</span><br>
+       <span style='color:#ef4444;font-weight:600;font-size:16px'>{low_val:.5g}</span></div>
+</div>
+""", unsafe_allow_html=True)
+
+            # ── Interactive Plotly candlestick chart ──────────
+            fig = go.Figure(data=[go.Candlestick(
+                x=df.index,
+                open=df["Open"],
+                high=df["High"],
+                low=df["Low"],
+                close=df["Close"],
+                increasing_line_color="#10b981",
+                decreasing_line_color="#ef4444",
+                increasing_fillcolor="#10b981",
+                decreasing_fillcolor="#ef4444",
+                name="Price",
+            )])
+
+            # Add 20 & 50 EMA overlays
+            ema20 = df["Close"].ewm(span=20, adjust=False).mean()
+            ema50 = df["Close"].ewm(span=50, adjust=False).mean()
+            fig.add_trace(go.Scatter(
+                x=df.index, y=ema20, name="EMA 20",
+                line=dict(color="#fbbf24", width=1.2), opacity=0.8,
+            ))
+            fig.add_trace(go.Scatter(
+                x=df.index, y=ema50, name="EMA 50",
+                line=dict(color="#818cf8", width=1.2), opacity=0.8,
+            ))
+
+            # Volume bars at bottom
+            vol_colors = ["#10b981" if c >= o else "#ef4444"
+                          for c, o in zip(df["Close"], df["Open"])]
+            fig.add_trace(go.Bar(
+                x=df.index, y=df["Volume"],
+                name="Volume",
+                marker_color=vol_colors,
+                opacity=0.35,
+                yaxis="y2",
+            ))
+
+            fig.update_layout(
+                title=dict(text=f"{sym_label} — {tf_label}", font=dict(color="#f1f5f9", size=15)),
+                paper_bgcolor="#0f172a",
+                plot_bgcolor="#0f172a",
+                font=dict(color="#94a3b8"),
+                xaxis=dict(
+                    gridcolor="#1e293b", showgrid=True,
+                    rangeslider=dict(visible=False),
+                    color="#94a3b8",
+                ),
+                yaxis=dict(gridcolor="#1e293b", showgrid=True, color="#94a3b8", side="right"),
+                yaxis2=dict(overlaying="y", side="left", showgrid=False,
+                            color="#475569", showticklabels=False),
+                legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color="#94a3b8")),
+                height=480,
+                margin=dict(l=10, r=60, t=40, b=10),
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # ── AI Analysis section ───────────────────────────
+            st.markdown("#### 🤖 AI Analysis")
+            ai_col1, ai_col2 = st.columns([3, 1])
+            with ai_col1:
+                ld_extra_context = st.text_input(
+                    "💬 Add context (optional)",
+                    placeholder="e.g. Near daily resistance, news tonight...",
+                    key="ld_extra_ctx",
+                )
+            with ai_col2:
+                st.markdown("<br>", unsafe_allow_html=True)
+                analyse_btn = st.button("🧠 Run AI Analysis", use_container_width=True, key="ld_analyse_btn")
+
+            if analyse_btn:
+                if not api_key:
+                    st.warning("👈 Enter your API key in the sidebar first.")
+                else:
+                    with st.spinner("Generating chart image and running AI analysis..."):
+                        try:
+                            # ── Generate static chart image for AI using matplotlib ──
+                            import matplotlib
+                            matplotlib.use("Agg")
+                            import matplotlib.pyplot as plt
+                            import matplotlib.patches as mpatches
+
+                            _df = df.reset_index()
+                            n   = len(_df)
+                            xs  = list(range(n))
+                            W   = 0.4  # candle body half-width
+
+                            fig_ai, (ax1, ax2) = plt.subplots(
+                                2, 1, figsize=(16, 10),
+                                gridspec_kw={"height_ratios": [4, 1]},
+                                facecolor="#0f172a",
+                            )
+                            ax1.set_facecolor("#0f172a")
+                            ax2.set_facecolor("#0f172a")
+
+                            for i, row in _df.iterrows():
+                                _o, _h, _l, _c = float(row["Open"]), float(row["High"]), float(row["Low"]), float(row["Close"])
+                                color = "#10b981" if _c >= _o else "#ef4444"
+                                # Wick
+                                ax1.plot([i, i], [_l, _h], color=color, linewidth=0.8, zorder=1)
+                                # Body
+                                ax1.add_patch(mpatches.FancyBboxPatch(
+                                    (i - W, min(_o, _c)), 2 * W, max(abs(_c - _o), 1e-9),
+                                    boxstyle="square,pad=0", linewidth=0,
+                                    facecolor=color, zorder=2,
+                                ))
+
+                            # EMA lines on AI chart
+                            ax1.plot(xs, ema20.values, color="#fbbf24", linewidth=1.2, label="EMA20", alpha=0.85)
+                            ax1.plot(xs, ema50.values, color="#818cf8", linewidth=1.2, label="EMA50", alpha=0.85)
+                            ax1.legend(loc="upper left", facecolor="#1e293b",
+                                       labelcolor="#f1f5f9", fontsize=9)
+
+                            # X-axis labels — show every ~10th candle datetime
+                            tick_step = max(1, n // 10)
+                            tick_positions = list(range(0, n, tick_step))
+                            tick_labels = [
+                                str(_df.iloc[i]["Date"] if "Date" in _df.columns
+                                    else _df.index[i])[:16]
+                                for i in tick_positions
+                            ]
+                            ax1.set_xticks(tick_positions)
+                            ax1.set_xticklabels(tick_labels, rotation=30, ha="right",
+                                                color="#94a3b8", fontsize=7)
+                            ax1.set_xlim(-1, n)
+                            ax1.tick_params(colors="#94a3b8")
+                            ax1.yaxis.tick_right()
+                            ax1.yaxis.set_tick_params(labelcolor="#94a3b8")
+                            ax1.grid(color="#1e293b", linewidth=0.5)
+                            ax1.set_title(f"{sym_label}  {tf_label}  ({n} candles)",
+                                          color="#f1f5f9", fontsize=13, pad=8)
+
+                            # Volume bars
+                            for i, row in _df.iterrows():
+                                _o, _c = float(row["Open"]), float(row["Close"])
+                                _v = float(row["Volume"]) if "Volume" in row and row["Volume"] == row["Volume"] else 0
+                                color = "#10b981" if _c >= _o else "#ef4444"
+                                ax2.bar(i, _v, color=color, alpha=0.5, width=0.8)
+                            ax2.set_facecolor("#0f172a")
+                            ax2.tick_params(colors="#94a3b8", labelsize=7)
+                            ax2.yaxis.tick_right()
+                            ax2.set_xlim(-1, n)
+                            ax2.set_ylabel("Vol", color="#94a3b8", fontsize=8)
+                            ax2.grid(color="#1e293b", linewidth=0.3)
+
+                            plt.tight_layout(pad=0.5)
+
+                            # Convert to PIL Image
+                            _buf = io.BytesIO()
+                            fig_ai.savefig(_buf, format="PNG", dpi=130,
+                                           bbox_inches="tight", facecolor="#0f172a")
+                            plt.close(fig_ai)
+                            _buf.seek(0)
+                            chart_pil = Image.open(_buf).copy()
+
+                            # ── Run through existing AI analysis pipeline ──
+                            ld_market_type = sym_label if "Custom" not in sym_label else "Financial instrument"
+                            ld_context = ld_extra_context or f"Live {tf_label} data — {n} candles fetched automatically via yfinance."
+
+                            analysis_result = analyze_chart_with_ai(
+                                chart_pil, api_key, model_choice,
+                                ld_market_type, tf_label, ld_context,
+                            )
+
+                            st.session_state["ld_analysis"]   = analysis_result
+                            st.session_state["ld_chart_pil"]  = chart_pil
+
+                        except Exception as _ae:
+                            st.error(f"Analysis error: {_ae}")
+                            import traceback; st.text(traceback.format_exc())
+
+            # ── Show analysis result ──────────────────────────
+            if "ld_analysis" in st.session_state:
+                st.markdown(st.session_state["ld_analysis"])
+
+                # Offer to annotate the chart
+                annotate_col1, annotate_col2 = st.columns([1, 3])
+                with annotate_col1:
+                    annotate_live_btn = st.button(
+                        "🎨 Annotate Chart", key="ld_annotate_btn", use_container_width=True,
+                    )
+                if annotate_live_btn:
+                    if "ld_chart_pil" in st.session_state:
+                        with st.spinner("Annotating market structure..."):
+                            try:
+                                ann_img = annotate_chart(
+                                    st.session_state["ld_chart_pil"],
+                                    st.session_state["ld_analysis"],
+                                )
+                                st.image(
+                                    pil_to_download_bytes(ann_img),
+                                    caption=f"{sym_label} {tf_label} — Market Structure Annotation",
+                                    use_container_width=True,
+                                )
+                            except Exception as _ann_e:
+                                st.error(f"Annotation error: {_ann_e}")
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
