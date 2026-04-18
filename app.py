@@ -519,95 +519,79 @@ Now output the drawing instructions as a JSON block to annotate the chart.
 
 ════ MARKET STRUCTURE ANNOTATION RULES ════
 
-PURPOSE: Show what YOU SEE on the chart — trend structure, zones, and key levels.
-Do NOT draw SL / TP / Entry points. This is a market structure analysis overlay, not a trade setup.
+PURPOSE: Show the most important S&R levels and any clear chart pattern forming.
+Keep it CLEAN and MINIMAL — maximum 5 annotations total. No clutter.
+Do NOT draw SL / TP / Entry points, trendlines, or Fibonacci levels.
 
-MAXIMUM 7 ANNOTATIONS TOTAL.
+MAXIMUM 5 ANNOTATIONS TOTAL — STRICT LIMIT.
 
-ANNOTATION TYPES TO USE:
+PRIORITY ORDER (draw in this order, stop when you reach 5):
+  1. Key S/R horizontal lines (most important — always include the 2 most critical levels)
+  2. ONE supply OR demand zone (the most obvious one only)
+  3. ONE BOS or CHoCH (the most recent structure break only — not historical ones)
+  4. ONE liquidity zone (only if equal highs/lows are clearly visible)
 
-1. "structure_break" — for BOS (Break of Structure) or CHoCH (Change of Character)
-   - Required fields: y_position, color, label, direction ("bullish" or "bearish")
-   - color: "teal" for BOS (trend continuation), "orange" for CHoCH (reversal signal)
-   - label: "BOS ↑ 结构突破" or "CHoCH ↓ 结构变化"
+ANNOTATION TYPES ALLOWED:
 
-2. "zone_box" — for Demand/Supply zones, Liquidity zones, S/R zones
-   - Required: y_start, y_end, color, label
-   - color rules: green=Demand zone/Support, red=Supply zone/Resistance, yellow=Liquidity pool
-   - label examples: "Demand Zone 需求区", "Supply Zone 供给区", "Liquidity 流动性", "S/R Flip 翻转位"
+1. "horizontal_line" — KEY S/R LEVELS (most important, always draw these first)
+   - Only mark price levels the market has clearly respected 2+ times
+   - color: green=strong support, red=strong resistance, yellow=equal highs/lows
 
-3. "horizontal_line" — for key S/R levels, equal highs/lows, swing points
-   - color: green=support, red=resistance, yellow=equal highs/lows
+2. "zone_box" — SUPPLY or DEMAND zone (max 1 total)
+   - Only if there is a clear strong impulse move from the zone
+   - color: green=Demand/Support zone, red=Supply/Resistance zone, yellow=Liquidity pool
 
-4. "diagonal_line" — for active trendlines (still being respected by price)
-   - x1/x2 range: 0.05 to 0.82 (never 0.0 or 1.0)
-   - color: white=main trend, purple=secondary channel
+3. "structure_break" — BOS or CHoCH (max 1 total — most recent only)
+   - color: "teal" for BOS, "orange" for CHoCH
+   - direction: "bullish" or "bearish"
 
-5. "fibonacci" — ONLY if there is a clean, obvious swing high-to-low visible
-   - swing_high_y, swing_low_y positions
+DO NOT USE: fibonacci, diagonal_line, pattern_triangle, pattern_flag — these clutter the chart.
 
-6. "pattern_triangle" / "pattern_flag" — ONLY if pattern is still FORMING (price is inside it)
+CHART PATTERN DETECTION — identify in "pattern_name" field:
+  Bullish: Bull Flag 旗形, Pennant 三角旗, Cup & Handle 杯柄形态, Ascending Triangle 上升三角形,
+           Symmetrical Triangle 对称三角形, Double Bottom 双重底, Inv Head & Shoulders 头肩底,
+           Diamond Bottom 钻石底, Rectangle Bottom 矩形底
+  Bearish: Bear Flag 旗形, Pennant 三角旗, Inv Cup & Handle 倒置杯柄, Descending Triangle 下降三角形,
+           Symmetrical Triangle 对称三角形, Double Top 双重顶, Head & Shoulders 头肩顶,
+           Diamond Top 钻石顶, Rectangle Top 矩形顶
+  If NO clear pattern: use "No Clear Pattern"
 
-COLOUR CONVENTION (match the legend on the chart):
-  green  = Demand zone / Support / Bullish structure
-  red    = Supply zone / Resistance / Bearish structure
-  yellow = Liquidity zone / Equal highs & lows
-  teal   = BOS (Break of Structure — trend continuation)
-  orange = CHoCH (Change of Character — potential reversal)
-  white  = Trendlines / general structure
-  purple = Fibonacci / Premium-Discount zones
+COLOUR CONVENTION:
+  green=Support/Demand  |  red=Resistance/Supply  |  yellow=Liquidity/Equal levels
+  teal=BOS  |  orange=CHoCH
 
-LABEL RULES — SHORT labels only (under 22 characters):
-  - "Demand Zone 需求区" ✅
-  - "Supply Zone 供给区" ✅
-  - "BOS ↑ 结构突破" ✅
-  - "CHoCH ↓ 结构变化" ✅
-  - "Support 支撑" ✅
-  - "Resistance 阻力" ✅
-  - "Liquidity 流动性" ✅
-  - "Equal Lows 平底" ✅
-  - "S/R Flip 翻转位" ✅
-
-WHAT TO LOOK FOR (in priority order):
-  1. BOS / CHoCH — where did structure break or character change? Mark these first.
-  2. Key S/R levels — obvious swing highs/lows the market has respected multiple times
-  3. Demand / Supply zones — areas of strong buying or selling pressure shown by big impulse moves
-  4. Liquidity zones — equal highs or equal lows where stop losses are clustered
-  5. Active trendline — only if price has touched it 2+ times and it is still respected
-  6. Fibonacci — only if there is a clear, complete swing visible
+LABEL RULES — SHORT only (under 18 characters):
+  "Support 支撑" / "Resistance 阻力" / "Demand Zone 需求区" / "Supply Zone 供给区"
+  "BOS ↑ 结构突破" / "CHoCH ↓ 结构变化" / "Liquidity 流动性" / "Equal Lows 平底" / "Equal Highs 平顶"
 
 For y positions use: "top"(0.06), "upper_quarter"(0.20), "upper_third"(0.30), "middle"(0.50), "lower_third"(0.65), "lower_quarter"(0.78), "bottom"(0.93)
 
-Example — bullish structure:
+Example — bearish with double top pattern:
 ```json
 {{
-  "signal": "BUY",
-  "confidence": 7,
-  "pattern_name": "ACCUMULATION — MARKUP PHASE",
+  "signal": "SELL",
+  "confidence": 8,
+  "pattern_name": "Double Top 双重顶",
   "annotations": [
-    {{"type": "structure_break", "y_position": "upper_third", "color": "teal", "label": "BOS ↑ 结构突破", "direction": "bullish"}},
-    {{"type": "zone_box", "y_start": "lower_third", "y_end": "middle", "color": "green", "label": "Demand Zone 需求区"}},
-    {{"type": "horizontal_line", "y_position": "upper_quarter", "color": "red", "label": "Resistance 阻力"}},
+    {{"type": "horizontal_line", "y_position": "upper_third", "color": "red", "label": "Resistance 阻力"}},
     {{"type": "horizontal_line", "y_position": "lower_third", "color": "green", "label": "Support 支撑"}},
-    {{"type": "zone_box", "y_start": "lower_quarter", "y_end": "bottom", "color": "yellow", "label": "Liquidity 流动性"}},
-    {{"type": "diagonal_line", "x1": 0.05, "y1": "lower_quarter", "x2": 0.82, "y2": "upper_third", "color": "white", "label": "Uptrend 上升趋势"}}
+    {{"type": "zone_box", "y_start": "upper_quarter", "y_end": "upper_third", "color": "red", "label": "Supply Zone 供给区"}},
+    {{"type": "structure_break", "y_position": "middle", "color": "orange", "label": "CHoCH ↓ 结构变化", "direction": "bearish"}}
   ]
 }}
 ```
 
-Example — bearish structure with CHoCH:
+Example — bullish with ascending triangle:
 ```json
 {{
-  "signal": "SELL",
-  "confidence": 6,
-  "pattern_name": "DISTRIBUTION — MARKDOWN PHASE",
+  "signal": "BUY",
+  "confidence": 7,
+  "pattern_name": "Ascending Triangle 上升三角形",
   "annotations": [
-    {{"type": "structure_break", "y_position": "middle", "color": "orange", "label": "CHoCH ↓ 结构变化", "direction": "bearish"}},
-    {{"type": "zone_box", "y_start": "upper_third", "y_end": "middle", "color": "red", "label": "Supply Zone 供给区"}},
-    {{"type": "horizontal_line", "y_position": "upper_third", "color": "red", "label": "Supply Zone 供给"}},
-    {{"type": "zone_box", "y_start": "top", "y_end": "upper_quarter", "color": "yellow", "label": "Equal Highs 平顶"}},
+    {{"type": "horizontal_line", "y_position": "upper_third", "color": "red", "label": "Resistance 阻力"}},
     {{"type": "horizontal_line", "y_position": "lower_third", "color": "green", "label": "Support 支撑"}},
-    {{"type": "diagonal_line", "x1": 0.05, "y1": "upper_quarter", "x2": 0.80, "y2": "middle", "color": "white", "label": "Downtrend 下降趋势"}}
+    {{"type": "zone_box", "y_start": "lower_quarter", "y_end": "lower_third", "color": "green", "label": "Demand Zone 需求区"}},
+    {{"type": "structure_break", "y_position": "upper_third", "color": "teal", "label": "BOS ↑ 结构突破", "direction": "bullish"}}
   ]
 }}
 ```
@@ -820,23 +804,38 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
         draw.line([(CHART_R - 4, adj_y), (rx, adj_y)],
                   fill=border_col, width=max(1, LW_ZONE))
 
-    # ── Enforce max 8 annotations (structure needs more room) ──
+    # ── Enforce max 5 annotations — S/R first, then zone, then BOS/CHoCH ──
     PRIORITY = {
-        "structure_break": 0,   # BOS / CHoCH — most important context
-        "horizontal_line": 1,   # S/R levels
-        "zone_box":        2,   # Demand/Supply / liquidity zones
-        "diagonal_line":   3,   # trendlines
-        "fibonacci":       4,
-        "pattern_triangle":5,
-        "pattern_flag":    5,
-        "pattern_hs":      5,
-        "pattern_double":  5,
-        "dashed_line":     6,
-        "entry_arrow":     7,
-        "pattern_label":   8,
+        "horizontal_line": 0,   # S/R levels — most important, always first
+        "zone_box":        1,   # Demand/Supply / liquidity zones
+        "structure_break": 2,   # BOS / CHoCH — one only
+        "dashed_line":     3,
+        # Everything below is filtered out — kept for backward compat only
+        "diagonal_line":   9,
+        "fibonacci":       9,
+        "pattern_triangle":9,
+        "pattern_flag":    9,
+        "pattern_hs":      9,
+        "pattern_double":  9,
+        "entry_arrow":     9,
+        "pattern_label":   9,
     }
-    sorted_anns = sorted(annotations, key=lambda a: PRIORITY.get(a.get("type", ""), 9))
-    annotations = sorted_anns[:8]
+    # Filter out noisy types entirely, sort, cap at 5
+    _allowed = {"horizontal_line", "zone_box", "structure_break", "dashed_line"}
+    sorted_anns = sorted(
+        [a for a in annotations if a.get("type","") in _allowed],
+        key=lambda a: PRIORITY.get(a.get("type", ""), 9)
+    )
+    # Enforce sub-caps: max 3 horizontal_lines, max 1 zone_box, max 1 structure_break
+    _counts = {}
+    _sub_caps = {"horizontal_line": 3, "zone_box": 1, "structure_break": 1}
+    filtered_anns = []
+    for a in sorted_anns:
+        t = a.get("type","")
+        _counts[t] = _counts.get(t, 0) + 1
+        if _counts[t] <= _sub_caps.get(t, 99):
+            filtered_anns.append(a)
+    annotations = filtered_anns[:5]
 
     # ═══════════════════════════════════════════════════════
     # DRAW MARKET STRUCTURE ANNOTATIONS
@@ -983,33 +982,46 @@ def annotate_chart(image: Image.Image, annotations: list, signal: str, meta: dic
             right_label(neck_y, "Neckline 颈线", solid("yellow"), col("yellow", 200))
 
     # ═══════════════════════════════════════════════════════
-    # COLOUR LEGEND STRIP — top-left, shows what each colour means
+    # COLOUR LEGEND STRIP — compact, top-left
     # ═══════════════════════════════════════════════════════
     legend_items = [
-        ("green",  "Demand/Support"),
-        ("red",    "Supply/Resistance"),
-        ("yellow", "Liquidity Zone"),
-        ("teal",   "BOS 结构突破"),
-        ("orange", "CHoCH 结构变化"),
-        ("white",  "Trendline"),
+        ("green",  "Support/Demand"),
+        ("red",    "Resistance/Supply"),
+        ("yellow", "Liquidity"),
+        ("teal",   "BOS"),
+        ("orange", "CHoCH"),
     ]
     leg_x, leg_y = 10, 10
-    leg_sw = max(10, int(w / 140))   # colour swatch width
-    leg_h  = fs_xs + 8
+    leg_sw = max(10, int(w / 140))
+    leg_h  = fs_xs + 6
     for lc, lt in legend_items:
         r2, g2, b2 = C[lc]
-        # Colour swatch
         draw.rectangle([leg_x, leg_y, leg_x + leg_sw, leg_y + leg_h],
                        fill=(r2, g2, b2, 220))
-        # Text
-        draw.text((leg_x + leg_sw + 5, leg_y + 2), lt,
+        draw.text((leg_x + leg_sw + 4, leg_y + 2), lt,
                   fill=(r2, g2, b2, 230), font=font_xs)
         try:
-            bbox = font_xs.getbbox(lt)
-            tw   = bbox[2] - bbox[0]
+            tw = font_xs.getbbox(lt)[2] - font_xs.getbbox(lt)[0]
         except Exception:
             tw = len(lt) * 9
-        leg_x += leg_sw + tw + 18
+        leg_x += leg_sw + tw + 16
+
+    # ── Pattern name banner (below legend, prominent) ──────
+    pattern_name = meta.get("pattern_name", "") if meta else ""
+    if pattern_name and pattern_name.upper() not in ("", "NO CLEAR PATTERN", "NONE"):
+        _pn_txt  = f"📐 {pattern_name}"
+        _pn_bg   = (30, 30, 60, 200)
+        _pn_col  = (251, 191, 36, 240)   # amber
+        try:
+            _pn_bbox = font_sm.getbbox(_pn_txt)
+            _pn_w    = _pn_bbox[2] - _pn_bbox[0] + 20
+        except Exception:
+            _pn_w = len(_pn_txt) * 10 + 20
+        _pn_h  = fs_sm + 10
+        _pn_y  = leg_y + leg_h + 8
+        draw.rectangle([10, _pn_y, 10 + _pn_w, _pn_y + _pn_h],
+                       fill=_pn_bg, outline=_pn_col[:3] + (160,), width=1)
+        draw.text((18, _pn_y + 4), _pn_txt, fill=_pn_col, font=font_sm)
 
     # ═══════════════════════════════════════════════════════
     # SIGNAL BADGE — top-right corner (compact)
