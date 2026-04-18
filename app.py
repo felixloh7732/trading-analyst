@@ -2104,184 +2104,336 @@ Never give specific financial advice or tell someone to buy/sell a specific real
                 st.rerun()
 
     # ══════════════════════════════════════════════════════
-    # MODE 2 — Review My Analysis
+    # MODE 2 — Review My Analysis (continuous conversation)
     # ══════════════════════════════════════════════════════
     else:
-        st.caption("上传你自己画好分析线的图表，AI导师会帮你检查对不对，并解释原因。")
-        st.caption("Upload YOUR chart with your own drawn analysis. The coach will tell you what's right, what's wrong, and why.")
+        # ── Session state keys for review conversation ────
+        # coach_review_active  : bool  — is a session in progress?
+        # coach_review_conv    : list  — full message history [{role, content}]
+        # coach_review_img_b64 : str   — base64 image kept for API calls
+        # coach_review_img_bytes: bytes — PNG bytes for display
+        # coach_review_system  : str   — system prompt for this session
 
-        # ── Upload chart ──────────────────────────────────
-        review_img_file = st.file_uploader(
-            "📷 Upload your chart (with your own drawings) · 上传你的分析图",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="coach_review_img",
-        )
+        active = st.session_state.get("coach_review_active", False)
 
-        if review_img_file:
-            review_img = Image.open(review_img_file)
-            st.image(review_img, caption="Your chart · 你的图表", use_container_width=True)
+        # ══════════════════════════════════════════════════
+        # SUB-PHASE A — Setup form (no active conversation)
+        # ══════════════════════════════════════════════════
+        if not active:
+            st.caption("上传你自己画好分析线的图表，AI导师帮你检查，之后可以继续追问直到完全明白为止。")
+            st.caption("Upload YOUR chart → get expert review → keep chatting until every doubt is cleared.")
 
-        # ── User describes their analysis ─────────────────
-        st.markdown("**Describe your analysis · 描述你的分析：**")
-        review_description = st.text_area(
-            label="analysis_desc",
-            label_visibility="collapsed",
-            placeholder=(
-                "例如：\n"
-                "- 我画了一条下降趋势线，从左上到右下\n"
-                "- 我认为这里有一个 Bearish OB（看跌订单块）\n"
-                "- 我认为这是 CHoCH，因为价格打破了低点\n"
-                "- I drew support at the recent low and resistance at the swing high\n"
-                "- I think this is a bullish flag pattern forming"
-            ),
-            height=140,
-            key="coach_review_desc",
-        )
-
-        # ── Review options ────────────────────────────────
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            review_focus = st.selectbox(
-                "Review focus · 重点检查",
-                [
-                    "Overall analysis · 整体分析",
-                    "Trend & structure · 趋势与结构",
-                    "Order Blocks & FVG",
-                    "BOS & CHoCH identification",
-                    "Support & Resistance levels",
-                    "Trendlines · 趋势线画法",
-                    "Liquidity zones · 流动性",
-                    "Pattern identification · 形态识别",
-                ],
-                key="coach_review_focus",
+            # Upload
+            review_img_file = st.file_uploader(
+                "📷 Upload your chart (with your own drawings) · 上传你的分析图",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="coach_review_img",
             )
-        with col_r2:
-            review_lang = st.selectbox(
-                "Response language · 回复语言",
-                ["中文为主 (Chinese)", "English", "两种都用 (Both)"],
-                key="coach_review_lang",
+            if review_img_file:
+                preview_img = Image.open(review_img_file)
+                st.image(preview_img, caption="Your chart · 你的图表", use_container_width=True)
+
+            # Description
+            st.markdown("**描述你的分析 / Describe your analysis:**")
+            review_description = st.text_area(
+                label="analysis_desc",
+                label_visibility="collapsed",
+                placeholder=(
+                    "例如 / Example:\n"
+                    "- 我画了一条下降趋势线，从左上到右下\n"
+                    "- 我认为中间那根大阴线是 Bearish OB\n"
+                    "- 我认为价格在这里形成了 CHoCH，因为打破了低点\n"
+                    "- I drew support at the recent swing low and resistance at the last swing high\n"
+                    "- I think this is a bull flag consolidation"
+                ),
+                height=140,
+                key="coach_review_desc",
             )
 
-        # ── Submit for review ─────────────────────────────
-        if st.button("🔍 Review My Analysis · 帮我检查分析", use_container_width=True, key="coach_review_btn"):
-            if not api_key:
-                st.warning("👈 请先在侧边栏输入 API Key")
-            elif not review_img_file:
-                st.warning("👆 请先上传你的图表 / Please upload your chart first")
-            elif not review_description.strip():
-                st.warning("📝 请先描述你的分析 / Please describe your analysis first")
-            else:
-                with st.spinner("导师正在审查你的分析... Reviewing your analysis..."):
-                    try:
-                        lang_instruction = {
-                            "中文为主 (Chinese)": "Respond primarily in Chinese (Mandarin). Use English only for technical terms.",
-                            "English": "Respond in English.",
-                            "两种都用 (Both)": "Respond in both English and Chinese — write each point in English first, then Chinese translation.",
-                        }.get(review_lang, "Respond in Chinese.")
+            # Options
+            col_r1, col_r2 = st.columns(2)
+            with col_r1:
+                review_focus = st.selectbox(
+                    "Review focus · 重点检查",
+                    [
+                        "Overall analysis · 整体分析",
+                        "Trend & structure · 趋势与结构",
+                        "Order Blocks & FVG",
+                        "BOS & CHoCH identification",
+                        "Support & Resistance levels",
+                        "Trendlines · 趋势线画法",
+                        "Liquidity zones · 流动性",
+                        "Pattern identification · 形态识别",
+                    ],
+                    key="coach_review_focus",
+                )
+            with col_r2:
+                review_lang = st.selectbox(
+                    "Response language · 回复语言",
+                    ["中文为主 (Chinese)", "English", "两种都用 (Both)"],
+                    key="coach_review_lang",
+                )
 
-                        review_system = f"""You are a strict but fair elite trading coach and mentor with 20+ years of experience.
-Your role is to REVIEW a student's chart analysis and give them honest, detailed expert feedback.
+            # Start button
+            if st.button("🔍 Start Review Session · 开始分析点评", use_container_width=True, key="coach_review_start"):
+                if not api_key:
+                    st.warning("👈 请先在侧边栏输入 API Key")
+                elif not review_img_file:
+                    st.warning("👆 请先上传你的图表 / Please upload your chart first")
+                elif not review_description.strip():
+                    st.warning("📝 请先描述你的分析 / Please describe your analysis first")
+                else:
+                    with st.spinner("导师正在审查你的分析... Reviewing your analysis..."):
+                        try:
+                            lang_instruction = {
+                                "中文为主 (Chinese)": "Respond primarily in Chinese (Mandarin). Use English only for technical terms.",
+                                "English": "Respond in English.",
+                                "两种都用 (Both)": "Respond in both English and Chinese — write each point in English first, then the Chinese translation below it.",
+                            }.get(review_lang, "Respond in Chinese.")
+
+                            review_system = f"""You are a strict but fair elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices.
+You specialise in SMC, Wyckoff, ICT, Price Action, Order Blocks, FVG, BOS/CHoCH, Liquidity, and Scalping.
 
 {lang_instruction}
 
-REVIEW FORMAT — always follow this exact structure:
+You are in an ONGOING COACHING SESSION with a student. A chart image was shared at the start of the session.
+You have already seen the chart and given an initial review. The student may now ask follow-up questions, disagree with your points, ask for more detail on specific areas, or ask you to explain concepts they don't understand.
 
+BEHAVIOUR RULES:
+- Always refer back to what you can see in the chart when answering follow-ups
+- If the student disagrees with your point, re-examine your reasoning and either stand firm with a clear explanation, or acknowledge if they have a valid point
+- If they ask "why is this wrong?", explain the exact RULE or PRINCIPLE that was violated
+- If they ask "what should I have done instead?", show them the correct approach
+- Be direct and specific — never give vague answers
+- Use numbered steps or bullet points when explaining rules
+- Focus on this area throughout the session: {review_focus}
+
+For the INITIAL review, always follow this structure:
 ## ✅ What You Got Right · 做对的地方
-[For each correct element: explain WHY it is correct and what makes it a valid analysis]
-
-## ❌ What Is Wrong or Needs Improvement · 需要改正的地方
-[For each mistake: be SPECIFIC about what is wrong, WHY it is wrong, and the CORRECT way to do it]
-[If a trend line is drawn incorrectly, explain the rule they broke]
-[If an OB is misidentified, explain what a real OB looks like vs what they drew]
-[If BOS/CHoCH is wrong, explain the correct criteria]
-
+## ❌ What Is Wrong · 需要改正的地方
 ## 💡 What You Missed · 你没有注意到的
-[Point out important structures, zones, or signals that are visible but the student did not mention]
-
 ## 📝 How to Improve · 改进建议
-[Specific, actionable advice for this student based on their mistakes]
-[Give them the RULE or PRINCIPLE they need to remember]
+## 🎯 Overall Score · 整体评分 (X/10)
 
-## 🎯 Overall Score · 整体评分
-[Score their analysis from 1-10 with justification]
-[Example: "6/10 — Good trend identification but OB placement needs work"]
+For FOLLOW-UP messages, respond naturally to the question — no need to repeat the full structure."""
 
-Be honest and direct. If something is wrong, say it clearly. Do not be vague or overly positive.
-Focus on the specific area: {review_focus}"""
+                            # Encode the image
+                            review_img_obj = Image.open(review_img_file)
+                            img_b64 = encode_image_to_base64(review_img_obj)
 
-                        img_b64 = encode_image_to_base64(review_img)
-                        user_review_msg = f"""Please review my chart analysis.
+                            # Store PNG bytes for display (lossless)
+                            img_disp_buf = io.BytesIO()
+                            disp_img = review_img_obj.copy()
+                            if disp_img.mode in ("RGBA", "P"):
+                                disp_img = disp_img.convert("RGB")
+                            disp_img.save(img_disp_buf, format="PNG", compress_level=1)
+                            img_disp_buf.seek(0)
 
-My analysis / 我的分析：
+                            first_user_msg = f"""Please review my chart analysis.
+
+My analysis · 我的分析：
 {review_description}
 
 Focus area: {review_focus}
 
-Please tell me what I got right, what I got wrong, what I missed, and how to improve."""
+Please give me your full review — what I got right, what is wrong, what I missed, and how to improve."""
 
-                        if model_choice.startswith("gemini"):
-                            client_coach = google_genai.Client(api_key=api_key)
-                            img_buf_r = io.BytesIO()
-                            review_img_rgb = review_img.copy()
-                            if review_img_rgb.mode in ("RGBA", "P"):
-                                review_img_rgb = review_img_rgb.convert("RGB")
-                            review_img_rgb.save(img_buf_r, format="JPEG", quality=92)
-                            img_bytes_r = img_buf_r.getvalue()
+                            # Call AI with the image
+                            if model_choice.startswith("gemini"):
+                                client_coach = google_genai.Client(api_key=api_key)
+                                img_buf_r = io.BytesIO()
+                                review_img_rgb = review_img_obj.copy()
+                                if review_img_rgb.mode in ("RGBA", "P"):
+                                    review_img_rgb = review_img_rgb.convert("RGB")
+                                review_img_rgb.save(img_buf_r, format="JPEG", quality=92)
+                                img_bytes_r = img_buf_r.getvalue()
 
-                            full_prompt_r = review_system + "\n\n" + user_review_msg
-                            coach_resp_r = client_coach.models.generate_content(
-                                model=model_choice,
-                                contents=[
-                                    full_prompt_r,
-                                    google_types.Part.from_bytes(data=img_bytes_r, mime_type="image/jpeg"),
-                                ],
-                            )
-                            review_answer = coach_resp_r.text
-
-                        else:
-                            client_coach = anthropic.Anthropic(api_key=api_key)
-                            coach_resp_r = client_coach.messages.create(
-                                model=model_choice,
-                                max_tokens=2000,
-                                system=review_system,
-                                messages=[{
-                                    "role": "user",
-                                    "content": [
-                                        {"type": "image", "source": {
-                                            "type": "base64",
-                                            "media_type": "image/jpeg",
-                                            "data": img_b64,
-                                        }},
-                                        {"type": "text", "text": user_review_msg},
+                                full_prompt_r = review_system + "\n\nStudent: " + first_user_msg
+                                coach_resp_r = client_coach.models.generate_content(
+                                    model=model_choice,
+                                    contents=[
+                                        full_prompt_r,
+                                        google_types.Part.from_bytes(data=img_bytes_r, mime_type="image/jpeg"),
                                     ],
-                                }],
-                            )
-                            review_answer = coach_resp_r.content[0].text
+                                )
+                                initial_answer = coach_resp_r.text
+                            else:
+                                client_coach = anthropic.Anthropic(api_key=api_key)
+                                coach_resp_r = client_coach.messages.create(
+                                    model=model_choice,
+                                    max_tokens=2500,
+                                    system=review_system,
+                                    messages=[{
+                                        "role": "user",
+                                        "content": [
+                                            {"type": "image", "source": {
+                                                "type": "base64",
+                                                "media_type": "image/jpeg",
+                                                "data": img_b64,
+                                            }},
+                                            {"type": "text", "text": first_user_msg},
+                                        ],
+                                    }],
+                                )
+                                initial_answer = coach_resp_r.content[0].text
 
-                        # Show review result in a styled box
-                        st.markdown("---")
-                        st.markdown("### 📋 Coach Review · 导师点评")
-                        st.markdown(review_answer)
+                            # ── Activate the conversation session ──
+                            st.session_state["coach_review_active"]    = True
+                            st.session_state["coach_review_system"]    = review_system
+                            st.session_state["coach_review_img_b64"]   = img_b64
+                            st.session_state["coach_review_img_bytes"] = img_disp_buf.getvalue()
+                            st.session_state["coach_review_focus"]     = review_focus
+                            # Conversation history: user's first message + coach's initial review
+                            st.session_state["coach_review_conv"] = [
+                                {"role": "user",      "content": first_user_msg},
+                                {"role": "assistant", "content": initial_answer},
+                            ]
+                            st.rerun()
 
-                        # Save to review history
-                        if "coach_review_history" not in st.session_state:
-                            st.session_state["coach_review_history"] = []
-                        st.session_state["coach_review_history"].append({
-                            "description": review_description,
-                            "focus": review_focus,
-                            "review": review_answer,
-                        })
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
 
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
+        # ══════════════════════════════════════════════════
+        # SUB-PHASE B — Active conversation
+        # ══════════════════════════════════════════════════
+        else:
+            focus_label = st.session_state.get("coach_review_focus", "")
 
-        # ── Show past reviews ─────────────────────────────
-        if st.session_state.get("coach_review_history"):
-            with st.expander(f"📚 Past Reviews · 历史点评 ({len(st.session_state['coach_review_history'])} reviews)", expanded=False):
-                for i, rev in enumerate(reversed(st.session_state["coach_review_history"][-5:]), 1):
-                    st.markdown(f"**Review {i}** — Focus: {rev['focus']}")
-                    st.caption(f"Analysis: {rev['description'][:120]}...")
-                    st.markdown(rev["review"])
+            # ── Header bar with focus + stop button ───────
+            hdr_col1, hdr_col2 = st.columns([3, 1])
+            with hdr_col1:
+                st.markdown(f"**🎓 Coaching Session · 导师辅导中** — Focus: {focus_label}")
+                st.caption("继续追问导师，直到你完全明白为止。当你满意了，按右边的按钮结束对话。")
+            with hdr_col2:
+                if st.button("🛑 Stop Conversation\n结束对话", use_container_width=True, key="coach_stop_btn"):
+                    # Save to history before clearing
+                    if "coach_review_history" not in st.session_state:
+                        st.session_state["coach_review_history"] = []
+                    st.session_state["coach_review_history"].append({
+                        "focus":        focus_label,
+                        "conversation": list(st.session_state.get("coach_review_conv", [])),
+                    })
+                    # Clear active session
+                    for k in ["coach_review_active", "coach_review_conv",
+                              "coach_review_img_b64", "coach_review_img_bytes",
+                              "coach_review_system"]:
+                        st.session_state.pop(k, None)
+                    st.success("✅ 对话已结束，已保存到历史记录。/ Session ended and saved to history.")
+                    st.rerun()
+
+            st.divider()
+
+            # ── Show chart thumbnail ───────────────────────
+            img_bytes_disp = st.session_state.get("coach_review_img_bytes")
+            if img_bytes_disp:
+                with st.expander("📷 View your chart · 查看图表", expanded=False):
+                    st.image(img_bytes_disp, use_container_width=True)
+
+            # ── Render conversation history ────────────────
+            conv = st.session_state.get("coach_review_conv", [])
+            for msg in conv:
+                role  = msg["role"]
+                # For the first user message, show a simplified version
+                if role == "user" and msg == conv[0]:
+                    with st.chat_message("user"):
+                        desc_lines = [l for l in msg["content"].split("\n") if l.strip() and not l.startswith("Please review") and not l.startswith("Focus area") and not l.startswith("Please tell")]
+                        st.markdown("\n".join(desc_lines[:8]))
+                else:
+                    with st.chat_message(role):
+                        st.markdown(msg["content"])
+
+            # ── Follow-up chat input ───────────────────────
+            followup = st.chat_input(
+                "继续追问导师... / Ask a follow-up question...",
+                key="coach_review_followup",
+            )
+
+            if followup:
+                if not api_key:
+                    st.warning("👈 请先在侧边栏输入 API Key")
+                else:
+                    # Add user message to history and display it
+                    conv.append({"role": "user", "content": followup})
+                    st.session_state["coach_review_conv"] = conv
+                    with st.chat_message("user"):
+                        st.markdown(followup)
+
+                    with st.chat_message("assistant"):
+                        with st.spinner("导师思考中... Thinking..."):
+                            try:
+                                review_sys  = st.session_state.get("coach_review_system", "")
+                                img_b64_key = st.session_state.get("coach_review_img_b64", "")
+
+                                if model_choice.startswith("gemini"):
+                                    client_coach = google_genai.Client(api_key=api_key)
+                                    # Build full history text for Gemini (no native multi-turn with image)
+                                    history_text = "\n\n".join([
+                                        f"{'Student' if m['role']=='user' else 'Coach'}:\n{m['content']}"
+                                        for m in conv
+                                    ])
+                                    full_q = review_sys + "\n\n---\nConversation so far:\n" + history_text
+                                    # Re-include image bytes for context
+                                    img_buf_fu = io.BytesIO(st.session_state.get("coach_review_img_bytes", b""))
+                                    img_fu_bytes = img_buf_fu.getvalue()
+                                    if img_fu_bytes:
+                                        coach_resp_fu = client_coach.models.generate_content(
+                                            model=model_choice,
+                                            contents=[
+                                                full_q,
+                                                google_types.Part.from_bytes(data=img_fu_bytes, mime_type="image/png"),
+                                            ],
+                                        )
+                                    else:
+                                        coach_resp_fu = client_coach.models.generate_content(
+                                            model=model_choice, contents=[full_q])
+                                    followup_answer = coach_resp_fu.text
+
+                                else:
+                                    # Claude: first message carries the image, rest are plain text
+                                    client_coach = anthropic.Anthropic(api_key=api_key)
+                                    api_msgs = []
+                                    for i, m in enumerate(conv):
+                                        if i == 0 and m["role"] == "user" and img_b64_key:
+                                            # First user message: include image
+                                            api_msgs.append({
+                                                "role": "user",
+                                                "content": [
+                                                    {"type": "image", "source": {
+                                                        "type": "base64",
+                                                        "media_type": "image/jpeg",
+                                                        "data": img_b64_key,
+                                                    }},
+                                                    {"type": "text", "text": m["content"]},
+                                                ],
+                                            })
+                                        else:
+                                            api_msgs.append({"role": m["role"], "content": m["content"]})
+
+                                    coach_resp_fu = client_coach.messages.create(
+                                        model=model_choice,
+                                        max_tokens=1800,
+                                        system=review_sys,
+                                        messages=api_msgs[-20:],  # keep last 20 turns
+                                    )
+                                    followup_answer = coach_resp_fu.content[0].text
+
+                                st.markdown(followup_answer)
+                                conv.append({"role": "assistant", "content": followup_answer})
+                                st.session_state["coach_review_conv"] = conv
+
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
+
+        # ── Past session history ───────────────────────────
+        if not active and st.session_state.get("coach_review_history"):
+            history = st.session_state["coach_review_history"]
+            with st.expander(f"📚 Past Sessions · 历史对话 ({len(history)} sessions)", expanded=False):
+                for i, sess in enumerate(reversed(history[-5:]), 1):
+                    st.markdown(f"**Session {i}** — Focus: {sess.get('focus', '—')}")
+                    for msg in sess.get("conversation", []):
+                        role_label = "🧑 You" if msg["role"] == "user" else "🎓 Coach"
+                        content_preview = msg["content"][:300] + ("..." if len(msg["content"]) > 300 else "")
+                        st.markdown(f"**{role_label}:** {content_preview}")
                     st.divider()
 
 
