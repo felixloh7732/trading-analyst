@@ -4134,44 +4134,40 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
 
             with bull_col:
                 bull_conf = int(bull.get("confidence", 5))
-                st.markdown(
-                    f"<div style='background:#061a0e;border:2px solid {bull_bdr};"
-                    f"border-radius:12px;padding:6px 14px'>"
-                    f"<span style='color:#4ade80;font-size:13px;font-weight:700'>{bull_badge}</span>"
-                    f"</div>", unsafe_allow_html=True)
-                st.markdown(f"**🐂 BULL CASE** &nbsp; `{bull_conf}/10`")
-                bull_bar = "🟩" * bull_conf + "⬜" * (10 - bull_conf)
-                st.caption(bull_bar)
-                st.markdown(f"> *{bull.get('headline', '')}*")
+                # Header: bright green on white background — always readable
+                if winner == "BULL":
+                    st.markdown("<div style='background:#22c55e;color:#fff;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🏆 WINNER &nbsp;·&nbsp; 🐂 BULL CASE</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='background:#166534;color:#86efac;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🐂 BULL CASE</div>", unsafe_allow_html=True)
+                st.markdown(f"Confidence: **{bull_conf}/10** &nbsp; " + "🟩" * bull_conf + "⬜" * (10 - bull_conf))
+                st.info(f"💬 *{bull.get('headline', '')}*")
                 st.markdown(bull.get('argument', ''))
-                st.markdown("**Evidence:**")
+                st.markdown("**✅ Bull Evidence:**")
                 ev_list = bull.get('evidence', [])
                 if isinstance(ev_list, list):
                     for ev in ev_list:
-                        st.markdown(f"✅ {ev}")
-                st.markdown("**Trade Plan:**")
+                        st.markdown(f"- ✅ {ev}")
+                st.markdown("**📊 Trade Plan:**")
                 st.markdown(f"- 🎯 Entry: `{bull.get('entry_zone','—')}`")
                 st.markdown(f"- 💰 Target: `{bull.get('target','—')}`")
                 st.markdown(f"- 🚫 Invalidation: `{bull.get('invalidation','—')}`")
 
             with bear_col:
                 bear_conf = int(bear.get("confidence", 5))
-                st.markdown(
-                    f"<div style='background:#1a0606;border:2px solid {bear_bdr};"
-                    f"border-radius:12px;padding:6px 14px'>"
-                    f"<span style='color:#f87171;font-size:13px;font-weight:700'>{bear_badge}</span>"
-                    f"</div>", unsafe_allow_html=True)
-                st.markdown(f"**🐻 BEAR CASE** &nbsp; `{bear_conf}/10`")
-                bear_bar = "🟥" * bear_conf + "⬜" * (10 - bear_conf)
-                st.caption(bear_bar)
-                st.markdown(f"> *{bear.get('headline', '')}*")
+                # Header: bright red on white background — always readable
+                if winner == "BEAR":
+                    st.markdown("<div style='background:#ef4444;color:#fff;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🏆 WINNER &nbsp;·&nbsp; 🐻 BEAR CASE</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='background:#7f1d1d;color:#fca5a5;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🐻 BEAR CASE</div>", unsafe_allow_html=True)
+                st.markdown(f"Confidence: **{bear_conf}/10** &nbsp; " + "🟥" * bear_conf + "⬜" * (10 - bear_conf))
+                st.info(f"💬 *{bear.get('headline', '')}*")
                 st.markdown(bear.get('argument', ''))
-                st.markdown("**Evidence:**")
+                st.markdown("**❌ Bear Evidence:**")
                 ev_list_b = bear.get('evidence', [])
                 if isinstance(ev_list_b, list):
                     for ev in ev_list_b:
-                        st.markdown(f"❌ {ev}")
-                st.markdown("**Trade Plan:**")
+                        st.markdown(f"- ❌ {ev}")
+                st.markdown("**📊 Trade Plan:**")
                 st.markdown(f"- 🎯 Entry: `{bear.get('entry_zone','—')}`")
                 st.markdown(f"- 💰 Target: `{bear.get('target','—')}`")
                 st.markdown(f"- 🚫 Invalidation: `{bear.get('invalidation','—')}`")
@@ -4180,7 +4176,6 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
 
             # ── Judge verdict ──────────────────────────────
             w_icon = "🐂" if winner == "BULL" else "🐻"
-            w_col_txt = "green" if winner == "BULL" else "red"
             st.markdown(f"### ⚖️ Judge's Ruling — {w_icon} {winner} WINS")
             st.success(f"**Why {winner} won:** {judge.get('winner_reason', '')}")
             st.error(f"**Losing side's fatal flaw:** {judge.get('loser_weakness', '')}")
