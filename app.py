@@ -2523,507 +2523,360 @@ Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
 # TOOL 4 — AI TRADING COACH
 # ════════════════════════════════════════════════════════════
 with tool_tab4:
-    st.markdown("### 🤖 AI Trading Coach 交易导师")
 
-    # ── Coach mode selector ────────────────────────────────
-    coach_mode = st.radio(
-        "选择模式 / Select mode",
-        ["💬 Ask anything", "🔍 Review my analysis"],
-        horizontal=True,
-        key="coach_mode",
-        help="Ask anything = general Q&A | Review = upload YOUR chart and get expert feedback on your analysis",
-    )
-    st.divider()
+    # ── Initialise conversation store ──────────────────────────
+    if "coach_convs" not in st.session_state:
+        st.session_state["coach_convs"] = []
+    if "coach_active_id" not in st.session_state:
+        st.session_state["coach_active_id"] = None
+
+    COACH_SYSTEM = """You are an elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices. You specialise in Smart Money Concepts (SMC), price action, risk management, and trading psychology.
+
+Your role:
+• Answer ALL trading questions clearly, whether beginner or advanced
+• When a chart image is shared, analyse it thoroughly: trend, structure, key levels, BOS/CHoCH, supply/demand, entry/SL/TP
+• Give honest, direct feedback on the student's trades and analysis — praise what is right, correct what is wrong
+• Speak with authority but stay encouraging; trading is a journey
+• Use examples and analogies to explain complex concepts
+• Default language: answer in the same language the student uses (English or Chinese)
+
+You follow these trading principles:
+- Top-Down analysis: D1 → H4 → H1 → M15
+- SMC: BOS, CHoCH, Liquidity sweeps, Supply/Demand zones
+- Risk management: never risk more than 1-2% per trade, always define SL before entry
+- Patience: only take high-confluence setups"""
+
+    def _coach_title(messages):
+        """Auto-generate a conversation title from the first user message."""
+        for m in messages:
+            if m.get("role") == "user":
+                txt = m.get("content", "")
+                if isinstance(txt, str) and txt.strip():
+                    t = txt.strip().replace("\n", " ")
+                    return (t[:36] + "…") if len(t) > 36 else t
+        return "New Chat"
+
+    def _new_coach_conv():
+        """Create a new blank conversation, set it active."""
+        import uuid, datetime
+        cid = str(uuid.uuid4())[:8]
+        st.session_state["coach_convs"].append({
+            "id":         cid,
+            "title":      "New Chat",
+            "messages":   [],
+            "created_at": datetime.datetime.now().strftime("%b %d, %H:%M"),
+            "img_b64":    None,
+            "img_bytes":  None,
+        })
+        st.session_state["coach_active_id"]  = cid
+        st.session_state["coach_img_counter"] = st.session_state.get("coach_img_counter", 0) + 1
+
+    def _active_conv():
+        aid = st.session_state.get("coach_active_id")
+        for c in st.session_state["coach_convs"]:
+            if c["id"] == aid:
+                return c
+        return None
+
+    # ── CSS for the coach panel ────────────────────────────────
+    st.markdown("""
+<style>
+/* Left chat-list panel */
+.coach-list-panel {
+    background: #0d1117;
+    border-right: 1px solid #21262d;
+    border-radius: 12px;
+    padding: 0;
+    min-height: 520px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+    # ── Two-column layout ──────────────────────────────────────
+    c_left, c_right = st.columns([1, 3], gap="small")
 
     # ══════════════════════════════════════════════════════
-    # MODE 1 — Ask Anything (general Q&A chat)
+    # LEFT PANEL — conversation list
     # ══════════════════════════════════════════════════════
-    if coach_mode == "💬 Ask anything":
-        st.caption("用中文或英文问任何交易问题 · Ask any trading question in English or Chinese")
+    with c_left:
+        st.markdown("""
+<div style='background:#0d1117;border:1px solid #21262d;border-radius:12px;
+padding:12px 10px 8px 10px;min-height:540px'>
+<div style='font-size:12px;color:#6e7681;letter-spacing:1.5px;text-transform:uppercase;
+margin-bottom:10px;padding:0 4px'>🤖 AI Coach</div>
+""", unsafe_allow_html=True)
 
-        # Initialise chat history
-        if "coach_messages" not in st.session_state:
-            st.session_state["coach_messages"] = [
-                {"role": "assistant", "content": (
-                    "你好！我是你的AI交易导师 👋\n\n"
-                    "我专注于 **SMC / Wyckoff / Price Action / Scalping / Risk Management**。\n\n"
-                    "你可以问我：\n"
-                    "- 「Supply & Demand Zone 跟 S/R 有什么区别？」\n"
-                    "- 「CHoCH 和 BOS 有什么区别？」\n"
-                    "- 「Scalper 应该在什么时候进场？」\n"
-                    "- 「How do I identify a liquidity sweep?」\n\n"
-                    "随时问，我都在！😊"
-                )}
-            ]
+        # New Chat button
+        if st.button("✏️ New Chat", use_container_width=True, key="coach_new_btn", type="primary"):
+            _new_coach_conv()
+            st.rerun()
 
-        for msg in st.session_state["coach_messages"]:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-        if user_question := st.chat_input("问我任何交易问题... / Ask any trading question...", key="coach_qa_input"):
-            if not api_key:
-                st.warning("👈 请先在侧边栏输入 API Key")
-            else:
-                st.session_state["coach_messages"].append({"role": "user", "content": user_question})
-                with st.chat_message("user"):
-                    st.markdown(user_question)
+        convs = st.session_state["coach_convs"]
+        if not convs:
+            st.markdown("<div style='color:#6e7681;font-size:12px;padding:8px 4px'>No chats yet.<br>Click New Chat to start.</div>",
+                        unsafe_allow_html=True)
+        else:
+            active_id = st.session_state.get("coach_active_id")
+            # Show newest first
+            for conv in reversed(convs):
+                is_active = conv["id"] == active_id
+                label = conv.get("title", "New Chat")
+                date  = conv.get("created_at", "")
+                has_img = bool(conv.get("img_b64"))
+                img_ico = "📷 " if has_img else "💬 "
 
-                with st.chat_message("assistant"):
-                    with st.spinner("思考中..."):
-                        try:
-                            coach_system = """You are an elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices.
-You specialise in Wyckoff Method, Price Action, Market Structure (BOS/CHoCH), Liquidity, Supply & Demand, Fibonacci, Scalping, Day Trading, and Risk Management.
-You respond in the same language the student uses (English or Chinese/Mandarin). If they mix languages, respond in Chinese primarily.
-Keep answers practical, clear, and educational. Use bullet points and examples where helpful.
-Always emphasise risk management and discipline. Be direct — tell students clearly when something is right or wrong.
-Never give specific financial advice or tell someone to buy/sell a specific real asset."""
+                if is_active:
+                    st.markdown(f"""
+<div style='background:#1f2937;border:1px solid #3b82f6;border-radius:8px;
+padding:8px 10px;margin:3px 0;cursor:pointer'>
+  <div style='font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis'>{img_ico}{label}</div>
+  <div style='font-size:10px;color:#6b7280;margin-top:2px'>{date}</div>
+</div>""", unsafe_allow_html=True)
+                else:
+                    if st.button(f"{img_ico}{label}", key=f"conv_sel_{conv['id']}",
+                                 use_container_width=True, help=date):
+                        st.session_state["coach_active_id"] = conv["id"]
+                        st.rerun()
 
-                            if model_choice.startswith("gemini"):
-                                client_coach = google_genai.Client(api_key=api_key)
-                                history_text = "\n".join([
-                                    f"{'Student' if m['role']=='user' else 'Coach'}: {m['content']}"
-                                    for m in st.session_state["coach_messages"][-10:]
-                                ])
-                                full_q = coach_system + "\n\nConversation:\n" + history_text
-                                coach_resp = client_coach.models.generate_content(
-                                    model=model_choice, contents=[full_q])
-                                answer = coach_resp.text
-                            else:
-                                client_coach = anthropic.Anthropic(api_key=api_key)
-                                history_msgs = [
-                                    {"role": m["role"], "content": m["content"]}
-                                    for m in st.session_state["coach_messages"]
-                                    if m["role"] in ("user", "assistant")
-                                ][-12:]
-                                coach_resp = client_coach.messages.create(
-                                    model=model_choice, max_tokens=1500,
-                                    system=coach_system, messages=history_msgs)
-                                answer = coach_resp.content[0].text
+        st.markdown("</div>", unsafe_allow_html=True)
 
-                            st.markdown(answer)
-                            st.session_state["coach_messages"].append({"role": "assistant", "content": answer})
-                            # ── Persist chat to localStorage ──
-                            if _LS_AVAILABLE:
-                                try:
-                                    _ls.setItem("trading_analyst_chat",
-                                                st.session_state["coach_messages"][-40:])
-                                except Exception:
-                                    pass
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
+    # ══════════════════════════════════════════════════════
+    # RIGHT PANEL — active conversation
+    # ══════════════════════════════════════════════════════
+    with c_right:
+        conv = _active_conv()
 
-        if len(st.session_state.get("coach_messages", [])) > 2:
-            if st.button("🗑️ Clear Chat 清除对话", key="clear_coach"):
-                st.session_state["coach_messages"] = [st.session_state["coach_messages"][0]]
-                if _LS_AVAILABLE:
-                    try:
-                        _ls.deleteItem("trading_analyst_chat")
-                    except Exception:
-                        pass
+        if conv is None:
+            # ── Welcome screen ─────────────────────────────
+            st.markdown("""
+<div style='text-align:center;padding:60px 20px'>
+  <div style='font-size:52px;margin-bottom:16px'>🎓</div>
+  <h2 style='color:#f1f5f9;margin:0 0 8px 0'>AI Trading Coach</h2>
+  <p style='color:#94a3b8;font-size:15px;margin:0 0 24px 0'>
+    Your personal trading mentor. Ask anything, upload charts for review,<br>
+    or get feedback on your analysis. Available 24/7.
+  </p>
+  <div style='display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:32px'>
+    <div style='background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px;
+    text-align:left;max-width:180px'>
+      <div style='font-size:20px;margin-bottom:6px'>💬</div>
+      <div style='color:#e2e8f0;font-size:13px;font-weight:600'>Ask Anything</div>
+      <div style='color:#64748b;font-size:12px'>Strategy, psychology, concepts</div>
+    </div>
+    <div style='background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px;
+    text-align:left;max-width:180px'>
+      <div style='font-size:20px;margin-bottom:6px'>📷</div>
+      <div style='color:#e2e8f0;font-size:13px;font-weight:600'>Chart Review</div>
+      <div style='color:#64748b;font-size:12px'>Upload your chart for feedback</div>
+    </div>
+    <div style='background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px;
+    text-align:left;max-width:180px'>
+      <div style='font-size:20px;margin-bottom:6px'>🔍</div>
+      <div style='color:#e2e8f0;font-size:13px;font-weight:600'>Trade Review</div>
+      <div style='color:#64748b;font-size:12px'>Share your entry & get critique</div>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+            if st.button("✏️ Start a New Chat", use_container_width=False, type="primary", key="coach_start_btn"):
+                _new_coach_conv()
                 st.rerun()
 
-    # ══════════════════════════════════════════════════════
-    # MODE 2 — Review My Analysis (continuous conversation)
-    # ══════════════════════════════════════════════════════
-    else:
-        # ── Session state keys for review conversation ────
-        # coach_review_active  : bool  — is a session in progress?
-        # coach_review_conv    : list  — full message history [{role, content}]
-        # coach_review_img_b64 : str   — base64 image kept for API calls
-        # coach_review_img_bytes: bytes — PNG bytes for display
-        # coach_review_system  : str   — system prompt for this session
-
-        active = st.session_state.get("coach_review_active", False)
-
-        # ══════════════════════════════════════════════════
-        # SUB-PHASE A — Setup form (no active conversation)
-        # ══════════════════════════════════════════════════
-        if not active:
-            st.caption("上传你自己画好分析线的图表，AI导师帮你检查，之后可以继续追问直到完全明白为止。")
-            st.caption("Upload YOUR chart → get expert review → keep chatting until every doubt is cleared.")
-
-            # Upload
-            review_img_file = st.file_uploader(
-                "📷 Upload your chart (with your own drawings) · 上传你的分析图",
-                type=["png", "jpg", "jpeg", "webp"],
-                key="coach_review_img",
-            )
-            if review_img_file:
-                preview_img = Image.open(review_img_file)
-                st.image(preview_img, caption="Your chart · 你的图表", use_container_width=True)
-
-            # Description
-            st.markdown("**描述你的分析 / Describe your analysis:**")
-            review_description = st.text_area(
-                label="analysis_desc",
-                label_visibility="collapsed",
-                placeholder=(
-                    "例如 / Example:\n"
-                    "- 我画了一条下降趋势线，从左上到右下\n"
-                    "- 我认为这里是一个 Supply Zone（供给区）\n"
-                    "- 我认为价格在这里形成了 CHoCH，因为打破了低点\n"
-                    "- I drew support at the recent swing low and resistance at the last swing high\n"
-                    "- I think this is a bull flag consolidation"
-                ),
-                height=140,
-                key="coach_review_desc",
-            )
-
-            # Options
-            col_r1, col_r2 = st.columns(2)
-            with col_r1:
-                review_focus = st.selectbox(
-                    "Review focus · 重点检查",
-                    [
-                        "Overall analysis · 整体分析",
-                        "Trend & structure · 趋势与结构",
-                        "Supply & Demand Zones",
-                        "BOS & CHoCH identification",
-                        "Support & Resistance levels",
-                        "Trendlines · 趋势线画法",
-                        "Liquidity zones · 流动性",
-                        "Pattern identification · 形态识别",
-                    ],
-                    key="coach_review_focus",
-                )
-            with col_r2:
-                review_lang = st.selectbox(
-                    "Response language · 回复语言",
-                    ["中文为主 (Chinese)", "English", "两种都用 (Both)"],
-                    key="coach_review_lang",
-                )
-
-            # Start button
-            if st.button("🔍 Start Review Session · 开始分析点评", use_container_width=True, key="coach_review_start"):
-                if not api_key:
-                    st.warning("👈 请先在侧边栏输入 API Key")
-                elif not review_img_file:
-                    st.warning("👆 请先上传你的图表 / Please upload your chart first")
-                elif not review_description.strip():
-                    st.warning("📝 请先描述你的分析 / Please describe your analysis first")
-                else:
-                    with st.spinner("导师正在审查你的分析... Reviewing your analysis..."):
-                        try:
-                            lang_instruction = {
-                                "中文为主 (Chinese)": "Respond primarily in Chinese (Mandarin). Use English only for technical terms.",
-                                "English": "Respond in English.",
-                                "两种都用 (Both)": "Respond in both English and Chinese — write each point in English first, then the Chinese translation below it.",
-                            }.get(review_lang, "Respond in Chinese.")
-
-                            review_system = f"""You are a strict but fair elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices.
-You specialise in Wyckoff, Price Action, BOS/CHoCH, Liquidity, Supply & Demand, Fibonacci, and Scalping.
-
-{lang_instruction}
-
-You are in an ONGOING COACHING SESSION with a student. A chart image was shared at the start of the session.
-You have already seen the chart and given an initial review. The student may now ask follow-up questions, disagree with your points, ask for more detail on specific areas, or ask you to explain concepts they don't understand.
-
-BEHAVIOUR RULES:
-- Always refer back to what you can see in the chart when answering follow-ups
-- If the student disagrees with your point, re-examine your reasoning and either stand firm with a clear explanation, or acknowledge if they have a valid point
-- If they ask "why is this wrong?", explain the exact RULE or PRINCIPLE that was violated
-- If they ask "what should I have done instead?", show them the correct approach
-- Be direct and specific — never give vague answers
-- Use numbered steps or bullet points when explaining rules
-- Focus on this area throughout the session: {review_focus}
-
-For the INITIAL review, always follow this structure:
-## ✅ What You Got Right · 做对的地方
-## ❌ What Is Wrong · 需要改正的地方
-## 💡 What You Missed · 你没有注意到的
-## 📝 How to Improve · 改进建议
-## 🎯 Overall Score · 整体评分 (X/10)
-
-For FOLLOW-UP messages, respond naturally to the question — no need to repeat the full structure."""
-
-                            # Encode the image
-                            review_img_obj = Image.open(review_img_file)
-                            img_b64 = encode_image_to_base64(review_img_obj)
-
-                            # Store PNG bytes for display (lossless)
-                            img_disp_buf = io.BytesIO()
-                            disp_img = review_img_obj.copy()
-                            if disp_img.mode in ("RGBA", "P"):
-                                disp_img = disp_img.convert("RGB")
-                            disp_img.save(img_disp_buf, format="PNG", compress_level=1)
-                            img_disp_buf.seek(0)
-
-                            first_user_msg = f"""Please review my chart analysis.
-
-My analysis · 我的分析：
-{review_description}
-
-Focus area: {review_focus}
-
-Please give me your full review — what I got right, what is wrong, what I missed, and how to improve."""
-
-                            # Call AI with the image
-                            if model_choice.startswith("gemini"):
-                                client_coach = google_genai.Client(api_key=api_key)
-                                img_buf_r = io.BytesIO()
-                                review_img_rgb = review_img_obj.copy()
-                                if review_img_rgb.mode in ("RGBA", "P"):
-                                    review_img_rgb = review_img_rgb.convert("RGB")
-                                review_img_rgb.save(img_buf_r, format="JPEG", quality=92)
-                                img_bytes_r = img_buf_r.getvalue()
-
-                                full_prompt_r = review_system + "\n\nStudent: " + first_user_msg
-                                coach_resp_r = client_coach.models.generate_content(
-                                    model=model_choice,
-                                    contents=[
-                                        full_prompt_r,
-                                        google_types.Part.from_bytes(data=img_bytes_r, mime_type="image/jpeg"),
-                                    ],
-                                )
-                                initial_answer = coach_resp_r.text
-                            else:
-                                client_coach = anthropic.Anthropic(api_key=api_key)
-                                coach_resp_r = client_coach.messages.create(
-                                    model=model_choice,
-                                    max_tokens=2500,
-                                    system=review_system,
-                                    messages=[{
-                                        "role": "user",
-                                        "content": [
-                                            {"type": "image", "source": {
-                                                "type": "base64",
-                                                "media_type": "image/jpeg",
-                                                "data": img_b64,
-                                            }},
-                                            {"type": "text", "text": first_user_msg},
-                                        ],
-                                    }],
-                                )
-                                initial_answer = coach_resp_r.content[0].text
-
-                            # ── Activate the conversation session ──
-                            st.session_state["coach_review_active"]    = True
-                            st.session_state["coach_review_system"]    = review_system
-                            st.session_state["coach_review_img_b64"]   = img_b64
-                            st.session_state["coach_review_img_bytes"] = img_disp_buf.getvalue()
-                            st.session_state["coach_active_focus"]     = review_focus
-                            # Conversation history: user's first message + coach's initial review
-                            st.session_state["coach_review_conv"] = [
-                                {"role": "user",      "content": first_user_msg},
-                                {"role": "assistant", "content": initial_answer},
-                            ]
-                            st.rerun()
-
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
-
-        # ══════════════════════════════════════════════════
-        # SUB-PHASE B — Active conversation
-        # ══════════════════════════════════════════════════
         else:
-            focus_label = st.session_state.get("coach_active_focus", "")
+            # ── Active conversation ────────────────────────
 
-            # ── Header bar with focus + stop button ───────
-            hdr_col1, hdr_col2 = st.columns([3, 1])
-            with hdr_col1:
-                st.markdown(f"**🎓 Coaching Session · 导师辅导中** — Focus: {focus_label}")
-                st.caption("继续追问导师，直到你完全明白为止。当你满意了，按右边的按钮结束对话。")
-            with hdr_col2:
-                if st.button("🛑 Stop Conversation\n结束对话", use_container_width=True, key="coach_stop_btn"):
-                    # Save to history before clearing
-                    if "coach_review_history" not in st.session_state:
-                        st.session_state["coach_review_history"] = []
-                    st.session_state["coach_review_history"].append({
-                        "focus":        focus_label,
-                        "conversation": list(st.session_state.get("coach_review_conv", [])),
-                    })
-                    # Clear active session
-                    for k in ["coach_review_active", "coach_review_conv",
-                              "coach_review_img_b64", "coach_review_img_bytes",
-                              "coach_review_system", "coach_active_focus",
-                              "coach_extra_img_counter"]:
-                        st.session_state.pop(k, None)
-                    st.success("✅ 对话已结束，已保存到历史记录。/ Session ended and saved to history.")
+            # Header bar
+            h_col1, h_col2 = st.columns([5, 1])
+            with h_col1:
+                st.markdown(f"<div style='font-size:15px;font-weight:700;color:#f1f5f9;padding:4px 0'>"
+                            f"💬 {conv.get('title','New Chat')}</div>", unsafe_allow_html=True)
+            with h_col2:
+                if st.button("🗑️", key=f"del_conv_{conv['id']}", help="Delete this chat"):
+                    st.session_state["coach_convs"] = [
+                        c for c in st.session_state["coach_convs"] if c["id"] != conv["id"]
+                    ]
+                    st.session_state["coach_active_id"] = None
                     st.rerun()
 
-            st.divider()
+            st.markdown("<hr style='border-color:#1e293b;margin:6px 0 12px 0'>", unsafe_allow_html=True)
 
-            # ── Show chart thumbnail ───────────────────────
-            img_bytes_disp = st.session_state.get("coach_review_img_bytes")
-            if img_bytes_disp:
-                with st.expander("📷 View your chart · 查看图表", expanded=False):
-                    st.image(img_bytes_disp, use_container_width=True)
+            messages = conv.get("messages", [])
 
-            # ── Render conversation history ────────────────
-            conv = st.session_state.get("coach_review_conv", [])
-            for msg in conv:
-                role  = msg["role"]
-                # For the first user message, show a simplified version
-                if role == "user" and msg == conv[0]:
-                    with st.chat_message("user"):
-                        desc_lines = [l for l in msg["content"].split("\n") if l.strip() and not l.startswith("Please review") and not l.startswith("Focus area") and not l.startswith("Please tell")]
-                        st.markdown("\n".join(desc_lines[:8]))
-                else:
-                    with st.chat_message(role):
-                        # Show attached image thumbnail if present
-                        if role == "user" and msg.get("extra_img_b64"):
-                            try:
-                                extra_thumb = base64.b64decode(msg["extra_img_b64"])
-                                st.image(extra_thumb, width=220, caption="📎 Chart attached")
-                            except Exception:
-                                pass
-                        st.markdown(msg["content"])
+            # ── If no messages yet — show first-message setup ──
+            if not messages:
+                st.markdown("<div style='color:#94a3b8;font-size:14px;margin-bottom:12px'>"
+                            "💡 Optionally attach a chart image before sending your first message.</div>",
+                            unsafe_allow_html=True)
+                img_counter = st.session_state.get("coach_img_counter", 0)
+                first_img = st.file_uploader(
+                    "📷 Attach chart (optional)",
+                    type=["png", "jpg", "jpeg", "webp"],
+                    key=f"coach_first_img_{img_counter}",
+                )
+                if first_img:
+                    try:
+                        _fp = Image.open(first_img)
+                        _fb = io.BytesIO()
+                        _fr = _fp.copy()
+                        if _fr.mode in ("RGBA", "P"):
+                            _fr = _fr.convert("RGB")
+                        _fr.save(_fb, format="JPEG", quality=92)
+                        conv["img_bytes"] = _fb.getvalue()
+                        conv["img_b64"]   = base64.b64encode(conv["img_bytes"]).decode()
+                        st.image(conv["img_bytes"], caption="✅ Chart attached", width=260)
+                    except Exception:
+                        pass
 
-            # ── Optional image attachment for follow-up ────
-            st.markdown("<br>", unsafe_allow_html=True)
-            _extra_counter = st.session_state.get("coach_extra_img_counter", 0)
-            extra_img_file = st.file_uploader(
-                "📎 Attach a new chart (optional) · 可选：上传新图表",
-                type=["png", "jpg", "jpeg", "webp"],
-                key=f"coach_extra_img_{_extra_counter}",
-                help="Upload another chart — e.g. your updated drawing or a result screenshot",
+            # ── Render existing messages ───────────────────
+            for mi, msg in enumerate(messages):
+                role = msg.get("role", "user")
+                with st.chat_message(role):
+                    # Show chart thumbnail on first user message
+                    if mi == 0 and role == "user" and conv.get("img_bytes"):
+                        with st.expander("📷 Chart attached", expanded=False):
+                            st.image(conv["img_bytes"], use_container_width=True)
+                    # Show extra attached image if any
+                    if role == "user" and msg.get("extra_img_b64"):
+                        try:
+                            st.image(base64.b64decode(msg["extra_img_b64"]),
+                                     width=220, caption="📎 Chart")
+                        except Exception:
+                            pass
+                    st.markdown(msg.get("content", ""))
+
+            # ── Extra image attachment for follow-up ──────
+            if messages:
+                _ec = st.session_state.get("coach_img_counter", 0)
+                extra_img_file = st.file_uploader(
+                    "📎 Attach a new chart (optional)",
+                    type=["png", "jpg", "jpeg", "webp"],
+                    key=f"coach_extra_{conv['id']}_{_ec}",
+                )
+            else:
+                extra_img_file = None
+
+            # ── Chat input ─────────────────────────────────
+            user_input = st.chat_input(
+                "问我任何交易问题… / Ask any trading question…",
+                key=f"coach_input_{conv['id']}",
             )
-            if extra_img_file:
-                st.caption("✅ Image attached — it will be sent with your next message.")
 
-            # ── Follow-up chat input ───────────────────────
-            followup = st.chat_input(
-                "继续追问导师... / Ask a follow-up question...",
-                key="coach_review_followup",
-            )
-
-            if followup:
+            if user_input:
                 if not api_key:
-                    st.warning("👈 请先在侧边栏输入 API Key")
+                    st.warning("👈 Enter your API key in the sidebar first.")
                 else:
-                    # Encode extra image if attached
-                    extra_img_b64 = None
-                    extra_img_bytes_send = None
+                    # Encode extra image if any
+                    extra_b64 = None
+                    extra_bytes = None
                     if extra_img_file:
                         try:
-                            _extra_pil = Image.open(extra_img_file)
-                            _extra_buf = io.BytesIO()
-                            _extra_rgb = _extra_pil.copy()
-                            if _extra_rgb.mode in ("RGBA", "P"):
-                                _extra_rgb = _extra_rgb.convert("RGB")
-                            _extra_rgb.save(_extra_buf, format="JPEG", quality=92)
-                            extra_img_bytes_send = _extra_buf.getvalue()
-                            extra_img_b64 = base64.b64encode(extra_img_bytes_send).decode("utf-8")
-                            # Bump counter so uploader resets after send
-                            st.session_state["coach_extra_img_counter"] = _extra_counter + 1
+                            _ep = Image.open(extra_img_file)
+                            _eb = io.BytesIO()
+                            _er = _ep.copy()
+                            if _er.mode in ("RGBA", "P"):
+                                _er = _er.convert("RGB")
+                            _er.save(_eb, format="JPEG", quality=92)
+                            extra_bytes = _eb.getvalue()
+                            extra_b64   = base64.b64encode(extra_bytes).decode()
+                            st.session_state["coach_img_counter"] = _ec + 1
                         except Exception:
                             pass
 
-                    # Build display text for the user message
-                    user_display = followup
-                    if extra_img_b64:
-                        user_display = followup  # image shown via extra_img_b64 field
+                    # Append user message
+                    user_entry = {"role": "user", "content": user_input}
+                    if extra_b64:
+                        user_entry["extra_img_b64"] = extra_b64
+                    conv["messages"].append(user_entry)
 
-                    # Add user message to history
-                    user_conv_entry = {"role": "user", "content": followup}
-                    if extra_img_b64:
-                        user_conv_entry["extra_img_b64"] = extra_img_b64
-                    conv.append(user_conv_entry)
-                    st.session_state["coach_review_conv"] = conv
+                    # Auto-set title from first user message
+                    if len(conv["messages"]) == 1:
+                        conv["title"] = _coach_title(conv["messages"])
 
                     with st.chat_message("user"):
-                        if extra_img_b64:
+                        if extra_b64:
                             try:
-                                st.image(base64.b64decode(extra_img_b64), width=220, caption="📎 Chart attached")
+                                st.image(base64.b64decode(extra_b64), width=220, caption="📎 Chart")
                             except Exception:
                                 pass
-                        st.markdown(followup)
+                        st.markdown(user_input)
 
                     with st.chat_message("assistant"):
-                        with st.spinner("导师思考中... Thinking..."):
+                        with st.spinner("Thinking…"):
                             try:
-                                review_sys  = st.session_state.get("coach_review_system", "")
-                                img_b64_key = st.session_state.get("coach_review_img_b64", "")
-
                                 if model_choice.startswith("gemini"):
-                                    client_coach = google_genai.Client(api_key=api_key)
-                                    # Build full history text for Gemini
-                                    history_text = "\n\n".join([
+                                    client_c = google_genai.Client(api_key=api_key)
+                                    # Build history text
+                                    hist_txt = "\n\n".join([
                                         f"{'Student' if m['role']=='user' else 'Coach'}:\n{m['content']}"
-                                        for m in conv
+                                        for m in conv["messages"]
                                     ])
-                                    full_q = review_sys + "\n\n---\nConversation so far:\n" + history_text
-                                    # Build contents list
-                                    gemini_contents = [full_q]
-                                    # Include original chart for context
-                                    orig_img_bytes = st.session_state.get("coach_review_img_bytes", b"")
-                                    if orig_img_bytes:
-                                        gemini_contents.append(
-                                            google_types.Part.from_bytes(data=orig_img_bytes, mime_type="image/png")
-                                        )
-                                    # Include new chart if attached
-                                    if extra_img_bytes_send:
-                                        gemini_contents.append(
-                                            google_types.Part.from_bytes(data=extra_img_bytes_send, mime_type="image/jpeg")
-                                        )
-                                        gemini_contents[0] += "\n\n[The student has attached a NEW chart image above. Please analyse it in the context of your conversation.]"
-                                    coach_resp_fu = client_coach.models.generate_content(
-                                        model=model_choice,
-                                        contents=gemini_contents,
-                                    )
-                                    followup_answer = coach_resp_fu.text
+                                    full_prompt = COACH_SYSTEM + "\n\n---\nConversation:\n" + hist_txt
+                                    gemini_parts = [full_prompt]
+                                    # Original chart
+                                    if conv.get("img_bytes"):
+                                        gemini_parts.append(
+                                            google_types.Part.from_bytes(
+                                                data=conv["img_bytes"], mime_type="image/jpeg"))
+                                    # Extra chart
+                                    if extra_bytes:
+                                        gemini_parts.append(
+                                            google_types.Part.from_bytes(
+                                                data=extra_bytes, mime_type="image/jpeg"))
+                                        gemini_parts[0] += "\n\n[Student attached a NEW chart image above.]"
+                                    resp_c = client_c.models.generate_content(
+                                        model=model_choice, contents=gemini_parts)
+                                    answer = resp_c.text
 
                                 else:
-                                    # Claude: first message carries original image; extra image goes in current user message
-                                    client_coach = anthropic.Anthropic(api_key=api_key)
+                                    client_c = anthropic.Anthropic(api_key=api_key)
                                     api_msgs = []
-                                    for i, m in enumerate(conv):
-                                        if i == 0 and m["role"] == "user" and img_b64_key:
-                                            # First message: include original image
-                                            api_msgs.append({
-                                                "role": "user",
-                                                "content": [
-                                                    {"type": "image", "source": {
-                                                        "type": "base64",
-                                                        "media_type": "image/jpeg",
-                                                        "data": img_b64_key,
-                                                    }},
-                                                    {"type": "text", "text": m["content"]},
-                                                ],
+                                    for i, m in enumerate(conv["messages"]):
+                                        content_parts = []
+                                        # First message: include original chart
+                                        if i == 0 and conv.get("img_b64"):
+                                            content_parts.append({
+                                                "type": "image",
+                                                "source": {"type": "base64",
+                                                           "media_type": "image/jpeg",
+                                                           "data": conv["img_b64"]},
                                             })
-                                        elif m["role"] == "user" and m.get("extra_img_b64") and i == len(conv) - 1:
-                                            # Current user message with new image attached
-                                            api_msgs.append({
-                                                "role": "user",
-                                                "content": [
-                                                    {"type": "image", "source": {
-                                                        "type": "base64",
-                                                        "media_type": "image/jpeg",
-                                                        "data": m["extra_img_b64"],
-                                                    }},
-                                                    {"type": "text", "text": m["content"]},
-                                                ],
+                                        # Any message with extra image
+                                        if m.get("extra_img_b64"):
+                                            content_parts.append({
+                                                "type": "image",
+                                                "source": {"type": "base64",
+                                                           "media_type": "image/jpeg",
+                                                           "data": m["extra_img_b64"]},
                                             })
+                                        content_parts.append({"type": "text", "text": m["content"]})
+                                        role_msg = m["role"]
+                                        if len(content_parts) == 1:
+                                            api_msgs.append({"role": role_msg,
+                                                             "content": content_parts[0]["text"]})
                                         else:
-                                            api_msgs.append({"role": m["role"], "content": m["content"]})
+                                            api_msgs.append({"role": role_msg,
+                                                             "content": content_parts})
 
-                                    coach_resp_fu = client_coach.messages.create(
+                                    resp_c = client_c.messages.create(
                                         model=model_choice,
-                                        max_tokens=1800,
-                                        system=review_sys,
+                                        max_tokens=2000,
+                                        system=COACH_SYSTEM,
                                         messages=api_msgs[-20:],
                                     )
-                                    followup_answer = coach_resp_fu.content[0].text
+                                    answer = resp_c.content[0].text
 
-                                conv.append({"role": "assistant", "content": followup_answer})
-                                st.session_state["coach_review_conv"] = conv
+                                conv["messages"].append({"role": "assistant", "content": answer})
+                                st.markdown(answer)
 
                             except Exception as e:
-                                st.error(f"Error: {str(e)}")
+                                err_msg = f"❌ Error: {str(e)}"
+                                conv["messages"].append({"role": "assistant", "content": err_msg})
+                                st.error(err_msg)
 
-                    st.rerun()   # re-render page so chat_input reappears
-
-        # ── Past session history ───────────────────────────
-        if not active and st.session_state.get("coach_review_history"):
-            history = st.session_state["coach_review_history"]
-            with st.expander(f"📚 Past Sessions · 历史对话 ({len(history)} sessions)", expanded=False):
-                for i, sess in enumerate(reversed(history[-5:]), 1):
-                    st.markdown(f"**Session {i}** — Focus: {sess.get('focus', '—')}")
-                    for msg in sess.get("conversation", []):
-                        role_label = "🧑 You" if msg["role"] == "user" else "🎓 Coach"
-                        content_preview = msg["content"][:300] + ("..." if len(msg["content"]) > 300 else "")
-                        st.markdown(f"**{role_label}:** {content_preview}")
-                    st.divider()
+                    st.rerun()
 
 
 # ════════════════════════════════════════════════════════════
