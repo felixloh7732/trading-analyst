@@ -1587,7 +1587,7 @@ with st.sidebar:
             key="td_key_input",
         )
         if not twelve_data_key:
-            st.caption("Without this, Live Data uses yfinance (15-min delayed).")
+            st.caption("Required for all live data features — Chart Scanner, Live Data, MTF Panel, AI Debate.")
 
     st.divider()
 
@@ -2361,18 +2361,7 @@ with tool_tab3:
                             df_a["Datetime"] = _pd2.to_datetime(df_a["Datetime"])
                             df_a = df_a.sort_values("Datetime").set_index("Datetime")
                         else:
-                            import yfinance as _yf2
-                            _raw = _yf2.download(yf_sym_a, period=yf_period,
-                                                 interval=yf_int, auto_adjust=True, progress=False)
-                            if _raw.empty:
-                                raise ValueError(f"No data for {yf_sym_a}")
-                            if hasattr(_raw.columns, "levels"):
-                                _raw.columns = _raw.columns.get_level_values(0)
-                            if auto_tf == "H4":
-                                _raw = _raw.resample("4h").agg({"Open":"first","High":"max",
-                                                                 "Low":"min","Close":"last","Volume":"sum"}).dropna()
-                            _raw.index = _raw.index.tz_localize(None) if _raw.index.tzinfo else _raw.index
-                            df_a = _raw.tail(auto_candles).copy()
+                            raise ValueError("⚡ Twelve Data API key required. Add it in the sidebar under '📡 Live Data Key'.")
 
                         # Generate chart image
                         chart_img_a = generate_chart_image_from_df(df_a, pair_name, auto_tf)
@@ -2414,7 +2403,7 @@ Output ONLY this JSON, nothing else:
                            key=lambda x: x.get("confidence", 0), reverse=True)
             st.markdown("#### 🏆 Ranked Setups · 最佳机会排名")
             st.caption(f"Sorted by confidence · Timeframe: {auto_tf if 'auto_tf' in dir() else ''} · "
-                       f"{'🟢 Twelve Data real-time' if twelve_data_key else '🟡 yfinance delayed'}")
+                       "🟢 Twelve Data real-time")
 
             for rank, r in enumerate(_ares):
                 sig   = r.get("signal", "WAIT")
@@ -3134,22 +3123,21 @@ with tool_tab7:
 
     # ── Lazy imports ──────────────────────────────────────────
     try:
-        import yfinance as yf
         import plotly.graph_objects as go
         _LIVE_AVAILABLE = True
     except ImportError:
         _LIVE_AVAILABLE = False
-        st.error("📦 Live Data requires `yfinance` and `plotly`. Please redeploy after updating requirements.txt.")
+        st.error("📦 Live Data requires `plotly`. Please redeploy after updating requirements.txt.")
 
     if _LIVE_AVAILABLE:
         # ── Data source indicator ─────────────────────────────
         if twelve_data_key:
             st.success("🟢 **Real-time data** via Twelve Data · No delay")
         else:
-            st.warning("🟡 Using yfinance (15-min delayed). Add Twelve Data key in sidebar for real-time.")
+            st.warning("⚡ **Twelve Data API key required.** Add your key in the sidebar under '📡 Live Data Key' to use this feature.")
 
         # ── Ticker presets ────────────────────────────────────
-        # Each entry: display_name → (twelve_data_symbol, yfinance_fallback)
+        # Each entry: display_name → (twelve_data_symbol, _unused)
         TICKER_PRESETS = {
             "EUR/USD":        ("EUR/USD",  "EURUSD=X"),
             "GBP/USD":        ("GBP/USD",  "GBPUSD=X"),
@@ -3195,7 +3183,7 @@ with tool_tab7:
             td_sym, yf_sym = TICKER_PRESETS[preset_choice]
             if preset_choice == "Custom ✏️":
                 custom_input = st.text_input(
-                    "Twelve Data symbol (if key set) or yfinance ticker",
+                    "Twelve Data symbol",
                     placeholder="e.g. EUR/USD  or  AAPL",
                     key="ld_custom_ticker",
                 ).strip().upper()
@@ -3203,9 +3191,8 @@ with tool_tab7:
                 yf_sym  = custom_input
                 ticker_sym = custom_input
             else:
-                ticker_sym = td_sym if twelve_data_key else yf_sym
-                src_label  = "Twelve Data" if twelve_data_key else "yfinance"
-                st.caption(f"{src_label} symbol: `{ticker_sym}`")
+                ticker_sym = td_sym
+                st.caption(f"Twelve Data symbol: `{ticker_sym}`")
 
         with ctrl_c2:
             ld_tf = st.selectbox(
@@ -3284,30 +3271,7 @@ with tool_tab7:
                             )
                             st.session_state["ld_source"] = "Twelve Data 🟢 Real-time"
                         else:
-                            # ── yfinance fallback (delayed) ───
-                            import pandas as pd
-                            raw = yf.download(
-                                yf_sym if preset_choice != "Custom ✏️" else yf_sym,
-                                period=yf_period,
-                                interval=yf_interval,
-                                auto_adjust=True,
-                                progress=False,
-                            )
-                            if raw.empty:
-                                raise ValueError(f"No data for `{yf_sym}`. Check the symbol.")
-                            # Flatten MultiIndex if present
-                            if hasattr(raw.columns, "levels"):
-                                raw.columns = raw.columns.get_level_values(0)
-                            # Resample H4
-                            if ld_tf == "H4":
-                                raw = raw.resample("4h").agg({
-                                    "Open": "first", "High": "max",
-                                    "Low": "min", "Close": "last",
-                                    "Volume": "sum",
-                                }).dropna()
-                            raw.index = raw.index.tz_localize(None) if raw.index.tzinfo else raw.index
-                            df_raw = raw.tail(ld_candles).copy()
-                            st.session_state["ld_source"] = "yfinance 🟡 15-min delayed"
+                            raise ValueError("⚡ Twelve Data API key required. Add it in the sidebar under '📡 Live Data Key'.")
 
                         st.session_state["ld_df"]     = df_raw
                         st.session_state["ld_symbol"] = preset_choice
@@ -3505,7 +3469,7 @@ with tool_tab7:
 
                             # ── Run through existing AI analysis pipeline ──
                             ld_market_type = sym_label if "Custom" not in sym_label else "Financial instrument"
-                            ld_context = ld_extra_context or f"Live {tf_label} data — {n} candles fetched automatically via yfinance."
+                            ld_context = ld_extra_context or f"Live {tf_label} data — {n} candles fetched automatically via Twelve Data."
 
                             analysis_result = analyze_chart_with_ai(
                                 chart_pil, api_key, model_choice,
@@ -3636,18 +3600,7 @@ with tool_tab8:
                         df_mtf["Datetime"] = _pd_mtf.to_datetime(df_mtf["Datetime"])
                         df_mtf = df_mtf.sort_values("Datetime").set_index("Datetime")
                     else:
-                        import yfinance as _yf_mtf
-                        _raw = _yf_mtf.download(yf_sym_mtf, period=yf_period,
-                                                interval=yf_int, auto_adjust=True, progress=False)
-                        if _raw.empty:
-                            raise ValueError(f"No data for {yf_sym_mtf}")
-                        if hasattr(_raw.columns, "levels"):
-                            _raw.columns = _raw.columns.get_level_values(0)
-                        if tf_label == "H4":
-                            _raw = _raw.resample("4h").agg({"Open":"first","High":"max",
-                                                             "Low":"min","Close":"last","Volume":"sum"}).dropna()
-                        _raw.index = _raw.index.tz_localize(None) if _raw.index.tzinfo else _raw.index
-                        df_mtf = _raw.tail(n_candles).copy()
+                        raise ValueError("⚡ Twelve Data API key required. Add it in the sidebar under '📡 Live Data Key'.")
 
                     # ── Generate chart image ──────────────────
                     chart_pil_mtf = generate_chart_image_from_df(df_mtf, mtf_symbol, tf_label)
@@ -3964,22 +3917,69 @@ with tool_tab9:
                     df_db["Datetime"] = _pd_db.to_datetime(df_db["Datetime"])
                     df_db = df_db.sort_values("Datetime").set_index("Datetime")
                 else:
-                    import yfinance as _yf_db
-                    _raw_db = _yf_db.download(yf_sym_db, period=yf_per_db,
-                                              interval=yf_int_db, auto_adjust=True, progress=False)
-                    if _raw_db.empty:
-                        raise ValueError(f"No data for {yf_sym_db}")
-                    if hasattr(_raw_db.columns, "levels"):
-                        _raw_db.columns = _raw_db.columns.get_level_values(0)
-                    if db_tf.startswith("H4"):
-                        _raw_db = _raw_db.resample("4h").agg({"Open":"first","High":"max",
-                                                               "Low":"min","Close":"last","Volume":"sum"}).dropna()
-                    _raw_db.index = _raw_db.index.tz_localize(None) if _raw_db.index.tzinfo else _raw_db.index
-                    df_db = _raw_db.tail(n_db).copy()
+                    raise ValueError("⚡ Twelve Data API key required. Add it in the sidebar under '📡 Live Data Key'.")
 
                 last_price_db = float(df_db["Close"].iloc[-1])
                 chart_pil_db  = generate_chart_image_from_df(df_db, db_symbol, db_tf)
                 db_prog.progress(25)
+
+                # ── Helpers ────────────────────────────────
+                import html as _html_mod
+                import io as _io_db, base64 as _b64_db
+                from PIL import Image as _PILdb
+
+                def _esc(t):
+                    """HTML-escape dynamic text before injecting into f-string HTML."""
+                    return _html_mod.escape(str(t)) if t else "—"
+
+                def _debate_call_ai(pil_img, prompt_text):
+                    """Call AI directly (bypassing analyze_chart_with_ai wrapper) and return raw text."""
+                    _buf = _io_db.BytesIO()
+                    _img = pil_img.copy()
+                    if _img.mode in ("RGBA", "P"):
+                        _img = _img.convert("RGB")
+                    _img.save(_buf, format="JPEG", quality=90)
+                    _b64 = _b64_db.b64encode(_buf.getvalue()).decode()
+                    if model_choice.startswith("gemini"):
+                        import google.genai as _gai
+                        import google.genai.types as _gtypes
+                        _gc = _gai.Client(api_key=api_key)
+                        _resp = _gc.models.generate_content(
+                            model=model_choice,
+                            contents=[
+                                prompt_text,
+                                _gtypes.Part.from_bytes(data=_buf.getvalue(), mime_type="image/jpeg"),
+                            ],
+                        )
+                        return _resp.text or ""
+                    else:
+                        import anthropic as _anth
+                        _ac = _anth.Anthropic(api_key=api_key)
+                        _resp = _ac.messages.create(
+                            model=model_choice,
+                            max_tokens=1200,
+                            messages=[{"role": "user", "content": [
+                                {"type": "image", "source": {
+                                    "type": "base64", "media_type": "image/jpeg", "data": _b64}},
+                                {"type": "text", "text": prompt_text},
+                            ]}],
+                        )
+                        return _resp.content[0].text or ""
+
+                def _parse_debate_json(raw_text):
+                    """Robustly extract JSON from AI response, stripping markdown wrappers."""
+                    # Try: strip ```json ... ``` wrapper first
+                    _stripped = re.sub(r"```(?:json)?\s*", "", raw_text).replace("```", "").strip()
+                    for _txt in (raw_text, _stripped):
+                        _m = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}', _txt, re.DOTALL)
+                        if not _m:
+                            _m = re.search(r'\{.*\}', _txt, re.DOTALL)
+                        if _m:
+                            try:
+                                return json.loads(_m.group())
+                            except Exception:
+                                pass
+                    return {}
 
                 # ── Step 2: Bull AI ────────────────────────
                 db_stat.markdown("🐂 **Step 2/4** — Bull AI building the case to BUY…")
@@ -3991,29 +3991,16 @@ IMPORTANT RULES:
 - Be specific with price levels
 - Even if the chart looks bearish overall, find the bullish case
 
-Output ONLY this JSON:
-{{"verdict": "BUY",
-  "confidence": <1-10 how strong is your bull case>,
-  "headline": "<one punchy sentence — the strongest bull argument>",
-  "argument": "<3-4 sentences — your full bull case>",
-  "evidence": ["<bullish signal 1>", "<bullish signal 2>", "<bullish signal 3>"],
-  "entry_zone": "<price level to enter long>",
-  "target": "<profit target>",
-  "invalidation": "<price level that would prove the bull case wrong>"}}"""
+Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
+{{"verdict": "BUY", "confidence": 7, "headline": "one punchy sentence", "argument": "3-4 sentences full bull case", "evidence": ["signal 1", "signal 2", "signal 3"], "entry_zone": "price", "target": "price", "invalidation": "price"}}"""
 
-                bull_raw = analyze_chart_with_ai(chart_pil_db, api_key, model_choice,
-                                                  db_symbol, db_tf, BULL_PROMPT)
-                _jb = re.search(r'\{.*\}', bull_raw, re.DOTALL)
-                try:
-                    bull_data = json.loads(_jb.group()) if _jb else {}
-                except Exception:
-                    bull_data = {}
-                if not bull_data.get("verdict"):
+                bull_raw  = _debate_call_ai(chart_pil_db, BULL_PROMPT)
+                bull_data = _parse_debate_json(bull_raw)
+                if not bull_data.get("headline"):
                     bull_data = {"verdict": "BUY", "confidence": 5,
-                                 "headline": "Bullish case presented",
-                                 "argument": bull_raw[:300],
-                                 "evidence": ["See argument above"],
-                                 "entry_zone": "—", "target": "—", "invalidation": "—"}
+                                 "headline": "Could not parse bull argument",
+                                 "argument": re.sub(r'[<>]', '', bull_raw[:400]),
+                                 "evidence": [], "entry_zone": "—", "target": "—", "invalidation": "—"}
                 db_prog.progress(55)
 
                 # ── Step 3: Bear AI ────────────────────────
@@ -4026,74 +4013,46 @@ IMPORTANT RULES:
 - Be specific with price levels
 - Even if the chart looks bullish overall, find the bearish case
 
-Output ONLY this JSON:
-{{"verdict": "SELL",
-  "confidence": <1-10 how strong is your bear case>,
-  "headline": "<one punchy sentence — the strongest bear argument>",
-  "argument": "<3-4 sentences — your full bear case>",
-  "evidence": ["<bearish signal 1>", "<bearish signal 2>", "<bearish signal 3>"],
-  "entry_zone": "<price level to enter short>",
-  "target": "<profit target>",
-  "invalidation": "<price level that would prove the bear case wrong>"}}"""
+Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
+{{"verdict": "SELL", "confidence": 7, "headline": "one punchy sentence", "argument": "3-4 sentences full bear case", "evidence": ["signal 1", "signal 2", "signal 3"], "entry_zone": "price", "target": "price", "invalidation": "price"}}"""
 
-                bear_raw = analyze_chart_with_ai(chart_pil_db, api_key, model_choice,
-                                                  db_symbol, db_tf, BEAR_PROMPT)
-                _jbr = re.search(r'\{.*\}', bear_raw, re.DOTALL)
-                try:
-                    bear_data = json.loads(_jbr.group()) if _jbr else {}
-                except Exception:
-                    bear_data = {}
-                if not bear_data.get("verdict"):
+                bear_raw  = _debate_call_ai(chart_pil_db, BEAR_PROMPT)
+                bear_data = _parse_debate_json(bear_raw)
+                if not bear_data.get("headline"):
                     bear_data = {"verdict": "SELL", "confidence": 5,
-                                 "headline": "Bearish case presented",
-                                 "argument": bear_raw[:300],
-                                 "evidence": ["See argument above"],
-                                 "entry_zone": "—", "target": "—", "invalidation": "—"}
+                                 "headline": "Could not parse bear argument",
+                                 "argument": re.sub(r'[<>]', '', bear_raw[:400]),
+                                 "evidence": [], "entry_zone": "—", "target": "—", "invalidation": "—"}
                 db_prog.progress(80)
 
                 # ── Step 4: Judge AI ───────────────────────
                 db_stat.markdown("⚖️ **Step 4/4** — Judge AI evaluating both arguments…")
-                JUDGE_PROMPT = f"""You are an impartial senior trading judge. Two analysts have argued opposite sides for {db_symbol} on {db_tf}. Your job: evaluate WHICH argument is more technically sound and declare a winner.
+                JUDGE_PROMPT = f"""You are an impartial senior trading judge for {db_symbol} {db_tf}. Evaluate both arguments and declare a winner.
 
 BULL case (confidence {bull_data.get('confidence',5)}/10):
 Headline: {bull_data.get('headline','')}
 Argument: {bull_data.get('argument','')}
-Evidence: {bull_data.get('evidence',[])}
+Evidence: {', '.join(bull_data.get('evidence',[]) if isinstance(bull_data.get('evidence',[]), list) else [])}
 Entry: {bull_data.get('entry_zone','—')} | Target: {bull_data.get('target','—')} | Invalidation: {bull_data.get('invalidation','—')}
 
 BEAR case (confidence {bear_data.get('confidence',5)}/10):
 Headline: {bear_data.get('headline','')}
 Argument: {bear_data.get('argument','')}
-Evidence: {bear_data.get('evidence',[])}
+Evidence: {', '.join(bear_data.get('evidence',[]) if isinstance(bear_data.get('evidence',[]), list) else [])}
 Entry: {bear_data.get('entry_zone','—')} | Target: {bear_data.get('target','—')} | Invalidation: {bear_data.get('invalidation','—')}
 
-Current price: {last_price_db:.5g}
+Judge based on: quality of technical reasoning, valid signals, risk/reward, confluence.
 
-Judge based on: quality of technical reasoning, number of valid signals, risk/reward, confluence. Be honest — if one side is clearly weak, say so.
+Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
+{{"winner": "BULL", "score_bull": 6, "score_bear": 8, "winner_reason": "2-3 sentences why this side won", "loser_weakness": "1-2 sentences biggest flaw in losing argument", "final_verdict": "SELL", "final_confidence": 7, "judge_note": "one sentence caveat"}}"""
 
-Output ONLY this JSON:
-{{"winner": "BULL" or "BEAR",
-  "score_bull": <0-10>,
-  "score_bear": <0-10>,
-  "winner_reason": "<2-3 sentences — exactly WHY this side won>",
-  "loser_weakness": "<1-2 sentences — the biggest flaw in the losing argument>",
-  "final_verdict": "BUY" or "SELL" or "WAIT",
-  "final_confidence": <1-10>,
-  "judge_note": "<one sentence — any important caveat or condition to watch>"}}"""
-
-                judge_raw = analyze_chart_with_ai(chart_pil_db, api_key, model_choice,
-                                                   db_symbol, db_tf, JUDGE_PROMPT)
-                _jj = re.search(r'\{.*\}', judge_raw, re.DOTALL)
-                try:
-                    judge_data = json.loads(_jj.group()) if _jj else {}
-                except Exception:
-                    judge_data = {}
+                judge_raw  = _debate_call_ai(chart_pil_db, JUDGE_PROMPT)
+                judge_data = _parse_debate_json(judge_raw)
                 if not judge_data.get("winner"):
                     judge_data = {"winner": "BULL", "score_bull": 5, "score_bear": 5,
-                                  "winner_reason": judge_raw[:200],
-                                  "loser_weakness": "—",
-                                  "final_verdict": "WAIT", "final_confidence": 5,
-                                  "judge_note": "—"}
+                                  "winner_reason": re.sub(r'[<>]', '', judge_raw[:300]),
+                                  "loser_weakness": "—", "final_verdict": "WAIT",
+                                  "final_confidence": 5, "judge_note": "—"}
                 db_prog.progress(100)
                 db_stat.empty()
 
@@ -4109,6 +4068,9 @@ Output ONLY this JSON:
 
         # ── Display debate results ─────────────────────────
         if "db_result" in st.session_state:
+            import html as _html_disp
+            def _e(t): return _html_disp.escape(str(t)) if t else "—"
+
             dr     = st.session_state["db_result"]
             bull   = dr["bull"]
             bear   = dr["bear"]
@@ -4117,11 +4079,11 @@ Output ONLY this JSON:
             tf_db  = dr["tf"]
             px_db  = dr["price"]
 
-            winner = judge.get("winner", "BULL")
-            sc_b   = judge.get("score_bull", 5)
-            sc_s   = judge.get("score_bear", 5)
-            fv     = judge.get("final_verdict", "WAIT")
-            fc     = judge.get("final_confidence", 5)
+            winner = str(judge.get("winner", "BULL")).upper()
+            sc_b   = int(judge.get("score_bull", 5))
+            sc_s   = int(judge.get("score_bear", 5))
+            fv     = str(judge.get("final_verdict", "WAIT")).upper()
+            fc     = int(judge.get("final_confidence", 5))
 
             # ── VS banner ─────────────────────────────────
             fv_col  = "#22c55e" if fv == "BUY" else ("#ef4444" if fv == "SELL" else "#f59e0b")
@@ -4130,7 +4092,7 @@ Output ONLY this JSON:
 <div style='background:#0a0a0f;border:2px solid #334155;border-radius:16px;
 padding:20px 24px;margin:16px 0;text-align:center'>
   <div style='font-size:13px;color:#6e7681;letter-spacing:2px;margin-bottom:6px'>
-    ⚔️ {sym_db} · {tf_db} · Price: <b style='color:#fbbf24'>{px_db:.5g}</b>
+    ⚔️ {_e(sym_db)} · {_e(tf_db)} · Price: <b style='color:#fbbf24'>{px_db:.5g}</b>
   </div>
   <div style='display:flex;justify-content:center;align-items:center;gap:20px;flex-wrap:wrap'>
     <div style='text-align:center'>
@@ -4155,17 +4117,19 @@ padding:20px 24px;margin:16px 0;text-align:center'>
             # ── Side-by-side argument cards ────────────────
             bull_col, bear_col = st.columns(2, gap="medium")
 
-            def _evidence_rows(ev_list):
+            def _ev_rows_bull(ev_list):
                 rows = ""
-                for ev in (ev_list if isinstance(ev_list, list) else [ev_list]):
-                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#4ade80;flex-shrink:0'>✓</span><span style='color:#d1fae5;font-size:13px'>{ev}</span></div>"
-                return rows
+                items = ev_list if isinstance(ev_list, list) else [str(ev_list)]
+                for ev in items:
+                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#4ade80;flex-shrink:0'>✓</span><span style='color:#d1fae5;font-size:13px'>{_e(ev)}</span></div>"
+                return rows or "<div style='color:#6b7280;font-size:12px'>No evidence listed</div>"
 
-            def _evidence_rows_bear(ev_list):
+            def _ev_rows_bear(ev_list):
                 rows = ""
-                for ev in (ev_list if isinstance(ev_list, list) else [ev_list]):
-                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#f87171;flex-shrink:0'>✗</span><span style='color:#fee2e2;font-size:13px'>{ev}</span></div>"
-                return rows
+                items = ev_list if isinstance(ev_list, list) else [str(ev_list)]
+                for ev in items:
+                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#f87171;flex-shrink:0'>✗</span><span style='color:#fee2e2;font-size:13px'>{_e(ev)}</span></div>"
+                return rows or "<div style='color:#6b7280;font-size:12px'>No evidence listed</div>"
 
             bull_conf = int(bull.get("confidence", 5))
             bear_conf = int(bear.get("confidence", 5))
@@ -4176,31 +4140,26 @@ padding:20px 24px;margin:16px 0;text-align:center'>
                 st.markdown(f"""
 <div style='background:#061a0e;border:2px solid {"#22c55e" if winner=="BULL" else "#166534"};
 border-radius:14px;padding:18px;min-height:480px'>
-
   <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
     <span style='font-size:22px;font-weight:900;color:#4ade80'>{bull_win_badge}🐂 BULL CASE</span>
     <span style='background:#14532d;color:#4ade80;padding:4px 12px;border-radius:16px;
     font-weight:700;font-size:14px'>{bull_conf}/10</span>
   </div>
-
   <div style='background:#052e16;border-left:3px solid #22c55e;border-radius:6px;
   padding:10px 14px;margin-bottom:14px;font-size:14px;color:#bbf7d0;font-style:italic'>
-    "{bull.get('headline','')}"
+    &ldquo;{_e(bull.get('headline',''))}&rdquo;
   </div>
-
   <div style='font-size:13px;color:#86efac;margin-bottom:12px;line-height:1.6'>
-    {bull.get('argument','')}
+    {_e(bull.get('argument',''))}
   </div>
-
   <div style='font-size:12px;color:#6ee7b7;font-weight:700;margin-bottom:6px;
   text-transform:uppercase;letter-spacing:1px'>Evidence</div>
-  {_evidence_rows(bull.get('evidence', []))}
-
+  {_ev_rows_bull(bull.get('evidence', []))}
   <div style='margin-top:14px;background:#0a2e1a;border-radius:8px;padding:10px 12px'>
     <div style='font-size:12px;color:#4ade80;margin-bottom:6px;font-weight:700'>📊 TRADE PLAN</div>
-    <div style='font-size:12px;color:#a7f3d0'>🎯 Entry zone: <b>{bull.get('entry_zone','—')}</b></div>
-    <div style='font-size:12px;color:#a7f3d0'>💰 Target: <b>{bull.get('target','—')}</b></div>
-    <div style='font-size:12px;color:#fca5a5'>🚫 Invalidation: <b>{bull.get('invalidation','—')}</b></div>
+    <div style='font-size:12px;color:#a7f3d0'>🎯 Entry: <b>{_e(bull.get('entry_zone','—'))}</b></div>
+    <div style='font-size:12px;color:#a7f3d0'>💰 Target: <b>{_e(bull.get('target','—'))}</b></div>
+    <div style='font-size:12px;color:#fca5a5'>🚫 Invalidation: <b>{_e(bull.get('invalidation','—'))}</b></div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -4209,31 +4168,26 @@ border-radius:14px;padding:18px;min-height:480px'>
                 st.markdown(f"""
 <div style='background:#1a0606;border:2px solid {"#ef4444" if winner=="BEAR" else "#7f1d1d"};
 border-radius:14px;padding:18px;min-height:480px'>
-
   <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
     <span style='font-size:22px;font-weight:900;color:#f87171'>{bear_win_badge}🐻 BEAR CASE</span>
     <span style='background:#7f1d1d;color:#f87171;padding:4px 12px;border-radius:16px;
     font-weight:700;font-size:14px'>{bear_conf}/10</span>
   </div>
-
   <div style='background:#450a0a;border-left:3px solid #ef4444;border-radius:6px;
   padding:10px 14px;margin-bottom:14px;font-size:14px;color:#fecaca;font-style:italic'>
-    "{bear.get('headline','')}"
+    &ldquo;{_e(bear.get('headline',''))}&rdquo;
   </div>
-
   <div style='font-size:13px;color:#fca5a5;margin-bottom:12px;line-height:1.6'>
-    {bear.get('argument','')}
+    {_e(bear.get('argument',''))}
   </div>
-
   <div style='font-size:12px;color:#fca5a5;font-weight:700;margin-bottom:6px;
   text-transform:uppercase;letter-spacing:1px'>Evidence</div>
-  {_evidence_rows_bear(bear.get('evidence', []))}
-
+  {_ev_rows_bear(bear.get('evidence', []))}
   <div style='margin-top:14px;background:#2e0a0a;border-radius:8px;padding:10px 12px'>
     <div style='font-size:12px;color:#f87171;margin-bottom:6px;font-weight:700'>📊 TRADE PLAN</div>
-    <div style='font-size:12px;color:#fecaca'>🎯 Entry zone: <b>{bear.get('entry_zone','—')}</b></div>
-    <div style='font-size:12px;color:#fecaca'>💰 Target: <b>{bear.get('target','—')}</b></div>
-    <div style='font-size:12px;color:#86efac'>🚫 Invalidation: <b>{bear.get('invalidation','—')}</b></div>
+    <div style='font-size:12px;color:#fecaca'>🎯 Entry: <b>{_e(bear.get('entry_zone','—'))}</b></div>
+    <div style='font-size:12px;color:#fecaca'>💰 Target: <b>{_e(bear.get('target','—'))}</b></div>
+    <div style='font-size:12px;color:#86efac'>🚫 Invalidation: <b>{_e(bear.get('invalidation','—'))}</b></div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -4250,31 +4204,19 @@ border-radius:14px;padding:18px;min-height:480px'>
 
             st.markdown(f"""
 <div style='background:#0a0f1e;border:2px solid #6366f1;border-radius:16px;padding:22px 24px'>
-
-  <div style='font-size:16px;font-weight:800;color:#a5b4fc;margin-bottom:16px'>
-    ⚖️ Judge's Ruling
-  </div>
-
+  <div style='font-size:16px;font-weight:800;color:#a5b4fc;margin-bottom:16px'>⚖️ Judge's Ruling</div>
   <div style='background:{w_bg};border:1px solid {w_bdr};border-radius:10px;
   padding:14px 16px;margin-bottom:14px'>
     <div style='font-size:15px;font-weight:800;color:{w_col};margin-bottom:8px'>
       🏆 {w_icon} {winner} WINS
     </div>
-    <div style='font-size:13px;color:#e2e8f0;line-height:1.6'>
-      {judge.get('winner_reason','')}
-    </div>
+    <div style='font-size:13px;color:#e2e8f0;line-height:1.6'>{_e(judge.get('winner_reason',''))}</div>
   </div>
-
   <div style='background:#1a0a1a;border:1px solid #4c1d95;border-radius:8px;
   padding:12px 14px;margin-bottom:14px'>
-    <div style='font-size:12px;color:#c4b5fd;font-weight:700;margin-bottom:4px'>
-      💀 Losing Side's Fatal Flaw
-    </div>
-    <div style='font-size:13px;color:#ddd6fe;line-height:1.5'>
-      {judge.get('loser_weakness','')}
-    </div>
+    <div style='font-size:12px;color:#c4b5fd;font-weight:700;margin-bottom:4px'>💀 Losing Side's Fatal Flaw</div>
+    <div style='font-size:13px;color:#ddd6fe;line-height:1.5'>{_e(judge.get('loser_weakness',''))}</div>
   </div>
-
   <div style='background:{fv_bg};border:1px solid {fv_bdr_c};border-radius:8px;
   padding:14px 16px;display:flex;justify-content:space-between;align-items:center;
   flex-wrap:wrap;gap:12px'>
@@ -4291,10 +4233,9 @@ border-radius:14px;padding:18px;min-height:480px'>
     </div>
     <div style='max-width:260px'>
       <div style='font-size:12px;color:#94a3b8;margin-bottom:4px'>Judge's Note</div>
-      <div style='font-size:12px;color:#e2e8f0;font-style:italic'>{judge.get('judge_note','')}</div>
+      <div style='font-size:12px;color:#e2e8f0;font-style:italic'>{_e(judge.get('judge_note',''))}</div>
     </div>
   </div>
-
 </div>
 """, unsafe_allow_html=True)
 
