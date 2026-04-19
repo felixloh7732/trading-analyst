@@ -4068,9 +4068,6 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
 
         # ── Display debate results ─────────────────────────
         if "db_result" in st.session_state:
-            import html as _html_disp
-            def _e(t): return _html_disp.escape(str(t)) if t else "—"
-
             dr     = st.session_state["db_result"]
             bull   = dr["bull"]
             bear   = dr["bear"]
@@ -4085,159 +4082,112 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
             fv     = str(judge.get("final_verdict", "WAIT")).upper()
             fc     = int(judge.get("final_confidence", 5))
 
-            # ── VS banner ─────────────────────────────────
-            fv_col  = "#22c55e" if fv == "BUY" else ("#ef4444" if fv == "SELL" else "#f59e0b")
-            fv_icon = "▲" if fv == "BUY" else ("▼" if fv == "SELL" else "⏳")
-            st.markdown(f"""
-<div style='background:#0a0a0f;border:2px solid #334155;border-radius:16px;
-padding:20px 24px;margin:16px 0;text-align:center'>
-  <div style='font-size:13px;color:#6e7681;letter-spacing:2px;margin-bottom:6px'>
-    ⚔️ {_e(sym_db)} · {_e(tf_db)} · Price: <b style='color:#fbbf24'>{px_db:.5g}</b>
-  </div>
-  <div style='display:flex;justify-content:center;align-items:center;gap:20px;flex-wrap:wrap'>
-    <div style='text-align:center'>
-      <div style='font-size:32px;font-weight:900;color:#4ade80'>🐂 BULL</div>
-      <div style='font-size:22px;font-weight:900;color:#4ade80'>{sc_b}/10</div>
-      {"<div style='background:#14532d;color:#4ade80;border-radius:8px;padding:4px 14px;font-size:12px;font-weight:700;margin-top:4px'>🏆 WINNER</div>" if winner=="BULL" else ""}
-    </div>
-    <div style='font-size:48px;color:#475569;font-weight:900'>VS</div>
-    <div style='text-align:center'>
-      <div style='font-size:32px;font-weight:900;color:#f87171'>🐻 BEAR</div>
-      <div style='font-size:22px;font-weight:900;color:#f87171'>{sc_s}/10</div>
-      {"<div style='background:#7f1d1d;color:#f87171;border-radius:8px;padding:4px 14px;font-size:12px;font-weight:700;margin-top:4px'>🏆 WINNER</div>" if winner=="BEAR" else ""}
-    </div>
-  </div>
-  <div style='margin-top:16px;padding-top:14px;border-top:1px solid #1e293b'>
-    <span style='font-size:20px;font-weight:900;color:{fv_col}'>{fv_icon} Judge Verdict: {fv}</span>
-    <span style='color:#94a3b8;font-size:13px;margin-left:12px'>Confidence: <b style='color:#fbbf24'>{fc}/10</b></span>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+            # ── Pre-compute all colour/border values ───────
+            fv_col    = "#22c55e" if fv == "BUY" else ("#ef4444" if fv == "SELL" else "#f59e0b")
+            fv_icon   = "▲" if fv == "BUY" else ("▼" if fv == "SELL" else "⏳")
+            bull_bdr  = "#22c55e" if winner == "BULL" else "#166534"
+            bear_bdr  = "#ef4444" if winner == "BEAR" else "#7f1d1d"
+            bull_badge = "🏆 WINNER" if winner == "BULL" else "&nbsp;"
+            bear_badge = "🏆 WINNER" if winner == "BEAR" else "&nbsp;"
 
-            # ── Side-by-side argument cards ────────────────
+            # ── VS banner ─────────────────────────────────
+            st.markdown(
+                f"<div style='text-align:center;padding:8px 0 4px 0;font-size:13px;"
+                f"color:#6e7681;letter-spacing:2px'>⚔️ {sym_db} · {tf_db} · "
+                f"Price: <b style='color:#fbbf24'>{px_db:.5g}</b></div>",
+                unsafe_allow_html=True)
+
+            vs_left, vs_mid, vs_right = st.columns([2, 1, 2])
+            with vs_left:
+                st.markdown(
+                    f"<div style='text-align:center;background:#061a0e;"
+                    f"border:2px solid {bull_bdr};border-radius:12px;padding:16px'>"
+                    f"<div style='font-size:28px;font-weight:900;color:#4ade80'>🐂 BULL</div>"
+                    f"<div style='font-size:24px;font-weight:900;color:#4ade80'>{sc_b}/10</div>"
+                    f"<div style='color:#4ade80;font-size:13px;font-weight:700;margin-top:4px'>{bull_badge}</div>"
+                    f"</div>", unsafe_allow_html=True)
+            with vs_mid:
+                st.markdown(
+                    "<div style='text-align:center;padding:20px 0;"
+                    "font-size:42px;font-weight:900;color:#475569'>VS</div>",
+                    unsafe_allow_html=True)
+            with vs_right:
+                st.markdown(
+                    f"<div style='text-align:center;background:#1a0606;"
+                    f"border:2px solid {bear_bdr};border-radius:12px;padding:16px'>"
+                    f"<div style='font-size:28px;font-weight:900;color:#f87171'>🐻 BEAR</div>"
+                    f"<div style='font-size:24px;font-weight:900;color:#f87171'>{sc_s}/10</div>"
+                    f"<div style='color:#f87171;font-size:13px;font-weight:700;margin-top:4px'>{bear_badge}</div>"
+                    f"</div>", unsafe_allow_html=True)
+
+            st.markdown(
+                f"<div style='text-align:center;margin:12px 0 20px 0;"
+                f"font-size:18px;font-weight:900;color:{fv_col}'>"
+                f"{fv_icon} Judge Final Verdict: {fv} &nbsp;·&nbsp; "
+                f"<span style='font-size:14px;color:#fbbf24'>Confidence {fc}/10</span></div>",
+                unsafe_allow_html=True)
+
+            st.divider()
+
+            # ── Bull & Bear argument cards ─────────────────
             bull_col, bear_col = st.columns(2, gap="medium")
 
-            def _ev_rows_bull(ev_list):
-                rows = ""
-                items = ev_list if isinstance(ev_list, list) else [str(ev_list)]
-                for ev in items:
-                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#4ade80;flex-shrink:0'>✓</span><span style='color:#d1fae5;font-size:13px'>{_e(ev)}</span></div>"
-                return rows or "<div style='color:#6b7280;font-size:12px'>No evidence listed</div>"
-
-            def _ev_rows_bear(ev_list):
-                rows = ""
-                items = ev_list if isinstance(ev_list, list) else [str(ev_list)]
-                for ev in items:
-                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#f87171;flex-shrink:0'>✗</span><span style='color:#fee2e2;font-size:13px'>{_e(ev)}</span></div>"
-                return rows or "<div style='color:#6b7280;font-size:12px'>No evidence listed</div>"
-
-            bull_conf = int(bull.get("confidence", 5))
-            bear_conf = int(bear.get("confidence", 5))
-            bull_win_badge = "🏆 " if winner == "BULL" else ""
-            bear_win_badge = "🏆 " if winner == "BEAR" else ""
-
             with bull_col:
-                st.markdown(f"""
-<div style='background:#061a0e;border:2px solid {"#22c55e" if winner=="BULL" else "#166534"};
-border-radius:14px;padding:18px;min-height:480px'>
-  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
-    <span style='font-size:22px;font-weight:900;color:#4ade80'>{bull_win_badge}🐂 BULL CASE</span>
-    <span style='background:#14532d;color:#4ade80;padding:4px 12px;border-radius:16px;
-    font-weight:700;font-size:14px'>{bull_conf}/10</span>
-  </div>
-  <div style='background:#052e16;border-left:3px solid #22c55e;border-radius:6px;
-  padding:10px 14px;margin-bottom:14px;font-size:14px;color:#bbf7d0;font-style:italic'>
-    &ldquo;{_e(bull.get('headline',''))}&rdquo;
-  </div>
-  <div style='font-size:13px;color:#86efac;margin-bottom:12px;line-height:1.6'>
-    {_e(bull.get('argument',''))}
-  </div>
-  <div style='font-size:12px;color:#6ee7b7;font-weight:700;margin-bottom:6px;
-  text-transform:uppercase;letter-spacing:1px'>Evidence</div>
-  {_ev_rows_bull(bull.get('evidence', []))}
-  <div style='margin-top:14px;background:#0a2e1a;border-radius:8px;padding:10px 12px'>
-    <div style='font-size:12px;color:#4ade80;margin-bottom:6px;font-weight:700'>📊 TRADE PLAN</div>
-    <div style='font-size:12px;color:#a7f3d0'>🎯 Entry: <b>{_e(bull.get('entry_zone','—'))}</b></div>
-    <div style='font-size:12px;color:#a7f3d0'>💰 Target: <b>{_e(bull.get('target','—'))}</b></div>
-    <div style='font-size:12px;color:#fca5a5'>🚫 Invalidation: <b>{_e(bull.get('invalidation','—'))}</b></div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+                bull_conf = int(bull.get("confidence", 5))
+                st.markdown(
+                    f"<div style='background:#061a0e;border:2px solid {bull_bdr};"
+                    f"border-radius:12px;padding:6px 14px'>"
+                    f"<span style='color:#4ade80;font-size:13px;font-weight:700'>{bull_badge}</span>"
+                    f"</div>", unsafe_allow_html=True)
+                st.markdown(f"**🐂 BULL CASE** &nbsp; `{bull_conf}/10`")
+                bull_bar = "🟩" * bull_conf + "⬜" * (10 - bull_conf)
+                st.caption(bull_bar)
+                st.markdown(f"> *{bull.get('headline', '')}*")
+                st.markdown(bull.get('argument', ''))
+                st.markdown("**Evidence:**")
+                ev_list = bull.get('evidence', [])
+                if isinstance(ev_list, list):
+                    for ev in ev_list:
+                        st.markdown(f"✅ {ev}")
+                st.markdown("**Trade Plan:**")
+                st.markdown(f"- 🎯 Entry: `{bull.get('entry_zone','—')}`")
+                st.markdown(f"- 💰 Target: `{bull.get('target','—')}`")
+                st.markdown(f"- 🚫 Invalidation: `{bull.get('invalidation','—')}`")
 
             with bear_col:
-                st.markdown(f"""
-<div style='background:#1a0606;border:2px solid {"#ef4444" if winner=="BEAR" else "#7f1d1d"};
-border-radius:14px;padding:18px;min-height:480px'>
-  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
-    <span style='font-size:22px;font-weight:900;color:#f87171'>{bear_win_badge}🐻 BEAR CASE</span>
-    <span style='background:#7f1d1d;color:#f87171;padding:4px 12px;border-radius:16px;
-    font-weight:700;font-size:14px'>{bear_conf}/10</span>
-  </div>
-  <div style='background:#450a0a;border-left:3px solid #ef4444;border-radius:6px;
-  padding:10px 14px;margin-bottom:14px;font-size:14px;color:#fecaca;font-style:italic'>
-    &ldquo;{_e(bear.get('headline',''))}&rdquo;
-  </div>
-  <div style='font-size:13px;color:#fca5a5;margin-bottom:12px;line-height:1.6'>
-    {_e(bear.get('argument',''))}
-  </div>
-  <div style='font-size:12px;color:#fca5a5;font-weight:700;margin-bottom:6px;
-  text-transform:uppercase;letter-spacing:1px'>Evidence</div>
-  {_ev_rows_bear(bear.get('evidence', []))}
-  <div style='margin-top:14px;background:#2e0a0a;border-radius:8px;padding:10px 12px'>
-    <div style='font-size:12px;color:#f87171;margin-bottom:6px;font-weight:700'>📊 TRADE PLAN</div>
-    <div style='font-size:12px;color:#fecaca'>🎯 Entry: <b>{_e(bear.get('entry_zone','—'))}</b></div>
-    <div style='font-size:12px;color:#fecaca'>💰 Target: <b>{_e(bear.get('target','—'))}</b></div>
-    <div style='font-size:12px;color:#86efac'>🚫 Invalidation: <b>{_e(bear.get('invalidation','—'))}</b></div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+                bear_conf = int(bear.get("confidence", 5))
+                st.markdown(
+                    f"<div style='background:#1a0606;border:2px solid {bear_bdr};"
+                    f"border-radius:12px;padding:6px 14px'>"
+                    f"<span style='color:#f87171;font-size:13px;font-weight:700'>{bear_badge}</span>"
+                    f"</div>", unsafe_allow_html=True)
+                st.markdown(f"**🐻 BEAR CASE** &nbsp; `{bear_conf}/10`")
+                bear_bar = "🟥" * bear_conf + "⬜" * (10 - bear_conf)
+                st.caption(bear_bar)
+                st.markdown(f"> *{bear.get('headline', '')}*")
+                st.markdown(bear.get('argument', ''))
+                st.markdown("**Evidence:**")
+                ev_list_b = bear.get('evidence', [])
+                if isinstance(ev_list_b, list):
+                    for ev in ev_list_b:
+                        st.markdown(f"❌ {ev}")
+                st.markdown("**Trade Plan:**")
+                st.markdown(f"- 🎯 Entry: `{bear.get('entry_zone','—')}`")
+                st.markdown(f"- 💰 Target: `{bear.get('target','—')}`")
+                st.markdown(f"- 🚫 Invalidation: `{bear.get('invalidation','—')}`")
 
-            # ── Judge verdict card ─────────────────────────
-            st.markdown("<br>", unsafe_allow_html=True)
-            w_col  = "#4ade80" if winner == "BULL" else "#f87171"
-            w_bg   = "#061a0e" if winner == "BULL" else "#1a0606"
-            w_bdr  = "#22c55e" if winner == "BULL" else "#ef4444"
+            st.divider()
+
+            # ── Judge verdict ──────────────────────────────
             w_icon = "🐂" if winner == "BULL" else "🐻"
-            fv_bg  = "#0a2e1a" if fv=="BUY" else ("#2e0a0a" if fv=="SELL" else "#1a1a0a")
-            fv_bdr_c = "#22c55e" if fv=="BUY" else ("#ef4444" if fv=="SELL" else "#f59e0b")
-            fc_bar_c = "#22c55e" if fc>=7 else ("#f59e0b" if fc>=5 else "#ef4444")
+            w_col_txt = "green" if winner == "BULL" else "red"
+            st.markdown(f"### ⚖️ Judge's Ruling — {w_icon} {winner} WINS")
+            st.success(f"**Why {winner} won:** {judge.get('winner_reason', '')}")
+            st.error(f"**Losing side's fatal flaw:** {judge.get('loser_weakness', '')}")
 
-            st.markdown(f"""
-<div style='background:#0a0f1e;border:2px solid #6366f1;border-radius:16px;padding:22px 24px'>
-  <div style='font-size:16px;font-weight:800;color:#a5b4fc;margin-bottom:16px'>⚖️ Judge's Ruling</div>
-  <div style='background:{w_bg};border:1px solid {w_bdr};border-radius:10px;
-  padding:14px 16px;margin-bottom:14px'>
-    <div style='font-size:15px;font-weight:800;color:{w_col};margin-bottom:8px'>
-      🏆 {w_icon} {winner} WINS
-    </div>
-    <div style='font-size:13px;color:#e2e8f0;line-height:1.6'>{_e(judge.get('winner_reason',''))}</div>
-  </div>
-  <div style='background:#1a0a1a;border:1px solid #4c1d95;border-radius:8px;
-  padding:12px 14px;margin-bottom:14px'>
-    <div style='font-size:12px;color:#c4b5fd;font-weight:700;margin-bottom:4px'>💀 Losing Side's Fatal Flaw</div>
-    <div style='font-size:13px;color:#ddd6fe;line-height:1.5'>{_e(judge.get('loser_weakness',''))}</div>
-  </div>
-  <div style='background:{fv_bg};border:1px solid {fv_bdr_c};border-radius:8px;
-  padding:14px 16px;display:flex;justify-content:space-between;align-items:center;
-  flex-wrap:wrap;gap:12px'>
-    <div>
-      <div style='font-size:12px;color:#94a3b8;margin-bottom:4px'>FINAL TRADE CALL</div>
-      <div style='font-size:22px;font-weight:900;color:{fv_col}'>{fv_icon} {fv}</div>
-    </div>
-    <div>
-      <div style='font-size:12px;color:#94a3b8;margin-bottom:6px'>Conviction</div>
-      <div style='background:#1e293b;border-radius:6px;height:10px;width:160px'>
-        <div style='background:{fc_bar_c};width:{fc*10}%;height:10px;border-radius:6px'></div>
-      </div>
-      <div style='font-size:12px;color:{fc_bar_c};margin-top:3px;font-weight:700'>{fc}/10</div>
-    </div>
-    <div style='max-width:260px'>
-      <div style='font-size:12px;color:#94a3b8;margin-bottom:4px'>Judge's Note</div>
-      <div style='font-size:12px;color:#e2e8f0;font-style:italic'>{_e(judge.get('judge_note',''))}</div>
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+            fv_fn = st.success if fv == "BUY" else (st.error if fv == "SELL" else st.warning)
+            fv_fn(f"{fv_icon} **Final Call: {fv}** — Conviction {fc}/10 · {judge.get('judge_note', '')}")
+
 
             # ── Chart ──────────────────────────────────────
             with st.expander("📊 View Chart Used in Debate", expanded=False):
