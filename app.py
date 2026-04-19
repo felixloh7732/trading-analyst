@@ -2096,7 +2096,7 @@ The AI will identify:<br><br>
 st.divider()
 st.markdown("## 🛠️ Trading Tools 交易工具")
 
-tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, tool_tab8 = st.tabs([
+tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, tool_tab8, tool_tab9 = st.tabs([
     "🧮 Position Size",
     "📰 News Calendar",
     "📡 Chart Scanner",
@@ -2105,6 +2105,7 @@ tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, too
     "💹 Currency Strength",
     "📈 Live Data",
     "🔭 MTF Panel",
+    "⚔️ AI Debate",
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -3882,6 +3883,427 @@ padding:18px;margin:6px 0;box-shadow:0 2px 12px rgba(0,0,0,0.5)'>
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# TOOL 9 — AI DEBATE (BOARD OF DIRECTORS)
+# ════════════════════════════════════════════════════════════
+with tool_tab9:
+    st.markdown("### ⚔️ AI Board of Directors — Bull vs Bear Debate")
+    st.caption("Two AIs forced to argue opposite sides. A Judge AI then evaluates both and declares the winner.")
+
+    if not api_key:
+        st.warning("👈 Enter your API key in the sidebar first.")
+    else:
+        # ── Symbol + TF selectors ──────────────────────────
+        DEBATE_SYMBOLS = {
+            "EUR/USD":          ("EUR/USD",  "EURUSD=X"),
+            "GBP/USD":          ("GBP/USD",  "GBPUSD=X"),
+            "USD/JPY":          ("USD/JPY",  "USDJPY=X"),
+            "GBP/JPY":          ("GBP/JPY",  "GBPJPY=X"),
+            "AUD/USD":          ("AUD/USD",  "AUDUSD=X"),
+            "USD/CAD":          ("USD/CAD",  "USDCAD=X"),
+            "USD/CHF":          ("USD/CHF",  "USDCHF=X"),
+            "EUR/JPY":          ("EUR/JPY",  "EURJPY=X"),
+            "Gold (XAU/USD)":   ("XAU/USD",  "GC=F"),
+            "Silver (XAG/USD)": ("XAG/USD",  "SI=F"),
+            "BTC/USD":          ("BTC/USD",  "BTC-USD"),
+            "ETH/USD":          ("ETH/USD",  "ETH-USD"),
+            "S&P 500":          ("SPX",      "^GSPC"),
+            "Nasdaq 100":       ("NDX",      "^NDX"),
+        }
+        DEBATE_TFS = {
+            "M15 (15 min)": ("15min", "15m", "5d",   80),
+            "H1 (1 hour)":  ("1h",    "1h",  "20d",  80),
+            "H4 (4 hour)":  ("4h",    "1h",  "60d",  80),
+            "D1 (Daily)":   ("1day",  "1d",  "180d", 80),
+        }
+
+        db_c1, db_c2, db_c3 = st.columns([2, 2, 1])
+        with db_c1:
+            db_symbol = st.selectbox("📌 Symbol", list(DEBATE_SYMBOLS.keys()),
+                                     index=0, key="db_symbol")
+        with db_c2:
+            db_tf = st.selectbox("⏱️ Timeframe", list(DEBATE_TFS.keys()),
+                                 index=1, key="db_tf")
+        with db_c3:
+            st.markdown("<br>", unsafe_allow_html=True)
+            db_run = st.button("⚔️ Start Debate", use_container_width=True,
+                               type="primary", key="db_run_btn")
+
+        td_sym_db, yf_sym_db = DEBATE_SYMBOLS[db_symbol]
+        td_int_db, yf_int_db, yf_per_db, n_db = DEBATE_TFS[db_tf]
+
+        # ── News warning ───────────────────────────────────
+        _db_news = get_news_warning(db_symbol)
+        render_news_warning_banner(_db_news)
+
+        if db_run:
+            db_prog  = st.progress(0)
+            db_stat  = st.empty()
+
+            # ── Step 1: Fetch data ─────────────────────────
+            db_stat.markdown("📡 **Step 1/4** — Fetching chart data…")
+            db_prog.progress(10)
+            try:
+                import pandas as _pd_db
+                if twelve_data_key:
+                    import requests as _rq_db
+                    _url_db = "https://api.twelvedata.com/time_series"
+                    _p_db   = {"symbol": td_sym_db, "interval": td_int_db,
+                               "outputsize": n_db, "apikey": twelve_data_key, "format": "JSON"}
+                    _r_db   = _rq_db.get(_url_db, params=_p_db, timeout=15)
+                    _d_db   = _r_db.json()
+                    if _d_db.get("status") == "error":
+                        raise ValueError(_d_db.get("message", "Twelve Data error"))
+                    _rows_db = [{"Datetime": v["datetime"],
+                                 "Open": float(v["open"]), "High": float(v["high"]),
+                                 "Low": float(v["low"]), "Close": float(v["close"]),
+                                 "Volume": float(v.get("volume", 0))}
+                                for v in _d_db.get("values", [])]
+                    df_db = _pd_db.DataFrame(_rows_db)
+                    df_db["Datetime"] = _pd_db.to_datetime(df_db["Datetime"])
+                    df_db = df_db.sort_values("Datetime").set_index("Datetime")
+                else:
+                    import yfinance as _yf_db
+                    _raw_db = _yf_db.download(yf_sym_db, period=yf_per_db,
+                                              interval=yf_int_db, auto_adjust=True, progress=False)
+                    if _raw_db.empty:
+                        raise ValueError(f"No data for {yf_sym_db}")
+                    if hasattr(_raw_db.columns, "levels"):
+                        _raw_db.columns = _raw_db.columns.get_level_values(0)
+                    if db_tf.startswith("H4"):
+                        _raw_db = _raw_db.resample("4h").agg({"Open":"first","High":"max",
+                                                               "Low":"min","Close":"last","Volume":"sum"}).dropna()
+                    _raw_db.index = _raw_db.index.tz_localize(None) if _raw_db.index.tzinfo else _raw_db.index
+                    df_db = _raw_db.tail(n_db).copy()
+
+                last_price_db = float(df_db["Close"].iloc[-1])
+                chart_pil_db  = generate_chart_image_from_df(df_db, db_symbol, db_tf)
+                db_prog.progress(25)
+
+                # ── Step 2: Bull AI ────────────────────────
+                db_stat.markdown("🐂 **Step 2/4** — Bull AI building the case to BUY…")
+                BULL_PROMPT = f"""You are the BULL analyst on a trading committee. Your ONLY job is to argue WHY this {db_symbol} chart ({db_tf}) should be BOUGHT right now. Current price: {last_price_db:.5g}.
+
+IMPORTANT RULES:
+- You MUST argue for a BUY position — this is your designated role
+- Find EVERY bullish signal: support levels, bullish patterns, oversold conditions, demand zones, BOS to the upside, higher lows, any reason a trader should go long
+- Be specific with price levels
+- Even if the chart looks bearish overall, find the bullish case
+
+Output ONLY this JSON:
+{{"verdict": "BUY",
+  "confidence": <1-10 how strong is your bull case>,
+  "headline": "<one punchy sentence — the strongest bull argument>",
+  "argument": "<3-4 sentences — your full bull case>",
+  "evidence": ["<bullish signal 1>", "<bullish signal 2>", "<bullish signal 3>"],
+  "entry_zone": "<price level to enter long>",
+  "target": "<profit target>",
+  "invalidation": "<price level that would prove the bull case wrong>"}}"""
+
+                bull_raw = analyze_chart_with_ai(chart_pil_db, api_key, model_choice,
+                                                  db_symbol, db_tf, BULL_PROMPT)
+                _jb = re.search(r'\{.*\}', bull_raw, re.DOTALL)
+                try:
+                    bull_data = json.loads(_jb.group()) if _jb else {}
+                except Exception:
+                    bull_data = {}
+                if not bull_data.get("verdict"):
+                    bull_data = {"verdict": "BUY", "confidence": 5,
+                                 "headline": "Bullish case presented",
+                                 "argument": bull_raw[:300],
+                                 "evidence": ["See argument above"],
+                                 "entry_zone": "—", "target": "—", "invalidation": "—"}
+                db_prog.progress(55)
+
+                # ── Step 3: Bear AI ────────────────────────
+                db_stat.markdown("🐻 **Step 3/4** — Bear AI building the case to SELL…")
+                BEAR_PROMPT = f"""You are the BEAR analyst on a trading committee. Your ONLY job is to argue WHY this {db_symbol} chart ({db_tf}) should be SOLD right now. Current price: {last_price_db:.5g}.
+
+IMPORTANT RULES:
+- You MUST argue for a SELL position — this is your designated role
+- Find EVERY bearish signal: resistance levels, bearish patterns, overbought conditions, supply zones, BOS to the downside, lower highs, any reason a trader should go short
+- Be specific with price levels
+- Even if the chart looks bullish overall, find the bearish case
+
+Output ONLY this JSON:
+{{"verdict": "SELL",
+  "confidence": <1-10 how strong is your bear case>,
+  "headline": "<one punchy sentence — the strongest bear argument>",
+  "argument": "<3-4 sentences — your full bear case>",
+  "evidence": ["<bearish signal 1>", "<bearish signal 2>", "<bearish signal 3>"],
+  "entry_zone": "<price level to enter short>",
+  "target": "<profit target>",
+  "invalidation": "<price level that would prove the bear case wrong>"}}"""
+
+                bear_raw = analyze_chart_with_ai(chart_pil_db, api_key, model_choice,
+                                                  db_symbol, db_tf, BEAR_PROMPT)
+                _jbr = re.search(r'\{.*\}', bear_raw, re.DOTALL)
+                try:
+                    bear_data = json.loads(_jbr.group()) if _jbr else {}
+                except Exception:
+                    bear_data = {}
+                if not bear_data.get("verdict"):
+                    bear_data = {"verdict": "SELL", "confidence": 5,
+                                 "headline": "Bearish case presented",
+                                 "argument": bear_raw[:300],
+                                 "evidence": ["See argument above"],
+                                 "entry_zone": "—", "target": "—", "invalidation": "—"}
+                db_prog.progress(80)
+
+                # ── Step 4: Judge AI ───────────────────────
+                db_stat.markdown("⚖️ **Step 4/4** — Judge AI evaluating both arguments…")
+                JUDGE_PROMPT = f"""You are an impartial senior trading judge. Two analysts have argued opposite sides for {db_symbol} on {db_tf}. Your job: evaluate WHICH argument is more technically sound and declare a winner.
+
+BULL case (confidence {bull_data.get('confidence',5)}/10):
+Headline: {bull_data.get('headline','')}
+Argument: {bull_data.get('argument','')}
+Evidence: {bull_data.get('evidence',[])}
+Entry: {bull_data.get('entry_zone','—')} | Target: {bull_data.get('target','—')} | Invalidation: {bull_data.get('invalidation','—')}
+
+BEAR case (confidence {bear_data.get('confidence',5)}/10):
+Headline: {bear_data.get('headline','')}
+Argument: {bear_data.get('argument','')}
+Evidence: {bear_data.get('evidence',[])}
+Entry: {bear_data.get('entry_zone','—')} | Target: {bear_data.get('target','—')} | Invalidation: {bear_data.get('invalidation','—')}
+
+Current price: {last_price_db:.5g}
+
+Judge based on: quality of technical reasoning, number of valid signals, risk/reward, confluence. Be honest — if one side is clearly weak, say so.
+
+Output ONLY this JSON:
+{{"winner": "BULL" or "BEAR",
+  "score_bull": <0-10>,
+  "score_bear": <0-10>,
+  "winner_reason": "<2-3 sentences — exactly WHY this side won>",
+  "loser_weakness": "<1-2 sentences — the biggest flaw in the losing argument>",
+  "final_verdict": "BUY" or "SELL" or "WAIT",
+  "final_confidence": <1-10>,
+  "judge_note": "<one sentence — any important caveat or condition to watch>"}}"""
+
+                judge_raw = analyze_chart_with_ai(chart_pil_db, api_key, model_choice,
+                                                   db_symbol, db_tf, JUDGE_PROMPT)
+                _jj = re.search(r'\{.*\}', judge_raw, re.DOTALL)
+                try:
+                    judge_data = json.loads(_jj.group()) if _jj else {}
+                except Exception:
+                    judge_data = {}
+                if not judge_data.get("winner"):
+                    judge_data = {"winner": "BULL", "score_bull": 5, "score_bear": 5,
+                                  "winner_reason": judge_raw[:200],
+                                  "loser_weakness": "—",
+                                  "final_verdict": "WAIT", "final_confidence": 5,
+                                  "judge_note": "—"}
+                db_prog.progress(100)
+                db_stat.empty()
+
+                st.session_state["db_result"] = {
+                    "bull": bull_data, "bear": bear_data, "judge": judge_data,
+                    "symbol": db_symbol, "tf": db_tf, "price": last_price_db,
+                    "chart_pil": chart_pil_db,
+                }
+
+            except Exception as _db_err:
+                db_stat.empty()
+                st.error(f"❌ Debate error: {_db_err}")
+
+        # ── Display debate results ─────────────────────────
+        if "db_result" in st.session_state:
+            dr     = st.session_state["db_result"]
+            bull   = dr["bull"]
+            bear   = dr["bear"]
+            judge  = dr["judge"]
+            sym_db = dr["symbol"]
+            tf_db  = dr["tf"]
+            px_db  = dr["price"]
+
+            winner = judge.get("winner", "BULL")
+            sc_b   = judge.get("score_bull", 5)
+            sc_s   = judge.get("score_bear", 5)
+            fv     = judge.get("final_verdict", "WAIT")
+            fc     = judge.get("final_confidence", 5)
+
+            # ── VS banner ─────────────────────────────────
+            fv_col  = "#22c55e" if fv == "BUY" else ("#ef4444" if fv == "SELL" else "#f59e0b")
+            fv_icon = "▲" if fv == "BUY" else ("▼" if fv == "SELL" else "⏳")
+            st.markdown(f"""
+<div style='background:#0a0a0f;border:2px solid #334155;border-radius:16px;
+padding:20px 24px;margin:16px 0;text-align:center'>
+  <div style='font-size:13px;color:#6e7681;letter-spacing:2px;margin-bottom:6px'>
+    ⚔️ {sym_db} · {tf_db} · Price: <b style='color:#fbbf24'>{px_db:.5g}</b>
+  </div>
+  <div style='display:flex;justify-content:center;align-items:center;gap:20px;flex-wrap:wrap'>
+    <div style='text-align:center'>
+      <div style='font-size:32px;font-weight:900;color:#4ade80'>🐂 BULL</div>
+      <div style='font-size:22px;font-weight:900;color:#4ade80'>{sc_b}/10</div>
+      {"<div style='background:#14532d;color:#4ade80;border-radius:8px;padding:4px 14px;font-size:12px;font-weight:700;margin-top:4px'>🏆 WINNER</div>" if winner=="BULL" else ""}
+    </div>
+    <div style='font-size:48px;color:#475569;font-weight:900'>VS</div>
+    <div style='text-align:center'>
+      <div style='font-size:32px;font-weight:900;color:#f87171'>🐻 BEAR</div>
+      <div style='font-size:22px;font-weight:900;color:#f87171'>{sc_s}/10</div>
+      {"<div style='background:#7f1d1d;color:#f87171;border-radius:8px;padding:4px 14px;font-size:12px;font-weight:700;margin-top:4px'>🏆 WINNER</div>" if winner=="BEAR" else ""}
+    </div>
+  </div>
+  <div style='margin-top:16px;padding-top:14px;border-top:1px solid #1e293b'>
+    <span style='font-size:20px;font-weight:900;color:{fv_col}'>{fv_icon} Judge Verdict: {fv}</span>
+    <span style='color:#94a3b8;font-size:13px;margin-left:12px'>Confidence: <b style='color:#fbbf24'>{fc}/10</b></span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+            # ── Side-by-side argument cards ────────────────
+            bull_col, bear_col = st.columns(2, gap="medium")
+
+            def _evidence_rows(ev_list):
+                rows = ""
+                for ev in (ev_list if isinstance(ev_list, list) else [ev_list]):
+                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#4ade80;flex-shrink:0'>✓</span><span style='color:#d1fae5;font-size:13px'>{ev}</span></div>"
+                return rows
+
+            def _evidence_rows_bear(ev_list):
+                rows = ""
+                for ev in (ev_list if isinstance(ev_list, list) else [ev_list]):
+                    rows += f"<div style='display:flex;gap:8px;margin:5px 0;align-items:flex-start'><span style='color:#f87171;flex-shrink:0'>✗</span><span style='color:#fee2e2;font-size:13px'>{ev}</span></div>"
+                return rows
+
+            bull_conf = int(bull.get("confidence", 5))
+            bear_conf = int(bear.get("confidence", 5))
+            bull_win_badge = "🏆 " if winner == "BULL" else ""
+            bear_win_badge = "🏆 " if winner == "BEAR" else ""
+
+            with bull_col:
+                st.markdown(f"""
+<div style='background:#061a0e;border:2px solid {"#22c55e" if winner=="BULL" else "#166534"};
+border-radius:14px;padding:18px;min-height:480px'>
+
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
+    <span style='font-size:22px;font-weight:900;color:#4ade80'>{bull_win_badge}🐂 BULL CASE</span>
+    <span style='background:#14532d;color:#4ade80;padding:4px 12px;border-radius:16px;
+    font-weight:700;font-size:14px'>{bull_conf}/10</span>
+  </div>
+
+  <div style='background:#052e16;border-left:3px solid #22c55e;border-radius:6px;
+  padding:10px 14px;margin-bottom:14px;font-size:14px;color:#bbf7d0;font-style:italic'>
+    "{bull.get('headline','')}"
+  </div>
+
+  <div style='font-size:13px;color:#86efac;margin-bottom:12px;line-height:1.6'>
+    {bull.get('argument','')}
+  </div>
+
+  <div style='font-size:12px;color:#6ee7b7;font-weight:700;margin-bottom:6px;
+  text-transform:uppercase;letter-spacing:1px'>Evidence</div>
+  {_evidence_rows(bull.get('evidence', []))}
+
+  <div style='margin-top:14px;background:#0a2e1a;border-radius:8px;padding:10px 12px'>
+    <div style='font-size:12px;color:#4ade80;margin-bottom:6px;font-weight:700'>📊 TRADE PLAN</div>
+    <div style='font-size:12px;color:#a7f3d0'>🎯 Entry zone: <b>{bull.get('entry_zone','—')}</b></div>
+    <div style='font-size:12px;color:#a7f3d0'>💰 Target: <b>{bull.get('target','—')}</b></div>
+    <div style='font-size:12px;color:#fca5a5'>🚫 Invalidation: <b>{bull.get('invalidation','—')}</b></div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+            with bear_col:
+                st.markdown(f"""
+<div style='background:#1a0606;border:2px solid {"#ef4444" if winner=="BEAR" else "#7f1d1d"};
+border-radius:14px;padding:18px;min-height:480px'>
+
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
+    <span style='font-size:22px;font-weight:900;color:#f87171'>{bear_win_badge}🐻 BEAR CASE</span>
+    <span style='background:#7f1d1d;color:#f87171;padding:4px 12px;border-radius:16px;
+    font-weight:700;font-size:14px'>{bear_conf}/10</span>
+  </div>
+
+  <div style='background:#450a0a;border-left:3px solid #ef4444;border-radius:6px;
+  padding:10px 14px;margin-bottom:14px;font-size:14px;color:#fecaca;font-style:italic'>
+    "{bear.get('headline','')}"
+  </div>
+
+  <div style='font-size:13px;color:#fca5a5;margin-bottom:12px;line-height:1.6'>
+    {bear.get('argument','')}
+  </div>
+
+  <div style='font-size:12px;color:#fca5a5;font-weight:700;margin-bottom:6px;
+  text-transform:uppercase;letter-spacing:1px'>Evidence</div>
+  {_evidence_rows_bear(bear.get('evidence', []))}
+
+  <div style='margin-top:14px;background:#2e0a0a;border-radius:8px;padding:10px 12px'>
+    <div style='font-size:12px;color:#f87171;margin-bottom:6px;font-weight:700'>📊 TRADE PLAN</div>
+    <div style='font-size:12px;color:#fecaca'>🎯 Entry zone: <b>{bear.get('entry_zone','—')}</b></div>
+    <div style='font-size:12px;color:#fecaca'>💰 Target: <b>{bear.get('target','—')}</b></div>
+    <div style='font-size:12px;color:#86efac'>🚫 Invalidation: <b>{bear.get('invalidation','—')}</b></div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+            # ── Judge verdict card ─────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            w_col  = "#4ade80" if winner == "BULL" else "#f87171"
+            w_bg   = "#061a0e" if winner == "BULL" else "#1a0606"
+            w_bdr  = "#22c55e" if winner == "BULL" else "#ef4444"
+            w_icon = "🐂" if winner == "BULL" else "🐻"
+            fv_bg  = "#0a2e1a" if fv=="BUY" else ("#2e0a0a" if fv=="SELL" else "#1a1a0a")
+            fv_bdr_c = "#22c55e" if fv=="BUY" else ("#ef4444" if fv=="SELL" else "#f59e0b")
+            fc_bar_c = "#22c55e" if fc>=7 else ("#f59e0b" if fc>=5 else "#ef4444")
+
+            st.markdown(f"""
+<div style='background:#0a0f1e;border:2px solid #6366f1;border-radius:16px;padding:22px 24px'>
+
+  <div style='font-size:16px;font-weight:800;color:#a5b4fc;margin-bottom:16px'>
+    ⚖️ Judge's Ruling
+  </div>
+
+  <div style='background:{w_bg};border:1px solid {w_bdr};border-radius:10px;
+  padding:14px 16px;margin-bottom:14px'>
+    <div style='font-size:15px;font-weight:800;color:{w_col};margin-bottom:8px'>
+      🏆 {w_icon} {winner} WINS
+    </div>
+    <div style='font-size:13px;color:#e2e8f0;line-height:1.6'>
+      {judge.get('winner_reason','')}
+    </div>
+  </div>
+
+  <div style='background:#1a0a1a;border:1px solid #4c1d95;border-radius:8px;
+  padding:12px 14px;margin-bottom:14px'>
+    <div style='font-size:12px;color:#c4b5fd;font-weight:700;margin-bottom:4px'>
+      💀 Losing Side's Fatal Flaw
+    </div>
+    <div style='font-size:13px;color:#ddd6fe;line-height:1.5'>
+      {judge.get('loser_weakness','')}
+    </div>
+  </div>
+
+  <div style='background:{fv_bg};border:1px solid {fv_bdr_c};border-radius:8px;
+  padding:14px 16px;display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:12px'>
+    <div>
+      <div style='font-size:12px;color:#94a3b8;margin-bottom:4px'>FINAL TRADE CALL</div>
+      <div style='font-size:22px;font-weight:900;color:{fv_col}'>{fv_icon} {fv}</div>
+    </div>
+    <div>
+      <div style='font-size:12px;color:#94a3b8;margin-bottom:6px'>Conviction</div>
+      <div style='background:#1e293b;border-radius:6px;height:10px;width:160px'>
+        <div style='background:{fc_bar_c};width:{fc*10}%;height:10px;border-radius:6px'></div>
+      </div>
+      <div style='font-size:12px;color:{fc_bar_c};margin-top:3px;font-weight:700'>{fc}/10</div>
+    </div>
+    <div style='max-width:260px'>
+      <div style='font-size:12px;color:#94a3b8;margin-bottom:4px'>Judge's Note</div>
+      <div style='font-size:12px;color:#e2e8f0;font-style:italic'>{judge.get('judge_note','')}</div>
+    </div>
+  </div>
+
+</div>
+""", unsafe_allow_html=True)
+
+            # ── Chart ──────────────────────────────────────
+            with st.expander("📊 View Chart Used in Debate", expanded=False):
+                if dr.get("chart_pil"):
+                    _db_buf = io.BytesIO()
+                    dr["chart_pil"].save(_db_buf, format="PNG")
+                    st.image(_db_buf.getvalue(), use_container_width=True)
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
