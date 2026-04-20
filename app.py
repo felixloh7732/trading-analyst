@@ -2096,7 +2096,7 @@ The AI will identify:<br><br>
 st.divider()
 st.markdown("## 🛠️ Trading Tools 交易工具")
 
-tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, tool_tab8, tool_tab9 = st.tabs([
+tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, tool_tab8, tool_tab9, tool_tab10 = st.tabs([
     "🧮 Position Size",
     "📰 News Calendar",
     "📡 Chart Scanner",
@@ -2106,6 +2106,7 @@ tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, too
     "📈 Live Data",
     "🔭 MTF Panel",
     "⚔️ AI Debate",
+    "📲 Signal Feed",
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -4190,6 +4191,232 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
                     _db_buf = io.BytesIO()
                     dr["chart_pil"].save(_db_buf, format="PNG")
                     st.image(_db_buf.getvalue(), use_container_width=True)
+
+# ════════════════════════════════════════════════════════════
+# TOOL 10 — SIGNAL FEED (TradingView → Google Sheets)
+# ════════════════════════════════════════════════════════════
+with tool_tab10:
+    import pandas as _pd_sf
+    import datetime as _dt_sf
+
+    st.markdown("### 📲 Signal Feed — Live TradingView Signals")
+    st.caption("Signals from your Pine Script are automatically stored in Google Sheets and displayed here.")
+
+    # ── Sheet ID input ──────────────────────────────────────
+    if "sf_sheet_id" not in st.session_state:
+        st.session_state["sf_sheet_id"] = ""
+
+    _sf_col1, _sf_col2 = st.columns([3, 1])
+    with _sf_col1:
+        _sf_input = st.text_input(
+            "📋 Google Sheet ID",
+            value=st.session_state["sf_sheet_id"],
+            placeholder="Paste your Google Sheet ID here  (e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms)",
+            label_visibility="collapsed",
+        )
+    with _sf_col2:
+        _sf_refresh = st.button("🔄 Refresh Signals", use_container_width=True)
+
+    if _sf_input:
+        st.session_state["sf_sheet_id"] = _sf_input.strip()
+
+    _sf_sheet_id = st.session_state.get("sf_sheet_id", "")
+
+    # ── Load signals ────────────────────────────────────────
+    @st.cache_data(ttl=60, show_spinner=False)
+    def _sf_load(sid):
+        _url = f"https://docs.google.com/spreadsheets/d/{sid}/export?format=csv"
+        _df = _pd_sf.read_csv(_url, on_bad_lines="skip")
+        _df.columns = [c.strip() for c in _df.columns]
+        return _df
+
+    if _sf_refresh and _sf_sheet_id:
+        st.cache_data.clear()
+
+    if not _sf_sheet_id:
+        # ── Setup Instructions ──────────────────────────────
+        st.markdown("---")
+        st.markdown("#### 🛠️ Setup Guide (one-time, ~5 minutes)")
+
+        with st.expander("**Step 1 — Paste code into Google Apps Script**", expanded=True):
+            st.markdown("Go to **[script.google.com](https://script.google.com)** → open your existing project → replace ALL code with this:")
+            st.code('''// ═══════════════════════════════════════════════
+// CHEE SIGNAL FEED — Google Apps Script Webhook
+// ═══════════════════════════════════════════════
+const SHEET_NAME = "Chee Signal Feed";
+
+function _getOrCreateSheet() {
+  const files = DriveApp.getFilesByName(SHEET_NAME);
+  let ss;
+  if (files.hasNext()) {
+    ss = SpreadsheetApp.open(files.next());
+  } else {
+    ss = SpreadsheetApp.create(SHEET_NAME);
+    const sh = ss.getActiveSheet();
+    sh.appendRow(["Timestamp","Symbol","Direction","EP","TP1","TP2","TP3","SL","Confidence"]);
+    sh.setFrozenRows(1);
+    // Make sheet publicly readable
+    DriveApp.getFileById(ss.getId()).setSharing(
+      DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW
+    );
+  }
+  return ss.getActiveSheet();
+}
+
+function doPost(e) {
+  try {
+    const body = e.postData ? e.postData.contents : "";
+    const sh   = _getOrCreateSheet();
+    const lines = body.split("\\n").map(l => l.replace(/[\\u{1F000}-\\u{FFFFF}]/gu,"").trim()).filter(l => l);
+
+    let direction="—", ep="—", tp1="—", tp2="—", tp3="—", sl="—", confidence="—", symbol="—";
+
+    for (const line of lines) {
+      const up = line.toUpperCase();
+      if (up.includes("BUY SIGNAL"))  direction = "BUY";
+      if (up.includes("SELL SIGNAL")) direction = "SELL";
+      if (line.startsWith("Symbol:"))     symbol     = line.replace("Symbol:","").trim();
+      if (line.startsWith("EP:"))         ep         = line.replace("EP:","").trim();
+      if (line.startsWith("TP1:"))        tp1        = line.replace("TP1:","").trim();
+      if (line.startsWith("TP2:"))        tp2        = line.replace("TP2:","").trim();
+      if (line.startsWith("TP3:"))        tp3        = line.replace("TP3:","").trim();
+      if (line.startsWith("SL:"))         sl         = line.replace("SL:","").trim();
+      if (line.startsWith("Confidence:")) confidence = line.replace("Confidence:","").replace("%","").trim() + "%";
+    }
+
+    const ts = Utilities.formatDate(new Date(), "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm");
+    sh.appendRow([ts, symbol, direction, ep, tp1, tp2, tp3, sl, confidence]);
+
+    const sheetUrl = sh.getParent().getUrl();
+    const sheetId  = sh.getParent().getId();
+
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"ok", sheet_id: sheetId, sheet_url: sheetUrl}))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"error", message: err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  const sh = _getOrCreateSheet();
+  const id = sh.getParent().getId();
+  const url = sh.getParent().getUrl();
+  return ContentService
+    .createTextOutput("✅ Signal Feed active.\\nSheet ID: " + id + "\\nSheet URL: " + url)
+    .setMimeType(ContentService.MimeType.TEXT);
+}''', language="javascript")
+            st.markdown("Then click **Deploy → Manage Deployments → Edit → Deploy** (keep the same URL).")
+
+        with st.expander("**Step 2 — Get your Google Sheet ID**", expanded=True):
+            st.markdown("""
+After saving + deploying the script, open this URL in your browser:
+```
+https://script.google.com/macros/s/AKfycbxZpXdzH7L5ypV7KvYJrc8ABdg_AXuHwYDE9fm22WGnMbxXANAYBZr5oTJ8e9DGOJBb5w/exec
+```
+You'll see a page with your **Sheet ID** — copy it and paste it in the box above ☝️
+""")
+
+        with st.expander("**Step 3 — Add webhook to TradingView Alert**", expanded=True):
+            st.markdown("""
+In TradingView → **Alerts → your existing alert → Edit** (pencil icon):
+
+1. **Notifications** tab → enable **Webhook URL**
+2. Paste: `https://script.google.com/macros/s/AKfycbxZpXdzH7L5ypV7KvYJrc8ABdg_AXuHwYDE9fm22WGnMbxXANAYBZr5oTJ8e9DGOJBb5w/exec`
+3. **Message** tab → add `Symbol: {{ticker}}` as the **first line** of your alert message:
+```
+Symbol: {{ticker}}
+⚠️ NEW SIGNAL ⚠️
+
+🚀 BUY SIGNAL
+EP: ...
+```
+4. Save ✅ — Telegram AND webhook will both fire from now on
+""")
+
+    else:
+        # ── Display signals ─────────────────────────────────
+        try:
+            _sf_df = _sf_load(_sf_sheet_id)
+
+            if _sf_df.empty:
+                st.info("📭 No signals yet. Waiting for your first TradingView alert to fire.")
+            else:
+                # Sort newest first
+                _sf_df_sorted = _sf_df.iloc[::-1].reset_index(drop=True)
+                _latest = _sf_df_sorted.iloc[0]
+
+                # ── Latest Signal Card ──────────────────────
+                _sf_dir = str(_latest.get("Direction", "—")).upper()
+                _sf_ep  = _latest.get("EP", "—")
+                _sf_tp1 = _latest.get("TP1", "—")
+                _sf_tp2 = _latest.get("TP2", "—")
+                _sf_tp3 = _latest.get("TP3", "—")
+                _sf_sl  = _latest.get("SL", "—")
+                _sf_con = _latest.get("Confidence", "—")
+                _sf_sym = _latest.get("Symbol", "—")
+                _sf_ts  = _latest.get("Timestamp", "—")
+
+                _sf_is_buy  = _sf_dir == "BUY"
+                _sf_dir_col = "#22c55e" if _sf_is_buy else "#ef4444"
+                _sf_dir_bg  = "#052e16" if _sf_is_buy else "#450a0a"
+                _sf_dir_icon = "🚀" if _sf_is_buy else "🔻"
+
+                st.markdown(
+                    f"<div style='background:{_sf_dir_bg};border:2px solid {_sf_dir_col};border-radius:16px;"
+                    f"padding:20px 24px;margin-bottom:16px'>"
+                    f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>"
+                    f"<span style='color:{_sf_dir_col};font-size:22px;font-weight:900'>{_sf_dir_icon} {_sf_dir} SIGNAL</span>"
+                    f"<span style='color:#94a3b8;font-size:13px'>{_sf_ts}</span></div>"
+                    f"<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px'>"
+                    f"<span style='background:#1e293b;color:#e2e8f0;padding:4px 12px;border-radius:20px;font-size:13px'>📌 {_sf_sym}</span>"
+                    f"<span style='background:#1e293b;color:#fbbf24;padding:4px 12px;border-radius:20px;font-size:13px'>🎯 EP: {_sf_ep}</span>"
+                    f"<span style='background:#1e293b;color:#86efac;padding:4px 12px;border-radius:20px;font-size:13px'>SL: {_sf_sl}</span>"
+                    f"<span style='background:#1e293b;color:#a78bfa;padding:4px 12px;border-radius:20px;font-size:13px'>Confidence: {_sf_con}</span>"
+                    f"</div>"
+                    f"<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px'>"
+                    f"<div style='background:#0f172a;border-radius:10px;padding:10px;text-align:center'>"
+                    f"<div style='color:#94a3b8;font-size:11px;margin-bottom:4px'>TP1</div>"
+                    f"<div style='color:#4ade80;font-size:16px;font-weight:700'>{_sf_tp1}</div></div>"
+                    f"<div style='background:#0f172a;border-radius:10px;padding:10px;text-align:center'>"
+                    f"<div style='color:#94a3b8;font-size:11px;margin-bottom:4px'>TP2</div>"
+                    f"<div style='color:#4ade80;font-size:16px;font-weight:700'>{_sf_tp2}</div></div>"
+                    f"<div style='background:#0f172a;border-radius:10px;padding:10px;text-align:center'>"
+                    f"<div style='color:#94a3b8;font-size:11px;margin-bottom:4px'>TP3</div>"
+                    f"<div style='color:#4ade80;font-size:16px;font-weight:700'>{_sf_tp3}</div></div>"
+                    f"</div></div>",
+                    unsafe_allow_html=True
+                )
+
+                st.markdown(f"*Auto-refreshes every 60 seconds. Last loaded: {_dt_sf.datetime.now().strftime('%H:%M:%S')}*")
+
+                # ── History Table ───────────────────────────
+                st.markdown("#### 📋 Signal History")
+                _sf_display = _sf_df_sorted.copy()
+
+                def _sf_color_dir(val):
+                    v = str(val).upper()
+                    if v == "BUY":
+                        return "color: #4ade80; font-weight: bold"
+                    elif v == "SELL":
+                        return "color: #f87171; font-weight: bold"
+                    return ""
+
+                try:
+                    _sf_styled = _sf_display.style.applymap(_sf_color_dir, subset=["Direction"])
+                    st.dataframe(_sf_styled, use_container_width=True, hide_index=True)
+                except Exception:
+                    st.dataframe(_sf_display, use_container_width=True, hide_index=True)
+
+                st.caption(f"Total signals recorded: **{len(_sf_df)}**")
+
+        except Exception as _sf_err:
+            st.error(f"❌ Cannot load signals: {_sf_err}")
+            st.markdown(f"Make sure your Google Sheet ID is correct and the sheet is set to **Anyone with link → Viewer**.")
+            st.code(_sf_sheet_id, language="text")
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
