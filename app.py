@@ -4204,7 +4204,7 @@ with tool_tab10:
 
     # ── Sheet ID input ──────────────────────────────────────
     if "sf_sheet_id" not in st.session_state:
-        st.session_state["sf_sheet_id"] = ""
+        st.session_state["sf_sheet_id"] = "13vjfvw1FvMSnoeUoGXbMDCfOCAkYGUTJ2UM5Uny1LZ8"
 
     _sf_col1, _sf_col2 = st.columns([3, 1])
     with _sf_col1:
