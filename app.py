@@ -1150,6 +1150,105 @@ def pil_to_download_bytes(image: Image.Image) -> bytes:
 
 
 # ============================================================
+# LIVE DATA HELPERS — auto-fetch for AI Analyst & Market Scout
+# ============================================================
+
+_SYMBOL_KEYWORDS = [
+    (("gold", "xauusd", "xau", "黄金", "金价"),            "XAU/USD", "Gold (XAUUSD)"),
+    (("silver", "xagusd", "xag", "白银", "银价"),          "XAG/USD", "Silver (XAGUSD)"),
+    (("eurusd", "eur/usd", "euro", "欧元"),               "EUR/USD", "EURUSD"),
+    (("gbpusd", "gbp/usd", "pound", "cable", "英镑"),      "GBP/USD", "GBPUSD"),
+    (("usdjpy", "usd/jpy", "yen", "日元", "日币"),         "USD/JPY", "USDJPY"),
+    (("audusd", "aud/usd", "aussie", "澳元"),             "AUD/USD", "AUDUSD"),
+    (("nzdusd", "nzd/usd", "kiwi", "纽元"),               "NZD/USD", "NZDUSD"),
+    (("usdcad", "usd/cad", "loonie", "加元"),             "USD/CAD", "USDCAD"),
+    (("usdchf", "usd/chf", "瑞郎"),                        "USD/CHF", "USDCHF"),
+    (("btc", "bitcoin", "比特币"),                         "BTC/USD", "Bitcoin (BTCUSD)"),
+    (("eth", "ethereum", "以太坊"),                        "ETH/USD", "Ethereum (ETHUSD)"),
+]
+
+
+def detect_symbols_in_text(text: str) -> list:
+    """Find tradable symbols mentioned in a chat message. Returns [(td_symbol, label), ...]"""
+    t = (text or "").lower()
+    found = []
+    for kws, td_sym, label in _SYMBOL_KEYWORDS:
+        if any(k in t for k in kws):
+            found.append((td_sym, label))
+    return found
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def td_fetch_df(symbol: str, interval: str, outputsize: int, api_key_td: str):
+    """Fetch candles from Twelve Data → DataFrame with Open/High/Low/Close columns."""
+    import requests as _rq
+    import pandas as _pd
+    r = _rq.get("https://api.twelvedata.com/time_series", params={
+        "symbol": symbol, "interval": interval,
+        "outputsize": outputsize, "apikey": api_key_td,
+    }, timeout=20)
+    j = r.json()
+    if j.get("status") == "error" or "values" not in j:
+        raise RuntimeError(j.get("message", "no data returned"))
+    df = _pd.DataFrame(j["values"]).iloc[::-1].reset_index(drop=True)
+    df = df.rename(columns={"datetime": "Date", "open": "Open", "high": "High",
+                            "low": "Low", "close": "Close", "volume": "Volume"})
+    for c in ("Open", "High", "Low", "Close"):
+        df[c] = df[c].astype(float)
+    if "Volume" in df.columns:
+        df["Volume"] = _pd.to_numeric(df["Volume"], errors="coerce").fillna(0)
+    return df.set_index("Date")
+
+
+def build_market_digest(df, label: str, tf: str) -> str:
+    """Compress a candle DataFrame into a compact text digest for the AI (Fib + SNR focused)."""
+    closes = df["Close"]
+    cur    = float(closes.iloc[-1])
+    ema20  = float(closes.ewm(span=20,  adjust=False).mean().iloc[-1])
+    ema50  = float(closes.ewm(span=50,  adjust=False).mean().iloc[-1])
+    ema200 = float(closes.ewm(span=200, adjust=False).mean().iloc[-1]) if len(closes) >= 200 else None
+    delta  = closes.diff()
+    gain   = delta.clip(lower=0).rolling(14).mean()
+    loss   = (-delta.clip(upper=0)).rolling(14).mean()
+    rsi    = float((100 - 100 / (1 + gain / loss.replace(0, 1e-9))).iloc[-1])
+
+    look     = df.tail(150)
+    swing_hi = float(look["High"].max())
+    swing_lo = float(look["Low"].min())
+    rng      = max(swing_hi - swing_lo, 1e-9)
+    up_bias  = ema20 > ema50
+    retr     = (swing_hi - cur) / rng if up_bias else (cur - swing_lo) / rng
+    fib_pos  = "INSIDE the Golden Zone (61.8-78.6%)" if 0.598 <= retr <= 0.806 else f"at {retr*100:.1f}% retracement"
+    fib618   = swing_hi - 0.618 * rng if up_bias else swing_lo + 0.618 * rng
+    fib786   = swing_hi - 0.786 * rng if up_bias else swing_lo + 0.786 * rng
+
+    last5   = df.tail(5)
+    candles = " | ".join(f"O{r.Open:.6g} H{r.High:.6g} L{r.Low:.6g} C{r.Close:.6g}"
+                         for r in last5.itertuples())
+    parts = [
+        f"{label} {tf} — CURRENT PRICE: {cur:.6g}",
+        f"  Swing (last {len(look)} bars): HIGH {swing_hi:.6g} / LOW {swing_lo:.6g}",
+        f"  Trend: EMA20 {ema20:.6g} {'>' if up_bias else '<'} EMA50 {ema50:.6g}"
+        + (f", EMA200 {ema200:.6g}" if ema200 else "") + f" → {'bullish' if up_bias else 'bearish'} bias",
+        f"  RSI(14): {rsi:.1f}",
+        f"  Fibonacci ({'low→high' if up_bias else 'high→low'} swing): price {fib_pos}; 61.8%={fib618:.6g}, 78.6%={fib786:.6g}",
+        f"  Last 5 candles: {candles}",
+    ]
+    return "\n".join(parts)
+
+
+def ai_text_call(prompt: str, api_key: str, model: str) -> str:
+    """One-shot text call to Gemini or Claude."""
+    if model.startswith("gemini"):
+        _c = google_genai.Client(api_key=api_key)
+        return _c.models.generate_content(model=model, contents=[prompt]).text
+    _c = anthropic.Anthropic(api_key=api_key)
+    r = _c.messages.create(model=model, max_tokens=2500,
+                           messages=[{"role": "user", "content": prompt}])
+    return r.content[0].text
+
+
+# ============================================================
 # STREAMLIT UI
 # ============================================================
 
@@ -1547,6 +1646,125 @@ st.markdown("""
     color: #eef5f0 !important; -webkit-text-fill-color: #eef5f0 !important; letter-spacing: -0.5px;
   }
   .chee-brand .nm .g { color:#4ade80 !important; -webkit-text-fill-color:#4ade80 !important; }
+
+  /* ══════════════════════════════════════════
+     V2 — richer palette + white-widget fixes
+  ══════════════════════════════════════════ */
+
+  /* Aurora background: emerald + teal + cyan */
+  [data-testid="stAppViewContainer"] {
+    background:
+      radial-gradient(ellipse 70% 45% at 80% -8%, rgba(34,197,94,0.20), transparent 62%),
+      radial-gradient(ellipse 55% 40% at 0% 30%, rgba(20,184,166,0.12), transparent 60%),
+      radial-gradient(ellipse 65% 45% at 55% 115%, rgba(34,211,238,0.10), transparent 60%),
+      linear-gradient(180deg, #060a08 0%, #04070a 100%) !important;
+  }
+
+  h1 {
+    background: linear-gradient(90deg, #f0fdf4 5%, #4ade80 55%, #22d3ee 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .chee-hero .hi .accent {
+    background: linear-gradient(90deg, #34d399 0%, #22d3ee 90%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .chee-chip {
+    background: linear-gradient(90deg, rgba(34,197,94,0.14), rgba(34,211,238,0.10));
+    border: 1px solid rgba(74,222,128,0.45);
+  }
+
+  /* Agent cards: gradient top edge + hover glow */
+  .agent-card {
+    background: linear-gradient(180deg, rgba(34,197,94,0.06), rgba(10,14,11,0.95) 45%);
+    overflow: hidden;
+  }
+  .agent-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, #22c55e 30%, #22d3ee 70%, transparent);
+    opacity: .65;
+  }
+  .agent-card:hover {
+    border-color: rgba(74,222,128,0.5);
+    box-shadow: 0 10px 44px rgba(34,197,94,0.18), 0 0 0 1px rgba(34,211,238,0.10);
+    transform: translateY(-2px);
+  }
+  .agent-card .ic {
+    background: linear-gradient(135deg, rgba(34,197,94,0.18), rgba(34,211,238,0.12));
+    border: 1px solid rgba(74,222,128,0.35);
+    box-shadow: 0 0 16px rgba(34,197,94,0.15);
+  }
+
+  /* Signal cards: stronger presence */
+  .chee-signal-card {
+    box-shadow: 0 0 50px rgba(34,197,94,0.14), inset 0 1px 0 rgba(74,222,128,0.15);
+  }
+  .chee-signal-card.sell {
+    box-shadow: 0 0 50px rgba(239,68,68,0.14), inset 0 1px 0 rgba(248,113,113,0.15);
+  }
+
+  /* MAIN AREA buttons — force dark (fix white buttons) */
+  section[data-testid="stMain"] .stButton>button,
+  section[data-testid="stMain"] button[data-testid="stBaseButton-secondary"] {
+    background: linear-gradient(180deg, #121b14, #0c110e) !important;
+    color: #cfe0d4 !important;
+    border: 1px solid #2b4534 !important;
+  }
+  section[data-testid="stMain"] .stButton>button:hover {
+    color: #4ade80 !important; border-color: #22c55e !important;
+    box-shadow: 0 0 18px rgba(34,197,94,0.25) !important;
+  }
+  section[data-testid="stMain"] .stButton>button[kind="primary"],
+  section[data-testid="stMain"] button[data-testid="stBaseButton-primary"] {
+    background: linear-gradient(135deg, #16a34a, #10b981 55%, #0ea5a4) !important;
+    color: #04120a !important; border: 1px solid #4ade80 !important;
+    box-shadow: 0 4px 24px rgba(34,197,94,0.35) !important;
+  }
+  section[data-testid="stMain"] .stDownloadButton>button {
+    background: linear-gradient(180deg, #121b14, #0c110e) !important;
+    color: #4ade80 !important; border: 1px solid #2b4534 !important;
+  }
+
+  /* CHAT INPUT — force dark on every inner layer (fix white pill) */
+  [data-testid="stChatInput"],
+  [data-testid="stChatInput"] > div,
+  [data-testid="stChatInput"] div[data-baseweb="textarea"],
+  [data-testid="stChatInput"] div[data-baseweb="base-input"],
+  [data-testid="stChatInputContainer"],
+  [data-testid="stChatInputContainer"] > div,
+  .stChatInput, .stChatInput > div {
+    background: #0c130f !important;
+    background-color: #0c130f !important;
+    border-color: #2b4534 !important;
+    color: #e8f0ea !important;
+  }
+  [data-testid="stChatInput"] { border-radius: 999px !important; box-shadow: 0 0 26px rgba(34,197,94,0.14) !important; }
+  [data-testid="stChatInput"] textarea { background: transparent !important; color: #e8f0ea !important; }
+  [data-testid="stChatInputSubmitButton"],
+  [data-testid="stChatInput"] button {
+    background: linear-gradient(135deg, #16a34a, #0ea5a4) !important;
+    border-radius: 999px !important; border: none !important;
+  }
+  [data-testid="stChatInputSubmitButton"] svg, [data-testid="stChatInput"] button svg { fill: #04120a !important; }
+  [data-testid="stBottomBlockContainer"], [data-testid="stBottom"], [data-testid="stBottom"] > div {
+    background: transparent !important;
+  }
+
+  /* Chat bubbles: user tinted green, assistant neutral */
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+    background: linear-gradient(180deg, rgba(34,197,94,0.09), rgba(11,16,13,0.9)) !important;
+    border-color: rgba(74,222,128,0.28) !important;
+  }
+  [data-testid="stChatMessageAvatarUser"], [data-testid="stChatMessageAvatarAssistant"] {
+    background: linear-gradient(135deg, #16a34a, #0ea5a4) !important; color: #04120a !important;
+  }
+
+  /* Sidebar active nav: gradient */
+  section[data-testid="stSidebar"] .stButton>button[kind="primary"],
+  section[data-testid="stSidebar"] button[data-testid="stBaseButton-primary"] {
+    background: linear-gradient(90deg, rgba(34,197,94,0.18), rgba(34,211,238,0.08)) !important;
+    border: 1px solid rgba(74,222,128,0.4) !important;
+    color: #4ade80 !important;
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1556,7 +1774,7 @@ st.markdown("""
 _NAV_PAGES = [
     ("🏠", "Home"),
     ("✨", "AI Analyst"),
-    ("📊", "Chart Analysis"),
+    ("🎯", "Market Scout"),
     ("📡", "Signals"),
     ("🌐", "Markets"),
 ]
@@ -1807,10 +2025,10 @@ if _nav == "Home":
     st.markdown("<div class='chee-section-label'>AI Agents</div>", unsafe_allow_html=True)
 
     _AGENTS = [
-        ("✨", "AI Analyst",     "Your AI trading partner — ask anything, review charts, plan trades.", "AI Analyst"),
-        ("📊", "Chart Analysis", "Upload a chart — Fib + S&R confluence read with entry, SL, TP.",      "Chart Analysis"),
-        ("📡", "Signals",        "Live feed from your TradingView Pine Script — every signal, TP & SL.", "Signals"),
-        ("🌐", "Markets",        "News calendar, currency strength and live charts in one place.",       "Markets"),
+        ("✨", "AI Analyst",   "Ask anything — it fetches live prices & charts automatically, like ChatGPT for trading.", "AI Analyst"),
+        ("🎯", "Market Scout", "AI scans the whole market and picks today's best opportunities for you.",                 "Market Scout"),
+        ("📡", "Signals",      "Live feed from your TradingView Pine Script — every signal, TP & SL.",                    "Signals"),
+        ("🌐", "Markets",      "Economic calendar and live charts in one place.",                                          "Markets"),
     ]
 
     _cols = st.columns(4, gap="small")
@@ -1841,18 +2059,117 @@ if _nav == "Home":
 """, unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
-# CHART ANALYSIS — page header + mode toggle
+# MARKET SCOUT — AI scans the market, picks today's best setups
 # ════════════════════════════════════════════════════════════
-if _nav == "Chart Analysis":
-    st.markdown("## 📊 Chart Analysis")
-    st.caption("Fibonacci + S&R confluence · upload a chart, get the full read 上传图表，获取完整分析")
-    mtf_mode = st.toggle(
-        "🔭 Multi-Timeframe Mode — D1 → H1 → Entry 多时间框架模式",
-        value=False,
-        help="Top-down analysis: only trade when all timeframes align. 只在各时间框架方向一致时交易。",
+if _nav == "Market Scout":
+    st.markdown("## 🎯 Market Scout")
+    st.caption("AI fetches live data across the market and picks today's best opportunities · AI 自动扫描市场，挑出今天最有机会的交易对")
+
+    _SCOUT_UNIVERSE = ["XAU/USD", "XAG/USD", "EUR/USD", "GBP/USD", "USD/JPY",
+                       "AUD/USD", "NZD/USD", "USD/CAD", "USD/CHF", "BTC/USD", "ETH/USD"]
+    _scout_sel = st.multiselect(
+        "Markets to scan 扫描范围",
+        _SCOUT_UNIVERSE,
+        default=["XAU/USD", "XAG/USD", "EUR/USD", "GBP/USD", "USD/JPY", "BTC/USD"],
+        help="Free Twelve Data plan allows ~8 requests/minute — keep the list ≤ 8 pairs.",
     )
-else:
-    mtf_mode = False
+
+    if st.button("🔍 Scan the Market Now 立即扫描", type="primary", use_container_width=True):
+        if not api_key:
+            st.warning("👈 Enter your AI API key in the sidebar first.")
+        elif not twelve_data_key:
+            st.warning("👈 Enter your Twelve Data key in the sidebar first (free at twelvedata.com).")
+        elif not _scout_sel:
+            st.warning("Pick at least one market to scan.")
+        else:
+            _digests = []
+            _prog = st.progress(0.0, text="Fetching live data…")
+            for _i, _sym in enumerate(_scout_sel):
+                try:
+                    _sdf = td_fetch_df(_sym, "1h", 300, twelve_data_key)
+                    _digests.append(build_market_digest(_sdf, _sym, "H1"))
+                except Exception as _se:
+                    _digests.append(f"{_sym}: DATA UNAVAILABLE ({_se})")
+                _prog.progress((_i + 1) / len(_scout_sel), text=f"Fetched {_sym} ({_i + 1}/{len(_scout_sel)})")
+            _prog.empty()
+
+            _nl = "\n\n"
+            _scout_prompt = f"""You are Chee AI Market Scout — an elite trading analyst whose edge is Fibonacci + Support/Resistance confluence.
+
+Below is LIVE market data (fetched seconds ago) for {len(_scout_sel)} markets:
+
+{_nl.join("── " + d for d in _digests)}
+
+TASK: Pick the 1-3 BEST opportunities right now. Only pick markets with REAL confluence:
+clear trend + price at/near the Fibonacci Golden Zone (61.8-78.6%) or a key swing level + healthy RSI + good risk:reward.
+If nothing qualifies, return fewer picks (even zero) and explain why in the market note. Quality over quantity.
+
+Output STRICT JSON only, no other text:
+{{"market_note_en": "1-2 sentence market overview",
+ "market_note_cn": "中文一两句市场总览",
+ "picks": [
+   {{"pair": "XAU/USD", "direction": "BUY or SELL or WAIT", "confidence": 7,
+     "entry_zone": "price zone", "stop_loss": "level", "take_profit": "level",
+     "reason_en": "2-3 sentences citing the exact fib levels and swing levels from the data",
+     "reason_cn": "中文理由 2-3 句，引用具体价位"}}
+ ]}}"""
+            with st.spinner("🤖 AI is analysing the whole market…"):
+                try:
+                    _raw = ai_text_call(_scout_prompt, api_key, model_choice)
+                    _m = re.search(r"\{.*\}", _raw, re.DOTALL)
+                    st.session_state["scout_result"]  = json.loads(_m.group(0)) if _m else {}
+                    st.session_state["scout_digests"] = _digests
+                    import datetime as _dt_sc
+                    st.session_state["scout_time"] = _dt_sc.datetime.now().strftime("%b %d, %H:%M")
+                except Exception as _ae:
+                    st.error(f"❌ Scout failed: {_ae}")
+
+    _sr = st.session_state.get("scout_result")
+    if _sr:
+        st.caption(f"🕐 Last scan: {st.session_state.get('scout_time', '—')} · data cached 5 min")
+        if _sr.get("market_note_en") or _sr.get("market_note_cn"):
+            st.markdown(f"""<div class='info-box'><p style='color:#cfe0d4;font-size:14px;margin:0'>
+🧭 {_sr.get('market_note_en', '')}<br>
+<span style='color:#7d8f83'>{_sr.get('market_note_cn', '')}</span></p></div>""", unsafe_allow_html=True)
+
+        _picks = _sr.get("picks", []) or []
+        if not _picks:
+            st.info("😴 No high-confluence setups right now — patience is a position too. 目前没有高质量机会，耐心等待。")
+        for _p in _picks:
+            _dirn = str(_p.get("direction", "WAIT")).upper()
+            _pc = {
+                "BUY":  ("#4ade80", "rgba(34,197,94,0.15)",  "#22c55e", ""),
+                "SELL": ("#f87171", "rgba(239,68,68,0.15)",  "#ef4444", "sell"),
+            }.get(_dirn, ("#fbbf24", "rgba(245,158,11,0.15)", "#f59e0b", ""))
+            st.markdown(f"""
+<div class='chee-signal-card {_pc[3]}'>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
+    <span style='color:#eef5f0;font-size:19px;font-weight:800;font-family:Space Grotesk,sans-serif'>{_p.get('pair', '—')}</span>
+    <span class='tag' style='background:{_pc[1]};border:1px solid {_pc[2]};color:{_pc[0]};font-size:14px;padding:6px 20px'>{_dirn} · {_p.get('confidence', '—')}/10</span>
+  </div>
+  <div class='rowline'><span class='k'>Entry 入场</span><span class='v'>{_p.get('entry_zone', '—')}</span></div>
+  <div class='rowline'><span class='k'>Stop Loss 止损</span><span class='v'>{_p.get('stop_loss', '—')}</span></div>
+  <div class='rowline'><span class='k'>Take Profit 目标</span><span class='v'>{_p.get('take_profit', '—')}</span></div>
+  <p style='color:#cfe0d4;font-size:13.5px;margin:12px 0 4px 0'>{_p.get('reason_en', '')}</p>
+  <p style='color:#7d8f83;font-size:13px;margin:0'>{_p.get('reason_cn', '')}</p>
+</div>""", unsafe_allow_html=True)
+
+        if _picks:
+            st.caption("⚠️ AI analysis, not financial advice — always confirm on your own chart before entering. 仅供参考，入场前请自行确认。")
+        with st.expander("📊 Raw scan data 原始扫描数据", expanded=False):
+            for _d in st.session_state.get("scout_digests", []):
+                st.code(_d)
+    else:
+        st.markdown("""
+<div class='info-box' style='text-align:center;padding:44px 20px'>
+<p style='color:#cfe0d4;font-size:15px;font-weight:600;margin:0'>Hit Scan — I'll fetch live data for every market and pick today's best setups.<br><br>
+<span style='color:#7d8f83;font-size:13px;font-weight:400'>点击扫描 — AI 获取所有市场的实时数据后，自动挑出今天最有机会的交易对，并给出入场、止损、目标位和理由。可能是一个，也可能是多个，AI 自己判断。</span></p>
+</div>""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# CHART ANALYSIS — merged into AI Analyst (page removed)
+# ════════════════════════════════════════════════════════════
+mtf_mode = False
 
 # ════════════════════════════════════════════════════════════
 # MULTI-TIMEFRAME MODE
@@ -2344,8 +2661,8 @@ The AI will identify:<br><br>
 # ════════════════════════════════════════════════════════════
 # TOOL 1 — POSITION SIZE CALCULATOR
 # ════════════════════════════════════════════════════════════
-if _nav == "Chart Analysis":
-    st.divider()
+if _nav == "Signals":
+    st.markdown("## 📡 Signals")
     st.markdown("### 🧮 Position Size Calculator 仓位计算器")
     st.caption("Calculate exact lot size based on your account risk. 根据账户风险计算精确手数。")
 
@@ -2771,7 +3088,9 @@ You follow these trading principles:
 - The A+ setup: trend + pullback into Golden Zone + that zone overlaps a tested S/R level + rejection candle
 - If Fibonacci and S/R do not line up, say the setup is B-grade and recommend patience
 - Risk management: never risk more than 1-2% per trade, minimum 1:2 R:R, always define SL before entry
-- Patience: no confluence = no trade"""
+- Patience: no confluence = no trade
+
+IMPORTANT — LIVE DATA: when a [LIVE MARKET DATA] block appears in a message, it contains REAL prices fetched from the market seconds ago. Treat it as ground truth. Reference the exact numbers (current price, swing high/low, fib levels) in your answer and give concrete levels for entry/SL/TP. A live chart image may also be attached — analyse it."""
 
     def _coach_title(messages):
         """Auto-generate a conversation title from the first user message."""
@@ -2885,27 +3204,27 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
   justify-content:center;font-size:30px;box-shadow:0 0 34px rgba(34,197,94,0.45)'>⚡</div>
   <h2 style='color:#eef5f0;margin:0 0 8px 0;font-family:Space Grotesk,sans-serif'>Chee AI Analyst</h2>
   <p style='color:#7d8f83;font-size:15px;margin:0 0 24px 0'>
-    Real-time market analysis with your AI trading partner.<br>
-    Ask anything, upload charts for review, get feedback on your trades. 24/7.
+    Ask about any market — I fetch live prices and charts automatically, then analyse them for you.<br>
+    试试问「can I sell gold now?」— 我会自动抓取实时数据并分析。
   </p>
   <div style='display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:32px'>
     <div style='background:#0b100d;border:1px solid #1c2a21;border-radius:14px;padding:14px 16px;
-    text-align:left;max-width:190px'>
-      <div style='font-size:20px;margin-bottom:6px'>💬</div>
-      <div style='color:#eef5f0;font-size:13px;font-weight:700'>Ask Anything</div>
-      <div style='color:#7d8f83;font-size:12px'>Strategy, psychology, concepts</div>
+    text-align:left;max-width:200px'>
+      <div style='font-size:20px;margin-bottom:6px'>📡</div>
+      <div style='color:#eef5f0;font-size:13px;font-weight:700'>Live Data Auto-Fetch</div>
+      <div style='color:#7d8f83;font-size:12px'>Mention gold, EURUSD, BTC… I pull real prices & a live chart myself</div>
     </div>
     <div style='background:#0b100d;border:1px solid #1c2a21;border-radius:14px;padding:14px 16px;
-    text-align:left;max-width:190px'>
+    text-align:left;max-width:200px'>
       <div style='font-size:20px;margin-bottom:6px'>📷</div>
       <div style='color:#eef5f0;font-size:13px;font-weight:700'>Chart Review</div>
-      <div style='color:#7d8f83;font-size:12px'>Upload your chart for feedback</div>
+      <div style='color:#7d8f83;font-size:12px'>Upload any chart — Fib + S&R read with entry, SL, TP</div>
     </div>
     <div style='background:#0b100d;border:1px solid #1c2a21;border-radius:14px;padding:14px 16px;
-    text-align:left;max-width:190px'>
-      <div style='font-size:20px;margin-bottom:6px'>🔍</div>
-      <div style='color:#eef5f0;font-size:13px;font-weight:700'>Trade Review</div>
-      <div style='color:#7d8f83;font-size:12px'>Share your entry & get critique</div>
+    text-align:left;max-width:200px'>
+      <div style='font-size:20px;margin-bottom:6px'>💬</div>
+      <div style='color:#eef5f0;font-size:13px;font-weight:700'>Ask Anything</div>
+      <div style='color:#7d8f83;font-size:12px'>Strategy, psychology, risk, concepts — 24/7</div>
     </div>
   </div>
 </div>
@@ -2971,10 +3290,13 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                     if role == "user" and msg.get("extra_img_b64"):
                         try:
                             st.image(base64.b64decode(msg["extra_img_b64"]),
-                                     width=220, caption="📎 Chart")
+                                     width=220,
+                                     caption="📡 Live chart (auto-fetched)" if msg.get("live_data") else "📎 Chart")
                         except Exception:
                             pass
                     st.markdown(msg.get("content", ""))
+                    if msg.get("live_note"):
+                        st.caption(msg["live_note"])
 
             # ── Extra image attachment for follow-up ──────
             if messages:
@@ -3018,10 +3340,46 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                         except Exception:
                             pass
 
+                    # ── AUTO-FETCH live market data (ChatGPT-style) ──
+                    _live_digest = None
+                    _live_note   = None
+                    _detected    = detect_symbols_in_text(user_input)
+                    if _detected and twelve_data_key:
+                        _td_sym, _td_lbl = _detected[0]
+                        try:
+                            with st.spinner(f"📡 Fetching live {_td_lbl} data…"):
+                                _df_h1 = td_fetch_df(_td_sym, "1h", 300, twelve_data_key)
+                                _df_d1 = td_fetch_df(_td_sym, "1day", 200, twelve_data_key)
+                            _live_digest = (
+                                "[LIVE MARKET DATA — fetched seconds ago, treat as ground truth]\n"
+                                + build_market_digest(_df_d1, _td_lbl, "D1") + "\n"
+                                + build_market_digest(_df_h1, _td_lbl, "H1")
+                            )
+                            _live_note = f"📡 Live data fetched: {_td_lbl} · D1 + H1 · 已自动获取实时数据"
+                            # Attach an auto-generated live chart (if user didn't attach one)
+                            if not extra_b64:
+                                try:
+                                    _chart_pil = generate_chart_image_from_df(
+                                        _df_h1.tail(140), _td_lbl, "H1")
+                                    _cb = io.BytesIO()
+                                    _chart_pil.convert("RGB").save(_cb, format="JPEG", quality=90)
+                                    extra_bytes = _cb.getvalue()
+                                    extra_b64   = base64.b64encode(extra_bytes).decode()
+                                except Exception:
+                                    pass
+                        except Exception as _fe:
+                            _live_note = f"⚠️ Could not fetch live data ({_fe}) — answering from the chart/context only."
+                    elif _detected and not twelve_data_key:
+                        _live_note = "💡 Add a free Twelve Data key in the sidebar and I'll fetch live prices automatically."
+
                     # Append user message
                     user_entry = {"role": "user", "content": user_input}
                     if extra_b64:
                         user_entry["extra_img_b64"] = extra_b64
+                    if _live_digest:
+                        user_entry["live_data"] = _live_digest
+                    if _live_note:
+                        user_entry["live_note"] = _live_note
                     conv["messages"].append(user_entry)
 
                     # Auto-set title from first user message
@@ -3031,10 +3389,13 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                     with st.chat_message("user"):
                         if extra_b64:
                             try:
-                                st.image(base64.b64decode(extra_b64), width=220, caption="📎 Chart")
+                                st.image(base64.b64decode(extra_b64), width=220,
+                                         caption="📡 Live chart (auto-fetched)" if _live_digest else "📎 Chart")
                             except Exception:
                                 pass
                         st.markdown(user_input)
+                        if _live_note:
+                            st.caption(_live_note)
 
                     with st.chat_message("assistant"):
                         with st.spinner("Thinking…"):
@@ -3044,6 +3405,7 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                                     # Build history text
                                     hist_txt = "\n\n".join([
                                         f"{'Student' if m['role']=='user' else 'Coach'}:\n{m['content']}"
+                                        + (("\n\n" + m["live_data"]) if m.get("live_data") else "")
                                         for m in conv["messages"]
                                     ])
                                     full_prompt = COACH_SYSTEM + "\n\n---\nConversation:\n" + hist_txt
@@ -3084,7 +3446,8 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                                                            "media_type": "image/jpeg",
                                                            "data": m["extra_img_b64"]},
                                             })
-                                        content_parts.append({"type": "text", "text": m["content"]})
+                                        _txt = m["content"] + (("\n\n" + m["live_data"]) if m.get("live_data") else "")
+                                        content_parts.append({"type": "text", "text": _txt})
                                         role_msg = m["role"]
                                         if len(content_parts) == 1:
                                             api_msgs.append({"role": role_msg,
@@ -3240,8 +3603,7 @@ if False:  # REMOVED — PDF Report (low value)
 # ════════════════════════════════════════════════════════════
 # TOOL 6 — CURRENCY STRENGTH METER
 # ════════════════════════════════════════════════════════════
-if _nav == "Markets":
-    st.divider()
+if False:  # REMOVED — Currency Strength Meter (low value)
     st.markdown("### 💹 Currency Strength Meter 货币强弱表")
     st.caption("Upload H1 charts for each currency pair to compute relative strength. 上传各货币对H1图表，自动计算货币强弱。")
 
@@ -4443,7 +4805,7 @@ if _nav == "Signals":
     import pandas as _pd_sf
     import datetime as _dt_sf
 
-    st.markdown("## 📡 Signals")
+    st.divider()
     st.markdown("### 📲 Live TradingView Signal Feed")
     st.caption("Every signal from your Pine Script — entry signals, TP hits, and SL hits — all shown here automatically.")
 
