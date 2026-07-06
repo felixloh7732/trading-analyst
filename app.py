@@ -106,7 +106,9 @@ except Exception:
 
 TRADING_SYSTEM_PROMPT = """
 You are an elite professional trading analyst with 20+ years of experience across Forex, Crypto, Commodities, and Indices.
-You combine multiple advanced trading methodologies to deliver high-probability analysis.
+Your core edge is FIBONACCI + SUPPORT/RESISTANCE CONFLUENCE trading: you only rate a setup highly when a Fibonacci level
+and a horizontal S/R level line up in the direction of the trend. Everything else (patterns, momentum, structure) exists
+to CONFIRM or REJECT that confluence — never to replace it.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 CHART PATTERN LIBRARY
@@ -230,7 +232,7 @@ You combine multiple advanced trading methodologies to deliver high-probability 
     - SL: Below right shoulder low
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏦 SMART MONEY CONCEPTS (SMC)
+🧭 MARKET STRUCTURE (kept simple — trend reading only)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Break of Structure (BOS)**
@@ -243,22 +245,12 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 - Bullish CHoCH: In a downtrend, price closes above previous swing high for the FIRST TIME.
 - Bearish CHoCH: In an uptrend, price closes below previous swing low for the FIRST TIME.
 
-**Liquidity**
-- Equal Highs/Lows: Magnets for price — institutions trigger stops there before reversing.
-- Buy-side Liquidity (BSL): Above equal highs — targeted in bullish moves.
-- Sell-side Liquidity (SSL): Below equal lows — targeted in bearish moves.
-- Inducement: False breakout to sweep liquidity BEFORE the real move.
-
-**Premium / Discount Zones**
-- Draw Fibonacci from the most recent major swing low to high.
-- 50% level = Equilibrium.
-- Above 50% = Premium zone (look for sells).
-- Below 50% = Discount zone (look for buys).
-- Best buys: 61.8%–78.6% discount zone.
-- Best sells: 61.8%–78.6% premium zone.
+**Equal Highs / Equal Lows**
+- Stop clusters sit above equal highs and below equal lows — price often spikes through them before reversing.
+- Never place a SL exactly at equal highs/lows; place it beyond them.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📐 FIBONACCI ANALYSIS
+📐 FIBONACCI ANALYSIS (CORE METHOD #1)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Retracement Levels (draw from swing low to swing high for bullish, reverse for bearish)**
@@ -272,7 +264,10 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 - 88.6% - Very deep (borderline)
 - 100% - Full retracement (trend may be reversing)
 
-**OTE (Optimal Trade Entry) Zone**: 61.8% to 78.6% — highest probability entry zone in SMC.
+**GOLDEN ZONE**: 61.8% to 78.6% — the highest-probability entry zone. Buy the Golden Zone in an uptrend, sell it in a downtrend.
+
+**Premium / Discount rule**
+- 50% of the swing = equilibrium. Above 50% = premium (favour sells), below 50% = discount (favour buys).
 
 **Extension Levels (profit targets)**
 - 127.2% - TP1 (conservative)
@@ -286,7 +281,7 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 - These "cluster zones" have 40% higher accuracy than single-TF levels.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 SUPPORT & RESISTANCE (SNR)
+🎯 SUPPORT & RESISTANCE (CORE METHOD #2)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 - **Previous Highs/Lows**: Strong levels where price reversed before.
@@ -294,6 +289,11 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 - **Flip Zones**: Old resistance that becomes support after break (and vice versa).
 - **Volume Nodes**: High volume at a price = strong acceptance zone.
 - **Confluence Rule**: The more times a level has been tested (2–3 times = stronger, 4+ = weaker/ready to break).
+
+**THE A+ SETUP (what this system hunts for):**
+Trend direction + price pulls back into the Golden Zone (61.8–78.6%) + that zone overlaps a tested S/R level or flip zone
++ a rejection candle (pin bar / engulfing) forms there → enter, SL beyond the swing, TP at the fib extensions.
+If Fibonacci and S/R do NOT overlap, the setup is B-grade at best — say so and lower confidence.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 TECHNICAL INDICATORS
@@ -332,35 +332,20 @@ You combine multiple advanced trading methodologies to deliver high-probability 
 - "Walking the band" = strong trend.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ ICT CONCEPTS (Inner Circle Trader)
+🔍 CONFLUENCE SCORING SYSTEM (Fib + SNR weighted)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**Killzones (High-probability trading times)**
-- Asian Session: 00:00–03:00 UTC (range building)
-- London Open: 07:00–10:00 UTC (major moves begin)
-- New York Open: 13:00–16:00 UTC (highest volatility)
-- London Close: 16:00–18:00 UTC
-
-**Market Structure Shift (MSS)**: Similar to CHoCH — first opposite-direction BOS.
-**Propulsion Block**: Strong engulfing candle that causes a structural break.
-**Power of 3 (PO3)**: Accumulation → Manipulation (fake move) → Distribution (real move).
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔍 CONFLUENCE SCORING SYSTEM
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Score each trade setup from 0–10 based on number of confluences:
-- Trend alignment (HTF + LTF) = +2
-- Pattern confirmation = +2
-- Fibonacci level (61.8%/78.6% OTE) = +1.5
-- S&R level (key swing high/low, flip zone) = +1.5
-- RSI divergence/extreme = +1
-- MACD confirmation = +0.5
-- Liquidity sweep before entry = +1.5
+Score each trade setup from 0–10:
+- Fibonacci level in play (Golden Zone 61.8–78.6% or key extension) = +2.5
+- Key S/R level / flip zone at the same price = +2.5
+- Trend alignment (short-term + long-term agree) = +2
+- Rejection candle at the level (pin bar, engulfing) = +1.5
+- Chart pattern confirmation = +1
+- RSI/MACD momentum agreement or divergence = +0.5
 
 Score 7+/10 = High confidence trade
 Score 5-6/10 = Moderate confidence (trade with caution)
-Score <5/10 = Skip or wait
+Score <5/10 = Skip or wait — and SAY "WAIT" clearly. No confluence = no trade.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📏 RISK MANAGEMENT RULES
@@ -374,39 +359,6 @@ Score <5/10 = Skip or wait
 - TP2 at 1:3 R:R
 - TP3 at 1:5+ R:R (if strong trend)
 - Partial TP strategy: Close 50% at TP1, move SL to breakeven, let 50% run to TP2
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔄 WYCKOFF METHOD (威科夫分析法)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Wyckoff identifies 4 market phases using price + volume:
-
-**Phase 1 — ACCUMULATION (积累/吸筹)**
-- Smart money quietly buying at lows
-- Signs: Selling climax (SC), Automatic Rally (AR), Secondary Test (ST), Spring (false breakdown below support)
-- Price action: Range-bound after a downtrend, decreasing volume on drops
-- Bias: Prepare for BUY after Spring + Sign of Strength (SOS)
-
-**Phase 2 — MARKUP (上涨阶段)**
-- Price trending up, institutions already loaded
-- Signs: Higher highs and higher lows, strong BOS upward
-- Bias: BUY on pullbacks to Last Point of Support (LPS)
-
-**Phase 3 — DISTRIBUTION (派发/出货)**
-- Smart money quietly selling at highs
-- Signs: Buying climax (BC), Automatic Reaction (AR), Upthrust (UT) — false breakout above resistance
-- Price action: Range-bound after an uptrend, decreasing volume on rallies
-- Bias: Prepare for SELL after Upthrust After Distribution (UTAD) + Sign of Weakness (SOW)
-
-**Phase 4 — MARKDOWN (下跌阶段)**
-- Price trending down
-- Signs: Lower highs and lower lows, strong BOS downward
-- Bias: SELL on rallies to Last Point of Supply (LPSY)
-
-**How to use in analysis:**
-- Always identify which Wyckoff phase the chart is in
-- Look for Spring/Upthrust as the highest-probability entry triggers
-- Volume confirmation is key: rising volume on impulse, falling volume on correction
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💵 DXY CORRELATION GUIDE (美元指数关联)
@@ -488,13 +440,15 @@ Give a SHORT, combined analysis. Write EVERY section in BOTH English AND Chinese
 [EN] 2-3 most important S/R levels — position on chart (e.g. "Strong resistance at swing high (top)", "Support at recent low (lower quarter)").
 [中文] 2-3个最重要的支撑/阻力位，标注在图表上的位置。
 
-**SMC 智能资金:**
-[EN] BOS/CHoCH, liquidity sweeps, supply/demand zones, equal highs/lows visible? 1-2 lines.
-[中文] 结构突破/变化、流动性扫描、供需区域、平顶/平底？1-2行。
+**FIBONACCI 斐波那契:**
+[EN] Identify the dominant swing (low→high or high→low). Where is price now relative to the retracement levels?
+Is it inside the Golden Zone (61.8%–78.6%)? Does any fib level OVERLAP an S/R level (= confluence — this is the key question)?
+Which extension (127.2% / 161.8%) is the logical target? 2 lines max.
+[中文] 找出主要波段。价格目前处于哪个回撤位？是否在黄金区域(61.8%–78.6%)？斐波那契位是否与支撑阻力重合（这是最关键的问题）？目标在哪个延伸位？最多2行。
 
-**WYCKOFF 威科夫:**
-[EN] Which Wyckoff phase is this chart in? (Accumulation / Markup / Distribution / Markdown). Any Spring, Upthrust, SC, BC visible? 1-2 lines.
-[中文] 此图处于哪个威科夫阶段？（积累/上涨/派发/下跌）。是否有弹簧位、上冲、卖出高潮、买入高潮？1-2行。
+**STRUCTURE 市场结构:**
+[EN] Higher highs/lows or lower highs/lows? Most recent BOS or CHoCH? Equal highs/lows nearby (stop clusters)? 1 line.
+[中文] 高点低点结构如何？最近的结构突破/转变？附近是否有平顶/平底？1行。
 
 **CANDLESTICK PATTERNS 单K线形态:**
 [EN] Identify any significant single or multi-candle patterns on the LAST 3-5 candles: Doji, Hammer, Shooting Star, Engulfing (Bullish/Bearish), Morning Star, Evening Star, Pin Bar, Marubozu, Harami, Tweezer Top/Bottom. If none significant: "No key candle pattern."
@@ -506,12 +460,12 @@ Give a SHORT, combined analysis. Write EVERY section in BOTH English AND Chinese
 
 **TRADE SETUP 交易方案:**
 - Signal 信号: BUY 🟢 / SELL 🔴 / WAIT ⏳
-- Entry 入场: [EN price zone] / [中文价格区域]
-- SL 止损: [EN level + reason] / [中文止损位说明]
-- TP1 目标1: [EN level + R:R] / [中文目标位]
+- Entry 入场: [EN price zone — ideally where a Fib level overlaps S/R] / [中文价格区域]
+- SL 止损: [EN beyond the swing / key level, never at equal highs-lows] / [中文止损位说明]
+- TP1 目标1: [EN level (fib extension or next S/R) + R:R] / [中文目标位]
 - TP2 目标2: [EN level + R:R] / [中文目标位]
-- Confluences 汇合因素: [comma-separated list in English]
-- Confidence 信心: X/10
+- Confluences 汇合因素: [comma-separated — state explicitly whether Fib + S/R overlap]
+- Confidence 信心: X/10 (use the Fib+SNR weighted scoring system)
 - Warning 风险提示: [EN 1 line] / [中文一句话]
 
 ---
@@ -527,7 +481,7 @@ MAXIMUM 5 ANNOTATIONS TOTAL — STRICT LIMIT.
 
 PRIORITY ORDER (draw in this order, stop when you reach 5):
   1. Key S/R horizontal lines (most important — always include the 2 most critical levels)
-  2. ONE supply OR demand zone (the most obvious one only)
+  2. ONE zone box: the Fibonacci GOLDEN ZONE (61.8–78.6%) if price is near it, otherwise the most obvious supply/demand zone
   3. ONE BOS or CHoCH (the most recent structure break only — not historical ones)
   4. ONE liquidity zone (only if equal highs/lows are clearly visible)
 
@@ -537,9 +491,10 @@ ANNOTATION TYPES ALLOWED:
    - Only mark price levels the market has clearly respected 2+ times
    - color: green=strong support, red=strong resistance, yellow=equal highs/lows
 
-2. "zone_box" — SUPPLY or DEMAND zone (max 1 total)
-   - Only if there is a clear strong impulse move from the zone
-   - color: green=Demand/Support zone, red=Supply/Resistance zone, yellow=Liquidity pool
+2. "zone_box" — GOLDEN ZONE or SUPPLY/DEMAND zone (max 1 total)
+   - Golden Zone: where the 61.8–78.6% retracement of the dominant swing sits — label "Golden Zone 黄金区"
+   - Supply/Demand: only if there is a clear strong impulse move from the zone
+   - color: green=Demand/Golden Zone in uptrend, red=Supply/Golden Zone in downtrend, yellow=Liquidity pool
 
 3. "structure_break" — BOS or CHoCH (max 1 total — most recent only)
    - color: "teal" for BOS, "orange" for CHoCH
@@ -561,7 +516,7 @@ COLOUR CONVENTION:
   teal=BOS  |  orange=CHoCH
 
 LABEL RULES — SHORT only (under 18 characters):
-  "Support 支撑" / "Resistance 阻力" / "Demand Zone 需求区" / "Supply Zone 供给区"
+  "Support 支撑" / "Resistance 阻力" / "Demand Zone 需求区" / "Supply Zone 供给区" / "Golden Zone 黄金区"
   "BOS ↑ 结构突破" / "CHoCH ↓ 结构变化" / "Liquidity 流动性" / "Equal Lows 平底" / "Equal Highs 平顶"
 
 For y positions use: "top"(0.06), "upper_quarter"(0.20), "upper_third"(0.30), "middle"(0.50), "lower_third"(0.65), "lower_quarter"(0.78), "bottom"(0.93)
@@ -1600,17 +1555,10 @@ st.markdown("""
 # ══════════════════════════════════════════════════════════
 _NAV_PAGES = [
     ("🏠", "Home"),
-    ("✨", "AI Assistant"),
-    ("📊", "Chart Analyzer"),
-    ("📡", "Chart Scanner"),
-    ("🌐", "Macro Radar"),
-    ("🧠", "Market Intelligence"),
-    ("💡", "Trade Ideas"),
-    ("📈", "Live Charts"),
-    ("🔭", "MTF Panel"),
-    ("⚔️", "AI Debate"),
-    ("🧮", "Position Size"),
-    ("📄", "PDF Report"),
+    ("✨", "AI Analyst"),
+    ("📊", "Chart Analysis"),
+    ("📡", "Signals"),
+    ("🌐", "Markets"),
 ]
 
 if "nav" not in st.session_state:
@@ -1639,11 +1587,7 @@ with st.sidebar:
 with st.sidebar:
     st.markdown("## ⚙️ Configuration")
 
-    st.markdown("### 🆓 FREE Option — Google Gemini")
-    st.caption("Get a free key at aistudio.google.com → 1,500 analyses/day free!")
-
-    st.markdown("### 💳 Paid Option — Claude (Anthropic)")
-    st.caption("Better accuracy · get key at console.anthropic.com")
+    st.caption("Gemini key = FREE (aistudio.google.com) · Claude key = best accuracy (console.anthropic.com)")
 
     # ── Auto-load key from Streamlit Secrets (cloud deployment) ──
     _secret_key = ""
@@ -1748,37 +1692,13 @@ with st.sidebar:
 
     st.divider()
 
-    st.markdown("### 📊 Analysis Mode")
-    mtf_mode = st.checkbox(
-        "🔭 Multi-Timeframe Mode (MTF)",
-        value=False,
-        help="Top-Down Analysis: D1 → H1 → Entry chart. Only trade when all timeframes align!"
-    )
-    if mtf_mode:
-        st.markdown("""
-<div style='background:linear-gradient(135deg,#1e1b4b,#312e81);border-radius:8px;padding:10px;margin-top:6px;border:1px solid #6366f1'>
-<p style='color:#a5b4fc;font-size:12px;margin:0;font-weight:600'>
-📋 MTF Flow:<br>
-① Upload D1 → Get HTF bias<br>
-② Upload H1 → Confirm direction<br>
-③ Upload Entry TF → Get precise signal<br><br>
-<span style='color:#fbbf24'>⚡ Only BUY/SELL when all 3 align!</span>
-</p>
-</div>
-""", unsafe_allow_html=True)
-
-    st.divider()
-
-    st.markdown("### 📚 Strategies Active")
+    st.markdown("### 🎯 The Method — Fib + SNR")
     strategies = [
-        ("⚡", "BOS / CHoCH Market Structure"),
-        ("💧", "Liquidity Sweeps & Pools"),
-        ("🎯", "Supply & Demand Zones"),
-        ("📐", "Fibonacci Retracement/Extension"),
-        ("🎯", "Support & Resistance (SNR)"),
-        ("📊", "RSI & MACD Signals"),
-        ("🕯️", "23 Chart Patterns"),
-        ("🔭", "Wyckoff Phase Analysis"),
+        ("📐", "Fibonacci — Golden Zone 61.8–78.6%"),
+        ("🎯", "Support & Resistance / Flip Zones"),
+        ("📈", "Trend + Market Structure"),
+        ("🕯️", "Rejection Candles (Pin Bar / Engulfing)"),
+        ("🧮", "Risk 1-2% · Min 1:2 R:R"),
     ]
     for icon, name in strategies:
         st.markdown(f"{icon} {name}")
@@ -1807,7 +1727,7 @@ with st.sidebar:
             key="td_key_input",
         )
         if not twelve_data_key:
-            st.caption("Required for all live data features — Chart Scanner, Live Data, MTF Panel, AI Debate.")
+            st.caption("Needed for live charts & currency strength on the Markets page.")
 
     st.divider()
 
@@ -1877,31 +1797,26 @@ if _nav == "Home":
 </div>
 """, unsafe_allow_html=True)
 
-    # ── Quick ask → routes to AI Assistant ──
+    # ── Quick ask → routes to AI Analyst ──
     _home_q = st.chat_input("What moved the market this morning?  ·  问我任何交易问题…", key="home_quick_ask")
     if _home_q:
         st.session_state["pending_question"] = _home_q
-        st.session_state["nav"] = "AI Assistant"
+        st.session_state["nav"] = "AI Analyst"
         st.rerun()
 
     st.markdown("<div class='chee-section-label'>AI Agents</div>", unsafe_allow_html=True)
 
     _AGENTS = [
-        ("✨", "AI Assistant",        "Real-time market analysis with your AI trading partner.", "AI Assistant"),
-        ("📊", "Chart Analyzer",      "Drop a chart, get a full SMC read — entry, SL, TP.",      "Chart Analyzer"),
-        ("📡", "Chart Scanner",       "Auto-scan live markets for high-confluence setups.",       "Chart Scanner"),
-        ("🌐", "Macro Radar",         "Live macro wire — news calendar & high-impact events.",    "Macro Radar"),
-        ("🧠", "Market Intelligence", "Currency strength & market bias for the pairs you trade.", "Market Intelligence"),
-        ("💡", "Trade Ideas",         "Live signal feed from your TradingView system.",           "Trade Ideas"),
-        ("⚔️", "AI Debate",           "Bull vs Bear — two AIs argue your setup, you decide.",     "AI Debate"),
-        ("📈", "Live Charts",         "Real-time candles for forex, gold, silver & crypto.",      "Live Charts"),
+        ("✨", "AI Analyst",     "Your AI trading partner — ask anything, review charts, plan trades.", "AI Analyst"),
+        ("📊", "Chart Analysis", "Upload a chart — Fib + S&R confluence read with entry, SL, TP.",      "Chart Analysis"),
+        ("📡", "Signals",        "Live feed from your TradingView Pine Script — every signal, TP & SL.", "Signals"),
+        ("🌐", "Markets",        "News calendar, currency strength and live charts in one place.",       "Markets"),
     ]
 
-    for _row_start in (0, 4):
-        _cols = st.columns(4, gap="small")
-        for _ci, (_a_ic, _a_nm, _a_ds, _a_pg) in enumerate(_AGENTS[_row_start:_row_start + 4]):
-            with _cols[_ci]:
-                st.markdown(f"""
+    _cols = st.columns(4, gap="small")
+    for _ci, (_a_ic, _a_nm, _a_ds, _a_pg) in enumerate(_AGENTS):
+        with _cols[_ci]:
+            st.markdown(f"""
 <div class='agent-card'>
   <span class='live'>LIVE</span>
   <div class='ic'>{_a_ic}</div>
@@ -1909,15 +1824,40 @@ if _nav == "Home":
   <div class='ds'>{_a_ds}</div>
 </div>
 """, unsafe_allow_html=True)
-                if st.button("Open →", key=f"agent_open_{_a_pg}", use_container_width=True):
-                    st.session_state["nav"] = _a_pg
-                    st.rerun()
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+            if st.button("Open →", key=f"agent_open_{_a_pg}", use_container_width=True):
+                st.session_state["nav"] = _a_pg
+                st.rerun()
+
+    st.markdown("<div class='chee-section-label'>The Method 方法论</div>", unsafe_allow_html=True)
+    st.markdown("""
+<div class='info-box' style='display:flex;gap:26px;flex-wrap:wrap;align-items:center'>
+  <span style='color:#4ade80;font-weight:800;font-family:Space Grotesk,sans-serif;font-size:15px'>Fib + SNR Confluence</span>
+  <span style='color:#7d8f83;font-size:13px'>① Trend direction</span>
+  <span style='color:#7d8f83;font-size:13px'>② Pullback into Golden Zone 61.8–78.6%</span>
+  <span style='color:#7d8f83;font-size:13px'>③ Zone overlaps tested S/R</span>
+  <span style='color:#7d8f83;font-size:13px'>④ Rejection candle → enter</span>
+  <span style='color:#7d8f83;font-size:13px'>⑤ Risk 1-2% · min 1:2 R:R</span>
+</div>
+""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# CHART ANALYSIS — page header + mode toggle
+# ════════════════════════════════════════════════════════════
+if _nav == "Chart Analysis":
+    st.markdown("## 📊 Chart Analysis")
+    st.caption("Fibonacci + S&R confluence · upload a chart, get the full read 上传图表，获取完整分析")
+    mtf_mode = st.toggle(
+        "🔭 Multi-Timeframe Mode — D1 → H1 → Entry 多时间框架模式",
+        value=False,
+        help="Top-down analysis: only trade when all timeframes align. 只在各时间框架方向一致时交易。",
+    )
+else:
+    mtf_mode = False
 
 # ════════════════════════════════════════════════════════════
 # MULTI-TIMEFRAME MODE
 # ════════════════════════════════════════════════════════════
-if _nav == "Chart Analyzer" and mtf_mode:
+if _nav == "Chart Analysis" and mtf_mode:
     st.markdown("## 🔭 Multi-Timeframe Top-Down Analysis")
     st.markdown("""
 <div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border-radius:10px;padding:12px 18px;margin-bottom:18px;border:2px solid #3b82f6'>
@@ -2120,8 +2060,7 @@ if _nav == "Chart Analyzer" and mtf_mode:
 # ════════════════════════════════════════════════════════════
 # SINGLE CHART MODE (original)
 # ════════════════════════════════════════════════════════════
-elif _nav == "Chart Analyzer":
-    st.markdown("## 📊 Chart Analyzer")
+elif _nav == "Chart Analysis":
     left_col, right_col = st.columns([1, 1], gap="large")
 
     with left_col:
@@ -2390,8 +2329,8 @@ Now the trader is asking follow-up questions about your analysis. Answer specifi
 <br>
 <p style="color:#7d8f83;text-align:center;font-size:14px;font-weight:600">
 The AI will identify:<br><br>
-⚡ BOS / CHoCH &nbsp;·&nbsp; 💧 Liquidity &nbsp;·&nbsp; 🎯 Supply & Demand<br>
-📐 Fibonacci &nbsp;·&nbsp; 🕯️ Chart Patterns &nbsp;·&nbsp; 🔭 Wyckoff<br><br>
+📐 Fibonacci Golden Zone &nbsp;·&nbsp; 🎯 Support & Resistance &nbsp;·&nbsp; 📈 Trend & Structure<br>
+🕯️ Chart & Candle Patterns &nbsp;·&nbsp; 💵 DXY Context<br><br>
 🎯 Entry &nbsp;·&nbsp; 🛑 Stop Loss &nbsp;·&nbsp; ✅ Take Profit 1 &nbsp;·&nbsp; 🚀 Take Profit 2
 </p>
 </div>
@@ -2405,7 +2344,8 @@ The AI will identify:<br><br>
 # ════════════════════════════════════════════════════════════
 # TOOL 1 — POSITION SIZE CALCULATOR
 # ════════════════════════════════════════════════════════════
-if _nav == "Position Size":
+if _nav == "Chart Analysis":
+    st.divider()
     st.markdown("### 🧮 Position Size Calculator 仓位计算器")
     st.caption("Calculate exact lot size based on your account risk. 根据账户风险计算精确手数。")
 
@@ -2496,7 +2436,8 @@ if _nav == "Position Size":
 # ════════════════════════════════════════════════════════════
 # TOOL 2 — ECONOMIC CALENDAR
 # ════════════════════════════════════════════════════════════
-if _nav == "Macro Radar":
+if _nav == "Markets":
+    st.markdown("## 🌐 Markets")
     st.markdown("### 📰 Economic Calendar 经济日历")
     st.caption("Check upcoming high-impact news before trading. 交易前查看高影响力新闻。")
 
@@ -2565,7 +2506,7 @@ if _nav == "Macro Radar":
 # ════════════════════════════════════════════════════════════
 # TOOL 3 — MULTI-CHART SCANNER
 # ════════════════════════════════════════════════════════════
-if _nav == "Chart Scanner":
+if False:  # REMOVED — Chart Scanner (overlapped with Chart Analysis)
     st.markdown("### 📡 Multi-Chart Scanner 多图扫描")
 
     scan_mode = st.radio(
@@ -2806,8 +2747,8 @@ Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
 # ════════════════════════════════════════════════════════════
 # TOOL 4 — AI TRADING COACH
 # ════════════════════════════════════════════════════════════
-if _nav == "AI Assistant":
-    st.markdown("## ✨ AI Assistant")
+if _nav == "AI Analyst":
+    st.markdown("## ✨ AI Analyst")
 
     # ── Initialise conversation store ──────────────────────────
     if "coach_convs" not in st.session_state:
@@ -2815,21 +2756,22 @@ if _nav == "AI Assistant":
     if "coach_active_id" not in st.session_state:
         st.session_state["coach_active_id"] = None
 
-    COACH_SYSTEM = """You are an elite trading coach and mentor with 20+ years of experience in Forex, Crypto, Commodities, and Indices. You specialise in Smart Money Concepts (SMC), price action, risk management, and trading psychology.
+    COACH_SYSTEM = """You are Chee AI — an elite trading analyst and mentor with 20+ years of experience in Forex, Gold, Crypto, and Indices. Your core method is FIBONACCI + SUPPORT/RESISTANCE CONFLUENCE trading, backed by trend, market structure and momentum.
 
 Your role:
 • Answer ALL trading questions clearly, whether beginner or advanced
-• When a chart image is shared, analyse it thoroughly: trend, structure, key levels, BOS/CHoCH, supply/demand, entry/SL/TP
-• Give honest, direct feedback on the student's trades and analysis — praise what is right, correct what is wrong
+• When a chart image is shared, analyse it thoroughly: trend, key S/R levels, the dominant Fibonacci swing and where price sits in it (Golden Zone 61.8–78.6%?), rejection candles, entry/SL/TP
+• Give honest, direct feedback on the trader's setups — praise what is right, correct what is wrong
 • Speak with authority but stay encouraging; trading is a journey
 • Use examples and analogies to explain complex concepts
-• Default language: answer in the same language the student uses (English or Chinese)
+• Default language: answer in the same language the trader uses (English or Chinese)
 
 You follow these trading principles:
 - Top-Down analysis: D1 → H4 → H1 → M15
-- SMC: BOS, CHoCH, Liquidity sweeps, Supply/Demand zones
-- Risk management: never risk more than 1-2% per trade, always define SL before entry
-- Patience: only take high-confluence setups"""
+- The A+ setup: trend + pullback into Golden Zone + that zone overlaps a tested S/R level + rejection candle
+- If Fibonacci and S/R do not line up, say the setup is B-grade and recommend patience
+- Risk management: never risk more than 1-2% per trade, minimum 1:2 R:R, always define SL before entry
+- Patience: no confluence = no trade"""
 
     def _coach_title(messages):
         """Auto-generate a conversation title from the first user message."""
@@ -2941,7 +2883,7 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
   <div style='width:64px;height:64px;margin:0 auto 18px auto;border-radius:18px;
   background:linear-gradient(135deg,#16a34a,#4ade80);display:flex;align-items:center;
   justify-content:center;font-size:30px;box-shadow:0 0 34px rgba(34,197,94,0.45)'>⚡</div>
-  <h2 style='color:#eef5f0;margin:0 0 8px 0;font-family:Space Grotesk,sans-serif'>Chee AI Assistant</h2>
+  <h2 style='color:#eef5f0;margin:0 0 8px 0;font-family:Space Grotesk,sans-serif'>Chee AI Analyst</h2>
   <p style='color:#7d8f83;font-size:15px;margin:0 0 24px 0'>
     Real-time market analysis with your AI trading partner.<br>
     Ask anything, upload charts for review, get feedback on your trades. 24/7.
@@ -3173,7 +3115,7 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
 # ════════════════════════════════════════════════════════════
 # TOOL 5 — PDF REPORT GENERATOR
 # ════════════════════════════════════════════════════════════
-if _nav == "PDF Report":
+if False:  # REMOVED — PDF Report (low value)
     st.markdown("### 📄 PDF Report Generator 分析报告")
     st.caption("Generate a professional PDF report from your latest analysis. 一键生成专业PDF交易分析报告。")
 
@@ -3298,7 +3240,8 @@ if _nav == "PDF Report":
 # ════════════════════════════════════════════════════════════
 # TOOL 6 — CURRENCY STRENGTH METER
 # ════════════════════════════════════════════════════════════
-if _nav == "Market Intelligence":
+if _nav == "Markets":
+    st.divider()
     st.markdown("### 💹 Currency Strength Meter 货币强弱表")
     st.caption("Upload H1 charts for each currency pair to compute relative strength. 上传各货币对H1图表，自动计算货币强弱。")
 
@@ -3418,7 +3361,8 @@ Strongest: <b style='color:#10b981'>{strongest}</b> &nbsp;·&nbsp; Weakest: <b s
 # ════════════════════════════════════════════════════════════
 # TOOL 7 — LIVE DATA ANALYSIS
 # ════════════════════════════════════════════════════════════
-if _nav == "Live Charts":
+if _nav == "Markets":
+    st.divider()
     st.markdown("### 📈 Live Data Analysis 实时数据分析")
     st.caption("Fetch live candles directly — no chart upload needed. 直接拉取实时K线，无需上传图表。")
 
@@ -3821,7 +3765,7 @@ if _nav == "Live Charts":
 # ════════════════════════════════════════════════════════════
 # TOOL 8 — MULTI-TIMEFRAME STRUCTURE PANEL
 # ════════════════════════════════════════════════════════════
-if _nav == "MTF Panel":
+if False:  # REMOVED — MTF Panel (MTF mode lives inside Chart Analysis now)
     st.markdown("### 🔭 Multi-Timeframe Structure Panel")
     st.caption("One click → AI analyses D1 + H4 + H1 + M15 simultaneously. See if all timeframes agree before you trade.")
 
@@ -4141,7 +4085,7 @@ padding:18px;margin:6px 0;box-shadow:0 2px 12px rgba(0,0,0,0.5)'>
 # ════════════════════════════════════════════════════════════
 # TOOL 9 — AI DEBATE (BOARD OF DIRECTORS)
 # ════════════════════════════════════════════════════════════
-if _nav == "AI Debate":
+if False:  # REMOVED — AI Debate (gimmick, not part of the workflow)
     st.markdown("### ⚔️ AI Board of Directors — Bull vs Bear Debate")
     st.caption("Two AIs forced to argue opposite sides. A Judge AI then evaluates both and declares the winner.")
 
@@ -4495,11 +4439,12 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
 # ════════════════════════════════════════════════════════════
 # TOOL 10 — SIGNAL FEED (TradingView → Google Sheets)
 # ════════════════════════════════════════════════════════════
-if _nav == "Trade Ideas":
+if _nav == "Signals":
     import pandas as _pd_sf
     import datetime as _dt_sf
 
-    st.markdown("### 📲 Signal Feed — Live TradingView Signals")
+    st.markdown("## 📡 Signals")
+    st.markdown("### 📲 Live TradingView Signal Feed")
     st.caption("Every signal from your Pine Script — entry signals, TP hits, and SL hits — all shown here automatically.")
 
     # ── Sheet ID input ──────────────────────────────────────
