@@ -1,6 +1,6 @@
 """
-TradingAI Analyst - Chart Analysis App
-Built with Streamlit + Claude Vision API
+Chee AI — AI Financial Analyst
+Built with Streamlit + Claude / Gemini Vision API
 """
 
 import streamlit as st
@@ -1199,8 +1199,8 @@ def pil_to_download_bytes(image: Image.Image) -> bytes:
 # ============================================================
 
 st.set_page_config(
-    page_title="TradingAI Analyst",
-    page_icon="📊",
+    page_title="Chee AI",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -1232,188 +1232,408 @@ if _LS_AVAILABLE and not st.session_state.get("_ls_loaded"):
 
     st.session_state["_ls_loaded"] = True
 
-# Dark trading terminal CSS
+# ══════════════════════════════════════════════════════════
+# CHEE AI — Black/Green terminal theme
+# ══════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-  /* ── Main background ── */
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root {
+    --bg:        #050807;
+    --surface:   #0b100d;
+    --surface2:  #101712;
+    --border:    #1c2a21;
+    --border-hi: #2b4534;
+    --green:     #22c55e;
+    --green-hi:  #4ade80;
+    --green-dim: #16803c;
+    --text:      #e8f0ea;
+    --muted:     #7d8f83;
+    --red:       #ef4444;
+    --amber:     #f59e0b;
+  }
+
+  html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+  /* ── Main background: near-black with green aurora glow ── */
   [data-testid="stAppViewContainer"] {
-    background: linear-gradient(160deg, #f0f4ff 0%, #faf0ff 50%, #f0fff8 100%);
+    background:
+      radial-gradient(ellipse 80% 50% at 70% -10%, rgba(34,197,94,0.13), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 10% 110%, rgba(34,197,94,0.07), transparent 60%),
+      #050807 !important;
   }
   [data-testid="stMain"] { background: transparent; }
+  [data-testid="stHeader"] { background: rgba(5,8,7,0.7) !important; backdrop-filter: blur(8px); }
 
-  /* ── Main text (exclude sidebar) ── */
-  .stApp p, .stApp li { color: #1a1a2e !important; }
+  /* ── Text ── */
+  .stApp p, .stApp li, .stApp span { color: var(--text); }
+  .stApp p, .stApp li { color: #cfe0d4 !important; }
 
-  /* ── Title ── */
+  h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif !important; }
   h1 {
-    background: linear-gradient(90deg, #7c3aed, #2563eb, #059669);
+    background: linear-gradient(90deg, #e8f0ea 20%, #4ade80 80%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    font-size: 42px !important; font-weight: 900 !important;
+    font-size: 40px !important; font-weight: 700 !important; letter-spacing: -1px;
   }
-  h2 { color: #7c3aed !important; font-weight: 800 !important; }
-  h3 { color: #2563eb !important; font-weight: 700 !important; }
+  h2 { color: #e8f0ea !important; font-weight: 700 !important; letter-spacing: -0.5px; }
+  h3 { color: #d5e5da !important; font-weight: 600 !important; }
 
-  /* ── Analyse button ── */
+  /* ── Buttons ── */
   .stButton>button {
-    background: linear-gradient(135deg, #7c3aed 0%, #2563eb 50%, #059669 100%);
-    color: white !important; border: none; border-radius: 10px;
-    font-weight: 900 !important; font-size: 18px !important; padding: 14px;
-    width: 100%; transition: all 0.3s; box-shadow: 0 4px 15px rgba(124,58,237,0.4);
-    letter-spacing: 0.5px;
+    background: linear-gradient(180deg, #101812, #0b100d);
+    color: #cfe0d4 !important; border: 1px solid var(--border-hi); border-radius: 12px;
+    font-weight: 600 !important; font-size: 15px !important; padding: 10px 16px;
+    width: 100%; transition: all 0.2s; box-shadow: none; letter-spacing: 0.2px;
   }
   .stButton>button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(124,58,237,0.6);
+    border-color: var(--green); color: #4ade80 !important;
+    box-shadow: 0 0 18px rgba(34,197,94,0.25); transform: translateY(-1px);
+  }
+  .stButton>button[kind="primary"], .stButton>button[data-testid="stBaseButton-primary"] {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    color: #04120a !important; border: 1px solid #4ade80;
+    font-weight: 800 !important;
+    box-shadow: 0 4px 20px rgba(34,197,94,0.35);
+  }
+  .stButton>button[kind="primary"]:hover {
+    box-shadow: 0 6px 28px rgba(34,197,94,0.55); color: #04120a !important;
+  }
+  .stDownloadButton>button {
+    background: linear-gradient(180deg, #101812, #0b100d) !important;
+    color: #4ade80 !important; border: 1px solid var(--border-hi) !important; border-radius: 12px !important;
   }
 
   /* ── BUY / SELL / WAIT badges ── */
   .buy-badge {
-    background: linear-gradient(135deg, #059669, #10b981);
-    border: 3px solid #065f46; color: #ffffff;
-    border-radius: 12px; padding: 16px 32px;
-    font-size: 26px; font-weight: 900; display: inline-block;
-    box-shadow: 0 4px 20px rgba(5,150,105,0.5); letter-spacing: 1px;
+    background: rgba(34,197,94,0.12);
+    border: 1px solid #22c55e; color: #4ade80;
+    border-radius: 14px; padding: 14px 30px;
+    font-size: 24px; font-weight: 800; display: inline-block;
+    box-shadow: 0 0 26px rgba(34,197,94,0.30); letter-spacing: 2px;
+    font-family: 'Space Grotesk', sans-serif;
   }
   .sell-badge {
-    background: linear-gradient(135deg, #dc2626, #ef4444);
-    border: 3px solid #7f1d1d; color: #ffffff;
-    border-radius: 12px; padding: 16px 32px;
-    font-size: 26px; font-weight: 900; display: inline-block;
-    box-shadow: 0 4px 20px rgba(220,38,38,0.5); letter-spacing: 1px;
+    background: rgba(239,68,68,0.12);
+    border: 1px solid #ef4444; color: #f87171;
+    border-radius: 14px; padding: 14px 30px;
+    font-size: 24px; font-weight: 800; display: inline-block;
+    box-shadow: 0 0 26px rgba(239,68,68,0.30); letter-spacing: 2px;
+    font-family: 'Space Grotesk', sans-serif;
   }
   .wait-badge {
-    background: linear-gradient(135deg, #d97706, #f59e0b);
-    border: 3px solid #78350f; color: #ffffff;
-    border-radius: 12px; padding: 16px 32px;
-    font-size: 26px; font-weight: 900; display: inline-block;
-    box-shadow: 0 4px 20px rgba(217,119,6,0.5); letter-spacing: 1px;
+    background: rgba(245,158,11,0.12);
+    border: 1px solid #f59e0b; color: #fbbf24;
+    border-radius: 14px; padding: 14px 30px;
+    font-size: 24px; font-weight: 800; display: inline-block;
+    box-shadow: 0 0 26px rgba(245,158,11,0.25); letter-spacing: 2px;
+    font-family: 'Space Grotesk', sans-serif;
   }
 
   /* ── Info / result box ── */
   .info-box {
-    background: white; border: 2px solid #c4b5fd;
-    border-radius: 12px; padding: 20px; margin: 8px 0;
-    box-shadow: 0 2px 12px rgba(124,58,237,0.1);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px; margin: 8px 0;
   }
 
   /* ── Metric card ── */
   .metric-card {
-    background: white; border: 2px solid #bfdbfe; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 16px; margin: 6px 0; text-align: center;
-    box-shadow: 0 2px 8px rgba(37,99,235,0.1);
   }
 
-  /* ── Tabs ── */
+  /* ── HOME: hero ── */
+  .chee-hero {
+    padding: 44px 8px 10px 8px;
+  }
+  .chee-hero .hi {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 54px; font-weight: 700; line-height: 1.04;
+    color: #eef5f0; letter-spacing: -2px; margin: 0;
+  }
+  .chee-hero .hi .accent {
+    background: linear-gradient(90deg, #22c55e, #86efac);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .chee-hero .sub {
+    color: var(--muted); font-size: 15px; margin: 14px 0 0 2px; letter-spacing: 0.3px;
+  }
+  .chee-chip {
+    display: inline-block; background: rgba(34,197,94,0.10); border: 1px solid rgba(74,222,128,0.35);
+    color: #4ade80; font-size: 11.5px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 5px 14px; border-radius: 999px; margin: 14px 6px 0 2px; text-transform: uppercase;
+  }
+  .chee-section-label {
+    color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: 2.5px;
+    text-transform: uppercase; margin: 26px 0 4px 2px;
+  }
+
+  /* ── HOME: agent cards ── */
+  .agent-card {
+    background: linear-gradient(180deg, #0d130f, #0a0e0b);
+    border: 1px solid var(--border); border-radius: 18px;
+    padding: 18px 16px 12px 16px; position: relative; min-height: 148px;
+    transition: all .2s;
+  }
+  .agent-card:hover { border-color: var(--border-hi); box-shadow: 0 6px 30px rgba(34,197,94,0.10); }
+  .agent-card .ic {
+    width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    background: rgba(34,197,94,0.10); border: 1px solid rgba(74,222,128,0.25); font-size: 19px; margin-bottom: 10px;
+  }
+  .agent-card .nm { color: #eef5f0; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+  .agent-card .ds { color: var(--muted); font-size: 12px; line-height: 1.45; margin-top: 4px; }
+  .agent-card .live {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(34,197,94,0.12); border: 1px solid rgba(74,222,128,0.4);
+    color: #4ade80; font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px;
+    padding: 2.5px 8px; border-radius: 999px;
+  }
+  .agent-card .soon {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(125,143,131,0.10); border: 1px solid rgba(125,143,131,0.35);
+    color: #7d8f83; font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px;
+    padding: 2.5px 8px; border-radius: 999px;
+  }
+
+  /* ── Signal card (THISystem style) ── */
+  .chee-signal-card {
+    background: linear-gradient(180deg, rgba(34,197,94,0.05), rgba(11,16,13,0.9));
+    border: 1px solid rgba(74,222,128,0.45); border-radius: 20px;
+    padding: 20px 22px; margin: 10px 0;
+    box-shadow: 0 0 40px rgba(34,197,94,0.10);
+  }
+  .chee-signal-card.sell {
+    background: linear-gradient(180deg, rgba(239,68,68,0.05), rgba(16,11,11,0.9));
+    border-color: rgba(248,113,113,0.45);
+    box-shadow: 0 0 40px rgba(239,68,68,0.10);
+  }
+  .chee-signal-card .tag {
+    display:inline-block; border-radius:999px; padding:5px 14px; font-size:11px;
+    font-weight:800; letter-spacing:2px; text-transform:uppercase;
+  }
+  .chee-signal-card .rowline {
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom: 1px solid rgba(125,143,131,0.12); padding: 11px 0;
+  }
+  .chee-signal-card .k { color: var(--muted); font-size: 12px; letter-spacing: 1.8px; text-transform: uppercase; }
+  .chee-signal-card .v { color: #eef5f0; font-size: 17px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Chat styling ── */
+  [data-testid="stChatMessage"] {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important; padding: 14px 16px !important; margin: 4px 0 !important;
+  }
+  [data-testid="stChatInput"] {
+    background: #0c120e !important;
+    border: 1px solid var(--border-hi) !important;
+    border-radius: 999px !important;
+    box-shadow: 0 0 24px rgba(34,197,94,0.10);
+  }
+  [data-testid="stChatInput"] textarea {
+    background: transparent !important; color: #e8f0ea !important;
+    caret-color: #4ade80;
+  }
+  [data-testid="stChatInput"] textarea::placeholder { color: #7d8f83 !important; }
+  [data-testid="stChatInput"] button { background: transparent !important; }
+  [data-testid="stChatInput"] button svg { fill: #4ade80 !important; }
+
+  /* ── Inputs / selects (main area) ── */
+  .stApp [data-baseweb="select"] > div, .stApp [data-baseweb="base-input"] {
+    background-color: #0c120e !important; border-color: var(--border-hi) !important;
+    color: #e8f0ea !important; border-radius: 10px !important;
+  }
+  .stApp input, .stApp textarea { color: #e8f0ea !important; }
+  .stApp [data-testid="stWidgetLabel"] p { color: #a8bcae !important; font-weight: 600; }
+
+  /* ── Tabs (inside pages) ── */
+  .stTabs [data-baseweb="tab-list"] { border-bottom: 1px solid var(--border) !important; }
   .stTabs [data-baseweb="tab"] {
-    color: #6b7280 !important; font-weight: 600; font-size: 15px;
+    color: #7d8f83 !important; font-weight: 600; font-size: 14px;
   }
-  .stTabs [aria-selected="true"] {
-    color: #7c3aed !important;
-    border-bottom: 3px solid #7c3aed !important;
-  }
+  .stTabs [aria-selected="true"] { color: #4ade80 !important; }
+  .stTabs [data-baseweb="tab-highlight"] { background-color: #22c55e !important; }
 
   /* ── Expanders ── */
-  .stExpander {
-    border: 2px solid #c4b5fd !important;
-    border-radius: 10px !important;
-    background: white !important;
+  .stExpander, [data-testid="stExpander"] {
+    border: 1px solid var(--border) !important;
+    border-radius: 14px !important;
+    background: var(--surface) !important;
   }
-  .stExpander summary { color: #7c3aed !important; font-weight: 700 !important; }
+  .stExpander summary, [data-testid="stExpander"] summary { color: #a8bcae !important; font-weight: 600 !important; }
+  .stExpander summary:hover, [data-testid="stExpander"] summary:hover { color: #4ade80 !important; }
 
   /* ── Upload area ── */
   [data-testid="stFileUploader"] {
-    border: 2px dashed #7c3aed !important;
-    border-radius: 12px !important; background: white !important;
+    border: 1px dashed var(--border-hi) !important;
+    border-radius: 14px !important; background: rgba(34,197,94,0.03) !important;
+    padding: 6px !important;
+  }
+  [data-testid="stFileUploader"] section { background: transparent !important; }
+  [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] small { color: #a8bcae !important; }
+  [data-testid="stFileUploader"] button {
+    background: #101812 !important; color: #4ade80 !important;
+    border: 1px solid var(--border-hi) !important; border-radius: 10px !important;
   }
 
   /* ── Divider ── */
-  hr { border: none; border-top: 2px solid #e9d5ff !important; }
+  hr { border: none; border-top: 1px solid var(--border) !important; }
 
-  /* ── Success / warning / error ── */
-  .stSuccess { background: #d1fae5 !important; border-left: 4px solid #059669 !important; }
-  .stWarning { background: #fef3c7 !important; border-left: 4px solid #d97706 !important; }
-  .stError   { background: #fee2e2 !important; border-left: 4px solid #dc2626 !important; }
-  .stInfo    { background: #ede9fe !important; border-left: 4px solid #7c3aed !important; }
+  /* ── Alerts ── */
+  .stSuccess, [data-testid="stAlert"][data-baseweb="notification"] { border-radius: 12px !important; }
+  .stSuccess { background: rgba(34,197,94,0.10) !important; border: 1px solid rgba(74,222,128,0.35) !important; }
+  .stWarning { background: rgba(245,158,11,0.10) !important; border: 1px solid rgba(251,191,36,0.35) !important; }
+  .stError   { background: rgba(239,68,68,0.10) !important; border: 1px solid rgba(248,113,113,0.35) !important; }
+  .stInfo    { background: rgba(34,197,94,0.06) !important; border: 1px solid var(--border-hi) !important; }
+  .stAlert p, [data-testid="stAlert"] p { color: #d5e5da !important; }
 
   /* ── Caption ── */
-  .stApp .stCaption, .stApp caption { color: #6b21a8 !important; font-weight: 500 !important; }
+  .stApp .stCaption, .stApp caption, .stApp [data-testid="stCaptionContainer"] p {
+    color: #7d8f83 !important; font-weight: 500 !important;
+  }
+
+  /* ── Metric widget ── */
+  [data-testid="stMetric"] {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px 16px;
+  }
+  [data-testid="stMetricValue"] { color: #eef5f0 !important; font-family: 'Space Grotesk', sans-serif; }
+  [data-testid="stMetricLabel"] p { color: #7d8f83 !important; }
+
+  /* ── Dataframe ── */
+  [data-testid="stDataFrame"] { border: 1px solid var(--border); border-radius: 12px; }
 
   /* ── Spinner ── */
-  .stSpinner > div { border-top-color: #7c3aed !important; }
+  .stSpinner > div { border-top-color: #22c55e !important; }
 
   /* ══════════════════════════════════════════
-     SIDEBAR — placed LAST so it always wins
+     SIDEBAR — black glass, green accents
   ══════════════════════════════════════════ */
   section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #1a0533 0%, #0d1b4b 50%, #002b1a 100%) !important;
-    border-right: 3px solid #a855f7 !important;
+    background: linear-gradient(180deg, #070b08 0%, #050807 100%) !important;
+    border-right: 1px solid #16211a !important;
   }
-  /* Every single text node inside sidebar → white */
   section[data-testid="stSidebar"] *:not(button) {
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
+    color: #cfe0d4 !important;
+    -webkit-text-fill-color: #cfe0d4 !important;
   }
-  /* Headings → bright yellow */
   section[data-testid="stSidebar"] h1,
   section[data-testid="stSidebar"] h2,
   section[data-testid="stSidebar"] h3,
   section[data-testid="stSidebar"] h4 {
-    color: #ffd700 !important;
-    -webkit-text-fill-color: #ffd700 !important;
-    font-weight: 800 !important;
+    color: #eef5f0 !important;
+    -webkit-text-fill-color: #eef5f0 !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
   }
-  /* Widget labels → bright yellow */
   section[data-testid="stSidebar"] label,
   section[data-testid="stSidebar"] [data-testid="stWidgetLabel"],
   section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
   section[data-testid="stSidebar"] [data-baseweb="form-control-label"],
   section[data-testid="stSidebar"] [data-baseweb="form-control-label"] * {
-    color: #ffd700 !important;
-    -webkit-text-fill-color: #ffd700 !important;
-    font-weight: 700 !important;
-    font-size: 14px !important;
+    color: #8fa896 !important;
+    -webkit-text-fill-color: #8fa896 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
   }
-  /* Dropdown fields */
   section[data-testid="stSidebar"] [data-baseweb="select"],
   section[data-testid="stSidebar"] [data-baseweb="select"] *,
   section[data-testid="stSidebar"] [data-baseweb="base-input"],
   section[data-testid="stSidebar"] [data-baseweb="base-input"] * {
-    background-color: #2a1a4a !important;
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
-    border-color: #a855f7 !important;
+    background-color: #0c120e !important;
+    color: #e8f0ea !important;
+    -webkit-text-fill-color: #e8f0ea !important;
+    border-color: #1c2a21 !important;
   }
-  /* Text input & textarea */
   section[data-testid="stSidebar"] input,
   section[data-testid="stSidebar"] textarea {
-    background-color: #2a1a4a !important;
-    color: #ffffff !important;
-    -webkit-text-fill-color: #ffffff !important;
-    border: 2px solid #a855f7 !important;
+    background-color: #0c120e !important;
+    color: #e8f0ea !important;
+    -webkit-text-fill-color: #e8f0ea !important;
+    border: 1px solid #1c2a21 !important;
+    border-radius: 10px !important;
   }
-  /* Placeholder text */
   section[data-testid="stSidebar"] input::placeholder,
   section[data-testid="stSidebar"] textarea::placeholder {
-    color: #c4b5fd !important;
-    -webkit-text-fill-color: #c4b5fd !important;
+    color: #5c6f63 !important;
+    -webkit-text-fill-color: #5c6f63 !important;
   }
-  /* Divider */
   section[data-testid="stSidebar"] hr {
-    border-color: #a855f7 !important;
-    border-top: 1px solid #a855f7 !important;
+    border-color: #16211a !important;
+    border-top: 1px solid #16211a !important;
   }
+  /* Sidebar nav buttons */
+  section[data-testid="stSidebar"] .stButton>button {
+    background: transparent; border: 1px solid transparent;
+    color: #a8bcae !important; text-align: left; justify-content: flex-start;
+    font-size: 14px !important; font-weight: 600 !important;
+    padding: 8px 12px; border-radius: 10px; width: 100%;
+  }
+  section[data-testid="stSidebar"] .stButton>button:hover {
+    background: rgba(34,197,94,0.07); color: #4ade80 !important;
+    border-color: transparent; box-shadow: none; transform: none;
+  }
+  section[data-testid="stSidebar"] .stButton>button[kind="primary"],
+  section[data-testid="stSidebar"] .stButton>button[data-testid="stBaseButton-primary"] {
+    background: rgba(34,197,94,0.12); border: 1px solid rgba(74,222,128,0.35);
+    color: #4ade80 !important; box-shadow: none; font-weight: 700 !important;
+  }
+  .chee-brand {
+    display:flex; align-items:center; gap:10px; padding: 6px 4px 14px 4px;
+  }
+  .chee-brand .logo {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, #16a34a, #4ade80);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 18px; box-shadow: 0 0 18px rgba(34,197,94,0.45);
+  }
+  .chee-brand .nm {
+    font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700;
+    color: #eef5f0 !important; -webkit-text-fill-color: #eef5f0 !important; letter-spacing: -0.5px;
+  }
+  .chee-brand .nm .g { color:#4ade80 !important; -webkit-text-fill-color:#4ade80 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Header ────────────────────────────────────────────────
-col_logo, col_title = st.columns([1, 8])
-with col_logo:
-    st.markdown("# 📊")
-with col_title:
-    st.title("TradingAI Analyst")
-    st.caption("Professional chart analysis powered by AI · Forex · Crypto · Gold · Indices")
+# ══════════════════════════════════════════════════════════
+# SIDEBAR — Navigation (THISystem style)
+# ══════════════════════════════════════════════════════════
+_NAV_PAGES = [
+    ("🏠", "Home"),
+    ("✨", "AI Assistant"),
+    ("📊", "Chart Analyzer"),
+    ("📡", "Chart Scanner"),
+    ("🌐", "Macro Radar"),
+    ("🧠", "Market Intelligence"),
+    ("💡", "Trade Ideas"),
+    ("📈", "Live Charts"),
+    ("🔭", "MTF Panel"),
+    ("⚔️", "AI Debate"),
+    ("🧮", "Position Size"),
+    ("📄", "PDF Report"),
+]
 
-st.divider()
+if "nav" not in st.session_state:
+    st.session_state["nav"] = "Home"
+
+with st.sidebar:
+    st.markdown("""
+<div class='chee-brand'>
+  <div class='logo'>⚡</div>
+  <div class='nm'>Chee <span class='g'>AI</span></div>
+</div>
+""", unsafe_allow_html=True)
+
+    for _ic, _pg in _NAV_PAGES:
+        _active = st.session_state["nav"] == _pg
+        if st.button(f"{_ic}  {_pg}", key=f"nav_{_pg}",
+                     use_container_width=True,
+                     type="primary" if _active else "secondary"):
+            if st.session_state["nav"] != _pg:
+                st.session_state["nav"] = _pg
+                st.rerun()
+
+    st.divider()
 
 # ── Sidebar ───────────────────────────────────────────────
 with st.sidebar:
@@ -1630,12 +1850,74 @@ with st.sidebar:
     st.caption("⚠️ For educational purposes only.\nAlways manage your own risk.")
 
 
-# ── Main Layout ────────────────────────────────────────────
+# ── Main Layout / Page Router ──────────────────────────────
+_nav = st.session_state.get("nav", "Home")
+
+# ════════════════════════════════════════════════════════════
+# HOME — Greeting hero + AI agent cards (THISystem style)
+# ════════════════════════════════════════════════════════════
+if _nav == "Home":
+    import datetime as _dt
+    _hour = _dt.datetime.now().hour
+    if 5 <= _hour < 12:
+        _greet = "Good morning,"
+    elif 12 <= _hour < 18:
+        _greet = "Good afternoon,"
+    else:
+        _greet = "Good evening,"
+
+    st.markdown(f"""
+<div class='chee-hero'>
+  <p class='hi'>{_greet}<br><span class='accent'>Chee</span></p>
+  <p class='sub'>Your Personal AI Financial Analyst</p>
+  <div>
+    <span class='chee-chip'>⚡ Pro Trader</span>
+    <span class='chee-chip'>Forex · Gold · Crypto · Indices</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── Quick ask → routes to AI Assistant ──
+    _home_q = st.chat_input("What moved the market this morning?  ·  问我任何交易问题…", key="home_quick_ask")
+    if _home_q:
+        st.session_state["pending_question"] = _home_q
+        st.session_state["nav"] = "AI Assistant"
+        st.rerun()
+
+    st.markdown("<div class='chee-section-label'>AI Agents</div>", unsafe_allow_html=True)
+
+    _AGENTS = [
+        ("✨", "AI Assistant",        "Real-time market analysis with your AI trading partner.", "AI Assistant"),
+        ("📊", "Chart Analyzer",      "Drop a chart, get a full SMC read — entry, SL, TP.",      "Chart Analyzer"),
+        ("📡", "Chart Scanner",       "Auto-scan live markets for high-confluence setups.",       "Chart Scanner"),
+        ("🌐", "Macro Radar",         "Live macro wire — news calendar & high-impact events.",    "Macro Radar"),
+        ("🧠", "Market Intelligence", "Currency strength & market bias for the pairs you trade.", "Market Intelligence"),
+        ("💡", "Trade Ideas",         "Live signal feed from your TradingView system.",           "Trade Ideas"),
+        ("⚔️", "AI Debate",           "Bull vs Bear — two AIs argue your setup, you decide.",     "AI Debate"),
+        ("📈", "Live Charts",         "Real-time candles for forex, gold, silver & crypto.",      "Live Charts"),
+    ]
+
+    for _row_start in (0, 4):
+        _cols = st.columns(4, gap="small")
+        for _ci, (_a_ic, _a_nm, _a_ds, _a_pg) in enumerate(_AGENTS[_row_start:_row_start + 4]):
+            with _cols[_ci]:
+                st.markdown(f"""
+<div class='agent-card'>
+  <span class='live'>LIVE</span>
+  <div class='ic'>{_a_ic}</div>
+  <div class='nm'>{_a_nm}</div>
+  <div class='ds'>{_a_ds}</div>
+</div>
+""", unsafe_allow_html=True)
+                if st.button("Open →", key=f"agent_open_{_a_pg}", use_container_width=True):
+                    st.session_state["nav"] = _a_pg
+                    st.rerun()
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
 # MULTI-TIMEFRAME MODE
 # ════════════════════════════════════════════════════════════
-if mtf_mode:
+if _nav == "Chart Analyzer" and mtf_mode:
     st.markdown("## 🔭 Multi-Timeframe Top-Down Analysis")
     st.markdown("""
 <div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border-radius:10px;padding:12px 18px;margin-bottom:18px;border:2px solid #3b82f6'>
@@ -1838,7 +2120,8 @@ if mtf_mode:
 # ════════════════════════════════════════════════════════════
 # SINGLE CHART MODE (original)
 # ════════════════════════════════════════════════════════════
-else:
+elif _nav == "Chart Analyzer":
+    st.markdown("## 📊 Chart Analyzer")
     left_col, right_col = st.columns([1, 1], gap="large")
 
     with left_col:
@@ -1941,32 +2224,57 @@ else:
             confidence = meta.get("confidence", 5)
             pattern    = meta.get("pattern_name", "")
 
-            # ── Signal badge ──────────────────────────────
-            badge_html = {
-                "BUY":  '<div class="buy-badge">🟢 BUY SIGNAL</div>',
-                "SELL": '<div class="sell-badge">🔴 SELL SIGNAL</div>',
-            }.get(signal, '<div class="wait-badge">⏳ WAIT — NO CLEAR SETUP</div>')
-            st.markdown(badge_html, unsafe_allow_html=True)
+            # ── Signal card (THISystem style) ─────────────
+            _sig_style = {
+                "BUY":  ("", "rgba(34,197,94,0.15)",  "#4ade80", "#22c55e", "BUY"),
+                "SELL": ("sell", "rgba(239,68,68,0.15)", "#f87171", "#ef4444", "SELL"),
+            }.get(signal, ("", "rgba(245,158,11,0.15)", "#fbbf24", "#f59e0b", "WAIT"))
+            _card_cls, _pill_bg, _pill_fg, _pill_bd, _pill_tx = _sig_style
+
+            # Bias marker position: BUY→right, SELL→left, WAIT→middle
+            if signal == "BUY":
+                _bias_pos = 50 + confidence * 5
+            elif signal == "SELL":
+                _bias_pos = 50 - confidence * 5
+            else:
+                _bias_pos = 50
+            _bias_pos = max(4, min(96, _bias_pos))
+            _conf_label = "High confidence" if confidence >= 7 else ("Medium confidence" if confidence >= 5 else "Low confidence")
+
+            st.markdown(f"""
+<div class='chee-signal-card {_card_cls}'>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px'>
+    <span class='tag' style='background:rgba(34,197,94,0.10);border:1px solid rgba(74,222,128,0.4);color:#4ade80'>⚡ CHEE AI SIGNAL</span>
+    <span class='tag' style='background:{_pill_bg};border:1px solid {_pill_bd};color:{_pill_fg};font-size:14px;padding:7px 22px'>{_pill_tx}</span>
+  </div>
+  <span style='display:inline-block;background:#0c120e;border:1px solid #1c2a21;border-radius:999px;
+  padding:5px 14px;color:#cfe0d4;font-size:12px;font-weight:700;font-family:JetBrains Mono,monospace'>
+  ● {market_type.split('(')[0].strip()} · {timeframe}</span>
+  <div style='margin-top:18px'>
+    <div style='display:flex;justify-content:space-between;align-items:center'>
+      <span class='k'>Which way it leans</span>
+      <span style='color:#7d8f83;font-size:12px;font-family:JetBrains Mono,monospace'>{_conf_label} · {confidence}/10</span>
+    </div>
+    <div style='position:relative;height:8px;border-radius:999px;margin-top:10px;
+    background:linear-gradient(90deg,#7f1d1d,#3f1d1d 35%,#123322 65%,#14532d)'>
+      <div style='position:absolute;left:{_bias_pos}%;top:-4px;transform:translateX(-50%);
+      width:10px;height:16px;border-radius:4px;background:{_pill_fg};box-shadow:0 0 12px {_pill_fg}'></div>
+    </div>
+    <div style='display:flex;justify-content:space-between;margin-top:7px'>
+      <span style='color:#7d8f83;font-size:11px;letter-spacing:2px'>BEARISH</span>
+      <span style='color:#7d8f83;font-size:11px;letter-spacing:2px'>BULLISH</span>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
             # ── News warning overlay ───────────────────────
             _news_warns = get_news_warning(market_type)
             render_news_warning_banner(_news_warns)
 
             if pattern:
-                st.markdown(f"<p style='color:#7c3aed;font-weight:700;font-size:15px;margin:4px 0'>📐 Pattern: {pattern}</p>",
+                st.markdown(f"<p style='color:#4ade80;font-weight:700;font-size:15px;margin:4px 0'>📐 Pattern: {pattern}</p>",
                             unsafe_allow_html=True)
-
-            # ── Confidence bar ────────────────────────────
-            bar_color = "#059669" if confidence >= 7 else ("#d97706" if confidence >= 5 else "#dc2626")
-            st.markdown(f"""
-<div style="margin:8px 0 12px 0">
-  <span style="color:#1a1a2e;font-size:14px;font-weight:600">
-    Confidence: <b style="color:{bar_color};font-size:16px">{confidence}/10</b>
-  </span>
-  <div style="background:#e9d5ff;border-radius:6px;height:12px;margin-top:5px;border:1px solid #c4b5fd">
-    <div style="background:{bar_color};width:{confidence*10}%;height:12px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,0.2)"></div>
-  </div>
-</div>""", unsafe_allow_html=True)
 
             # ── Build + show annotated chart first ────────
             if annotate_chart_flag and meta.get("annotations"):
@@ -2076,11 +2384,11 @@ Now the trader is asking follow-up questions about your analysis. Answer specifi
         else:
             st.markdown("""
 <div class="info-box">
-<p style="color:#5b21b6;text-align:center;margin-top:40px;font-size:17px;font-weight:700">
+<p style="color:#cfe0d4;text-align:center;margin-top:40px;font-size:17px;font-weight:700">
 📊 Analysis results will appear here after you upload a chart and click Analyse.
 </p>
 <br>
-<p style="color:#1e40af;text-align:center;font-size:14px;font-weight:600">
+<p style="color:#7d8f83;text-align:center;font-size:14px;font-weight:600">
 The AI will identify:<br><br>
 ⚡ BOS / CHoCH &nbsp;·&nbsp; 💧 Liquidity &nbsp;·&nbsp; 🎯 Supply & Demand<br>
 📐 Fibonacci &nbsp;·&nbsp; 🕯️ Chart Patterns &nbsp;·&nbsp; 🔭 Wyckoff<br><br>
@@ -2091,28 +2399,13 @@ The AI will identify:<br><br>
 
 
 # ============================================================
-# EXTRA TOOLS SECTION
+# TOOL PAGES (routed via sidebar navigation)
 # ============================================================
-st.divider()
-st.markdown("## 🛠️ Trading Tools 交易工具")
-
-tool_tab1, tool_tab2, tool_tab3, tool_tab4, tool_tab5, tool_tab6, tool_tab7, tool_tab8, tool_tab9, tool_tab10 = st.tabs([
-    "🧮 Position Size",
-    "📰 News Calendar",
-    "📡 Chart Scanner",
-    "🤖 AI Coach",
-    "📄 PDF Report",
-    "💹 Currency Strength",
-    "📈 Live Data",
-    "🔭 MTF Panel",
-    "⚔️ AI Debate",
-    "📲 Signal Feed",
-])
 
 # ════════════════════════════════════════════════════════════
 # TOOL 1 — POSITION SIZE CALCULATOR
 # ════════════════════════════════════════════════════════════
-with tool_tab1:
+if _nav == "Position Size":
     st.markdown("### 🧮 Position Size Calculator 仓位计算器")
     st.caption("Calculate exact lot size based on your account risk. 根据账户风险计算精确手数。")
 
@@ -2203,7 +2496,7 @@ with tool_tab1:
 # ════════════════════════════════════════════════════════════
 # TOOL 2 — ECONOMIC CALENDAR
 # ════════════════════════════════════════════════════════════
-with tool_tab2:
+if _nav == "Macro Radar":
     st.markdown("### 📰 Economic Calendar 经济日历")
     st.caption("Check upcoming high-impact news before trading. 交易前查看高影响力新闻。")
 
@@ -2272,7 +2565,7 @@ with tool_tab2:
 # ════════════════════════════════════════════════════════════
 # TOOL 3 — MULTI-CHART SCANNER
 # ════════════════════════════════════════════════════════════
-with tool_tab3:
+if _nav == "Chart Scanner":
     st.markdown("### 📡 Multi-Chart Scanner 多图扫描")
 
     scan_mode = st.radio(
@@ -2513,7 +2806,8 @@ Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
 # ════════════════════════════════════════════════════════════
 # TOOL 4 — AI TRADING COACH
 # ════════════════════════════════════════════════════════════
-with tool_tab4:
+if _nav == "AI Assistant":
+    st.markdown("## ✨ AI Assistant")
 
     # ── Initialise conversation store ──────────────────────────
     if "coach_convs" not in st.session_state:
@@ -2569,6 +2863,10 @@ You follow these trading principles:
                 return c
         return None
 
+    # ── Question forwarded from the Home quick-ask bar ─────────
+    if st.session_state.get("pending_question"):
+        _new_coach_conv()
+
     # ── CSS for the coach panel ────────────────────────────────
     st.markdown("""
 <style>
@@ -2591,10 +2889,8 @@ You follow these trading principles:
     # ══════════════════════════════════════════════════════
     with c_left:
         st.markdown("""
-<div style='background:#0d1117;border:1px solid #21262d;border-radius:12px;
-padding:12px 10px 8px 10px;min-height:540px'>
-<div style='font-size:12px;color:#6e7681;letter-spacing:1.5px;text-transform:uppercase;
-margin-bottom:10px;padding:0 4px'>🤖 AI Coach</div>
+<div style='font-size:11.5px;color:#7d8f83;letter-spacing:2.5px;text-transform:uppercase;
+margin-bottom:10px;padding:0 4px;font-weight:700'>Conversations</div>
 """, unsafe_allow_html=True)
 
         # New Chat button
@@ -2620,19 +2916,17 @@ margin-bottom:10px;padding:0 4px'>🤖 AI Coach</div>
 
                 if is_active:
                     st.markdown(f"""
-<div style='background:#1f2937;border:1px solid #3b82f6;border-radius:8px;
+<div style='background:rgba(34,197,94,0.10);border:1px solid rgba(74,222,128,0.4);border-radius:10px;
 padding:8px 10px;margin:3px 0;cursor:pointer'>
-  <div style='font-size:13px;font-weight:600;color:#e2e8f0;white-space:nowrap;
+  <div style='font-size:13px;font-weight:600;color:#eef5f0;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis'>{img_ico}{label}</div>
-  <div style='font-size:10px;color:#6b7280;margin-top:2px'>{date}</div>
+  <div style='font-size:10px;color:#7d8f83;margin-top:2px'>{date}</div>
 </div>""", unsafe_allow_html=True)
                 else:
                     if st.button(f"{img_ico}{label}", key=f"conv_sel_{conv['id']}",
                                  use_container_width=True, help=date):
                         st.session_state["coach_active_id"] = conv["id"]
                         st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ══════════════════════════════════════════════════════
     # RIGHT PANEL — active conversation
@@ -2644,30 +2938,32 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
             # ── Welcome screen ─────────────────────────────
             st.markdown("""
 <div style='text-align:center;padding:60px 20px'>
-  <div style='font-size:52px;margin-bottom:16px'>🎓</div>
-  <h2 style='color:#f1f5f9;margin:0 0 8px 0'>AI Trading Coach</h2>
-  <p style='color:#94a3b8;font-size:15px;margin:0 0 24px 0'>
-    Your personal trading mentor. Ask anything, upload charts for review,<br>
-    or get feedback on your analysis. Available 24/7.
+  <div style='width:64px;height:64px;margin:0 auto 18px auto;border-radius:18px;
+  background:linear-gradient(135deg,#16a34a,#4ade80);display:flex;align-items:center;
+  justify-content:center;font-size:30px;box-shadow:0 0 34px rgba(34,197,94,0.45)'>⚡</div>
+  <h2 style='color:#eef5f0;margin:0 0 8px 0;font-family:Space Grotesk,sans-serif'>Chee AI Assistant</h2>
+  <p style='color:#7d8f83;font-size:15px;margin:0 0 24px 0'>
+    Real-time market analysis with your AI trading partner.<br>
+    Ask anything, upload charts for review, get feedback on your trades. 24/7.
   </p>
   <div style='display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:32px'>
-    <div style='background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px;
-    text-align:left;max-width:180px'>
+    <div style='background:#0b100d;border:1px solid #1c2a21;border-radius:14px;padding:14px 16px;
+    text-align:left;max-width:190px'>
       <div style='font-size:20px;margin-bottom:6px'>💬</div>
-      <div style='color:#e2e8f0;font-size:13px;font-weight:600'>Ask Anything</div>
-      <div style='color:#64748b;font-size:12px'>Strategy, psychology, concepts</div>
+      <div style='color:#eef5f0;font-size:13px;font-weight:700'>Ask Anything</div>
+      <div style='color:#7d8f83;font-size:12px'>Strategy, psychology, concepts</div>
     </div>
-    <div style='background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px;
-    text-align:left;max-width:180px'>
+    <div style='background:#0b100d;border:1px solid #1c2a21;border-radius:14px;padding:14px 16px;
+    text-align:left;max-width:190px'>
       <div style='font-size:20px;margin-bottom:6px'>📷</div>
-      <div style='color:#e2e8f0;font-size:13px;font-weight:600'>Chart Review</div>
-      <div style='color:#64748b;font-size:12px'>Upload your chart for feedback</div>
+      <div style='color:#eef5f0;font-size:13px;font-weight:700'>Chart Review</div>
+      <div style='color:#7d8f83;font-size:12px'>Upload your chart for feedback</div>
     </div>
-    <div style='background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px;
-    text-align:left;max-width:180px'>
+    <div style='background:#0b100d;border:1px solid #1c2a21;border-radius:14px;padding:14px 16px;
+    text-align:left;max-width:190px'>
       <div style='font-size:20px;margin-bottom:6px'>🔍</div>
-      <div style='color:#e2e8f0;font-size:13px;font-weight:600'>Trade Review</div>
-      <div style='color:#64748b;font-size:12px'>Share your entry & get critique</div>
+      <div style='color:#eef5f0;font-size:13px;font-weight:700'>Trade Review</div>
+      <div style='color:#7d8f83;font-size:12px'>Share your entry & get critique</div>
     </div>
   </div>
 </div>
@@ -2751,9 +3047,13 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
 
             # ── Chat input ─────────────────────────────────
             user_input = st.chat_input(
-                "问我任何交易问题… / Ask any trading question…",
+                "Message Chee AI…  ·  问我任何交易问题…",
                 key=f"coach_input_{conv['id']}",
             )
+
+            # Consume question forwarded from Home quick-ask
+            if not user_input and st.session_state.get("pending_question"):
+                user_input = st.session_state.pop("pending_question")
 
             if user_input:
                 if not api_key:
@@ -2873,7 +3173,7 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
 # ════════════════════════════════════════════════════════════
 # TOOL 5 — PDF REPORT GENERATOR
 # ════════════════════════════════════════════════════════════
-with tool_tab5:
+if _nav == "PDF Report":
     st.markdown("### 📄 PDF Report Generator 分析报告")
     st.caption("Generate a professional PDF report from your latest analysis. 一键生成专业PDF交易分析报告。")
 
@@ -2998,7 +3298,7 @@ with tool_tab5:
 # ════════════════════════════════════════════════════════════
 # TOOL 6 — CURRENCY STRENGTH METER
 # ════════════════════════════════════════════════════════════
-with tool_tab6:
+if _nav == "Market Intelligence":
     st.markdown("### 💹 Currency Strength Meter 货币强弱表")
     st.caption("Upload H1 charts for each currency pair to compute relative strength. 上传各货币对H1图表，自动计算货币强弱。")
 
@@ -3118,7 +3418,7 @@ Strongest: <b style='color:#10b981'>{strongest}</b> &nbsp;·&nbsp; Weakest: <b s
 # ════════════════════════════════════════════════════════════
 # TOOL 7 — LIVE DATA ANALYSIS
 # ════════════════════════════════════════════════════════════
-with tool_tab7:
+if _nav == "Live Charts":
     st.markdown("### 📈 Live Data Analysis 实时数据分析")
     st.caption("Fetch live candles directly — no chart upload needed. 直接拉取实时K线，无需上传图表。")
 
@@ -3521,7 +3821,7 @@ with tool_tab7:
 # ════════════════════════════════════════════════════════════
 # TOOL 8 — MULTI-TIMEFRAME STRUCTURE PANEL
 # ════════════════════════════════════════════════════════════
-with tool_tab8:
+if _nav == "MTF Panel":
     st.markdown("### 🔭 Multi-Timeframe Structure Panel")
     st.caption("One click → AI analyses D1 + H4 + H1 + M15 simultaneously. See if all timeframes agree before you trade.")
 
@@ -3841,7 +4141,7 @@ padding:18px;margin:6px 0;box-shadow:0 2px 12px rgba(0,0,0,0.5)'>
 # ════════════════════════════════════════════════════════════
 # TOOL 9 — AI DEBATE (BOARD OF DIRECTORS)
 # ════════════════════════════════════════════════════════════
-with tool_tab9:
+if _nav == "AI Debate":
     st.markdown("### ⚔️ AI Board of Directors — Bull vs Bear Debate")
     st.caption("Two AIs forced to argue opposite sides. A Judge AI then evaluates both and declares the winner.")
 
@@ -4195,7 +4495,7 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
 # ════════════════════════════════════════════════════════════
 # TOOL 10 — SIGNAL FEED (TradingView → Google Sheets)
 # ════════════════════════════════════════════════════════════
-with tool_tab10:
+if _nav == "Trade Ideas":
     import pandas as _pd_sf
     import datetime as _dt_sf
 
@@ -4384,7 +4684,7 @@ with tool_tab10:
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
 st.caption(
-    "⚠️ **Disclaimer**: TradingAI Analyst is for **educational and informational purposes only**. "
+    "⚠️ **Disclaimer**: Chee AI is for **educational and informational purposes only**. "
     "It does NOT constitute financial advice. Trading involves substantial risk of loss. "
     "Always conduct your own research and manage your risk responsibly."
 )
