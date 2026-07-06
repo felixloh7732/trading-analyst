@@ -1292,7 +1292,7 @@ if _LS_AVAILABLE and not st.session_state.get("_ls_loaded"):
 # ══════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
   :root {
     --bg:        #050807;
@@ -1766,6 +1766,89 @@ st.markdown("""
     border: 1px solid rgba(74,222,128,0.4) !important;
     color: #4ade80 !important;
   }
+
+  /* ══════════════════════════════════════════
+     V3 — Luxury serif + champagne gold (THISystem DNA)
+     Gold = brand & headings · Green = data & signals
+  ══════════════════════════════════════════ */
+
+  h1, h2 {
+    font-family: 'Playfair Display', Georgia, serif !important;
+    letter-spacing: 0 !important;
+  }
+  h1 {
+    background: linear-gradient(90deg, #f5edda 15%, #e8c76e 85%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-weight: 600 !important; font-size: 44px !important;
+  }
+  h2 { color: #f3ead7 !important; font-weight: 600 !important; }
+  h3 { color: #e9dfc8 !important; font-weight: 600 !important; }
+
+  /* Hero — big serif greeting like the reference */
+  .chee-hero { position: relative; padding: 52px 8px 6px 8px; }
+  .chee-hero .hi {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 66px; font-weight: 600; line-height: 1.04;
+    color: #f5edda; letter-spacing: 0; margin: 0;
+    text-shadow: 0 2px 40px rgba(232,199,110,0.15);
+  }
+  .chee-hero .hi .accent {
+    background: linear-gradient(90deg, #e8c76e 10%, #f7ecd0 90%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-style: italic;
+  }
+  .chee-hero .sub {
+    color: #9aa89e; font-size: 15px; margin: 16px 0 0 3px; letter-spacing: 1.2px;
+    text-transform: uppercase; font-size: 12.5px; font-weight: 600;
+  }
+  .chee-chip.gold {
+    background: rgba(232,199,110,0.10);
+    border: 1px solid rgba(232,199,110,0.5); color: #e8c76e;
+  }
+  .chee-chip.dim {
+    background: rgba(125,143,131,0.08);
+    border: 1px solid rgba(125,143,131,0.3); color: #9aa89e;
+  }
+  .chee-art {
+    position: absolute; top: -6px; right: 6px; width: 330px;
+    opacity: 0.95; pointer-events: none; filter: drop-shadow(0 0 30px rgba(232,199,110,0.18));
+  }
+  @media (max-width: 1100px) { .chee-art { width: 230px; opacity: .55; } }
+
+  /* Sidebar brand → serif wordmark */
+  .chee-brand .nm {
+    font-family: 'Playfair Display', Georgia, serif !important;
+    font-size: 21px; font-weight: 600; letter-spacing: .3px;
+  }
+  .chee-brand .nm .g {
+    background: linear-gradient(90deg, #e8c76e, #f7ecd0);
+    -webkit-background-clip: text;
+    color: transparent !important; -webkit-text-fill-color: transparent !important;
+    font-style: italic;
+  }
+  .chee-brand .logo {
+    background: linear-gradient(135deg, #b9973f, #e8c76e) !important;
+    box-shadow: 0 0 18px rgba(232,199,110,0.4) !important;
+  }
+
+  /* Agent cards: gold name, refined */
+  .agent-card .nm { font-family: 'Playfair Display', Georgia, serif; font-size: 16.5px; color: #f3ead7; }
+  .agent-card::before {
+    background: linear-gradient(90deg, transparent, #e8c76e 30%, #22c55e 70%, transparent);
+  }
+
+  /* Chat: assistant answers clean & open, user tinted — like a real AI product */
+  [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+    background: transparent !important; border: none !important;
+  }
+  [data-testid="stChatMessageAvatarAssistant"] {
+    background: linear-gradient(135deg, #b9973f, #e8c76e) !important;
+  }
+  [data-testid="stChatInput"] { border-radius: 26px !important; }
+  [data-testid="stChatInput"] textarea { font-size: 15px !important; }
+
+  /* Section labels slightly warmer */
+  .chee-section-label { color: #8a9a8e; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1996,21 +2079,58 @@ _nav = st.session_state.get("nav", "Home")
 # ════════════════════════════════════════════════════════════
 if _nav == "Home":
     import datetime as _dt
-    _hour = _dt.datetime.now().hour
+    _now  = _dt.datetime.now()
+    _hour = _now.hour
     if 5 <= _hour < 12:
         _greet = "Good morning,"
     elif 12 <= _hour < 18:
         _greet = "Good afternoon,"
     else:
         _greet = "Good evening,"
+    if 7 <= _hour < 15:
+        _session = "Tokyo Session"
+    elif 15 <= _hour < 21:
+        _session = "London Session"
+    else:
+        _session = "New York Session"
+    _date_str = _now.strftime("%A · %b %d")
 
     st.markdown(f"""
 <div class='chee-hero'>
+  <svg class='chee-art' viewBox='0 0 400 250' xmlns='http://www.w3.org/2000/svg'>
+    <defs>
+      <linearGradient id='gPeak' x1='0' y1='0' x2='0' y2='1'>
+        <stop offset='0' stop-color='#f0d68a'/><stop offset='0.55' stop-color='#8a6f2e'/><stop offset='1' stop-color='#171208'/>
+      </linearGradient>
+      <linearGradient id='gPeak2' x1='0' y1='0' x2='0' y2='1'>
+        <stop offset='0' stop-color='#c7a651'/><stop offset='1' stop-color='#0d0a04'/>
+      </linearGradient>
+      <linearGradient id='gGlow' x1='0' y1='0' x2='0' y2='1'>
+        <stop offset='0' stop-color='#e8c76e' stop-opacity='0.35'/><stop offset='1' stop-color='#e8c76e' stop-opacity='0'/>
+      </linearGradient>
+    </defs>
+    <circle cx='330' cy='38' r='1.6' fill='#f7ecd0' opacity='.9'/>
+    <circle cx='265' cy='22' r='1.1' fill='#f7ecd0' opacity='.6'/>
+    <circle cx='372' cy='70' r='1.2' fill='#f7ecd0' opacity='.7'/>
+    <circle cx='300' cy='60' r='.9' fill='#f7ecd0' opacity='.5'/>
+    <circle cx='236' cy='52' r='1.3' fill='#f7ecd0' opacity='.55'/>
+    <ellipse cx='265' cy='150' rx='160' ry='70' fill='url(#gGlow)'/>
+    <polygon points='140,250 235,95 330,250' fill='url(#gPeak2)' opacity='.7'/>
+    <polygon points='230,250 310,120 390,250' fill='url(#gPeak2)' opacity='.85'/>
+    <polygon points='175,250 265,72 355,250' fill='url(#gPeak)'/>
+    <polygon points='247,108 265,72 283,108 265,96' fill='#f7ecd0' opacity='.85'/>
+    <rect x='258' y='52' width='4.5' height='22' fill='#f0d68a'/>
+    <rect x='250' y='58' width='3.5' height='16' fill='#c7a651'/>
+    <rect x='268' y='58' width='3.5' height='16' fill='#c7a651'/>
+    <rect x='255' y='48' width='11' height='5' fill='#f0d68a'/>
+    <polygon points='260.2,42 260.2,52 267,47' fill='#e8c76e'/>
+  </svg>
   <p class='hi'>{_greet}<br><span class='accent'>Chee</span></p>
   <p class='sub'>Your Personal AI Financial Analyst</p>
   <div>
-    <span class='chee-chip'>⚡ Pro Trader</span>
-    <span class='chee-chip'>Forex · Gold · Crypto · Indices</span>
+    <span class='chee-chip gold'>👑 Pro Trader</span>
+    <span class='chee-chip'>● {_session} · Live</span>
+    <span class='chee-chip dim'>{_date_str}</span>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -2021,6 +2141,21 @@ if _nav == "Home":
         st.session_state["pending_question"] = _home_q
         st.session_state["nav"] = "AI Analyst"
         st.rerun()
+
+    # ── Suggested prompts (like ChatGPT) ──
+    _SUGGESTIONS = [
+        ("🌅  What moved the market this morning?", "AI Analyst", "What moved the market this morning?"),
+        ("🥇  Can I buy gold right now?",            "AI Analyst", "Can I buy gold right now? 现在可以买黄金吗?"),
+        ("🔍  Scan the market for opportunities",    "Market Scout", None),
+    ]
+    _sug_cols = st.columns(len(_SUGGESTIONS), gap="small")
+    for _si, (_slabel, _spage, _sq) in enumerate(_SUGGESTIONS):
+        with _sug_cols[_si]:
+            if st.button(_slabel, key=f"home_sug_{_si}", use_container_width=True):
+                if _sq:
+                    st.session_state["pending_question"] = _sq
+                st.session_state["nav"] = _spage
+                st.rerun()
 
     st.markdown("<div class='chee-section-label'>AI Agents</div>", unsafe_allow_html=True)
 
@@ -2061,7 +2196,7 @@ if _nav == "Home":
 # MARKET SCOUT — AI scans the market, picks today's best setups
 # ════════════════════════════════════════════════════════════
 if _nav == "Market Scout":
-    st.markdown("## 🎯 Market Scout")
+    st.markdown("## Market Scout")
     st.caption("AI fetches live data across the market and picks today's best opportunities · AI 自动扫描市场，挑出今天最有机会的交易对")
 
     _SCOUT_UNIVERSE = ["XAU/USD", "XAG/USD", "EUR/USD", "GBP/USD", "USD/JPY",
@@ -2753,7 +2888,7 @@ if False:  # REMOVED — Position Size Calculator (no longer needed)
 # TOOL 2 — ECONOMIC CALENDAR
 # ════════════════════════════════════════════════════════════
 if _nav == "Markets":
-    st.markdown("## 🌐 Markets")
+    st.markdown("## Markets")
     st.markdown("### 📰 Economic Calendar 经济日历")
     st.caption("Check upcoming high-impact news before trading. 交易前查看高影响力新闻。")
 
@@ -3064,7 +3199,7 @@ Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
 # TOOL 4 — AI TRADING COACH
 # ════════════════════════════════════════════════════════════
 if _nav == "AI Analyst":
-    st.markdown("## ✨ AI Analyst")
+    st.markdown("## AI Analyst")
 
     # ── Initialise conversation store ──────────────────────────
     if "coach_convs" not in st.session_state:
@@ -3200,9 +3335,9 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
             st.markdown("""
 <div style='text-align:center;padding:60px 20px'>
   <div style='width:64px;height:64px;margin:0 auto 18px auto;border-radius:18px;
-  background:linear-gradient(135deg,#16a34a,#4ade80);display:flex;align-items:center;
-  justify-content:center;font-size:30px;box-shadow:0 0 34px rgba(34,197,94,0.45)'>⚡</div>
-  <h2 style='color:#eef5f0;margin:0 0 8px 0;font-family:Space Grotesk,sans-serif'>Chee AI Analyst</h2>
+  background:linear-gradient(135deg,#b9973f,#e8c76e);display:flex;align-items:center;
+  justify-content:center;font-size:30px;box-shadow:0 0 34px rgba(232,199,110,0.4)'>⚡</div>
+  <h2 style='color:#f3ead7;margin:0 0 8px 0;font-family:Playfair Display,Georgia,serif'>Chee <span style='font-style:italic;color:#e8c76e'>AI</span> Analyst</h2>
   <p style='color:#7d8f83;font-size:15px;margin:0 0 24px 0'>
     Ask about any market — I fetch live prices and charts automatically, then analyse them for you.<br>
     试试问「can I sell gold now?」— 我会自动抓取实时数据并分析。
