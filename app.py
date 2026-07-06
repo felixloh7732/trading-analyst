@@ -1319,12 +1319,15 @@ def ai_text_call(prompt: str, api_key: str, model: str, json_mode: bool = False)
         r = _c.models.generate_content(model=model, contents=[prompt], config=_cfg)
         return r.text
     _c = anthropic.Anthropic(api_key=api_key)
-    _msgs = [{"role": "user", "content": prompt}]
+    _p = prompt
     if json_mode:
-        _msgs.append({"role": "assistant", "content": "{"})  # prefill → forces JSON from the first char
-    r = _c.messages.create(model=model, max_tokens=3000, messages=_msgs)
-    out = r.content[0].text
-    return ("{" + out) if json_mode else out
+        # Newer Claude models reject assistant prefill — use a hard instruction instead;
+        # parse_ai_json() downstream handles extraction & repair.
+        _p = (prompt + "\n\nCRITICAL: Respond with ONLY the raw JSON object. No markdown fences, "
+              "no commentary. The very first character of your reply must be '{' and the last must be '}'.")
+    r = _c.messages.create(model=model, max_tokens=3000,
+                           messages=[{"role": "user", "content": _p}])
+    return r.content[0].text
 
 
 def parse_ai_json(raw: str, api_key: str = "", model: str = "") -> dict:
