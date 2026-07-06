@@ -1306,15 +1306,64 @@ def sr_zones_text(zones: list) -> str:
     return "\n".join(lines)
 
 
-def ai_text_call(prompt: str, api_key: str, model: str) -> str:
-    """One-shot text call to Gemini or Claude."""
+def ai_text_call(prompt: str, api_key: str, model: str, json_mode: bool = False) -> str:
+    """One-shot text call to Gemini or Claude. json_mode forces/nudges pure-JSON output."""
     if model.startswith("gemini"):
         _c = google_genai.Client(api_key=api_key)
-        return _c.models.generate_content(model=model, contents=[prompt]).text
+        _cfg = None
+        if json_mode:
+            try:
+                _cfg = google_types.GenerateContentConfig(response_mime_type="application/json")
+            except Exception:
+                _cfg = None
+        r = _c.models.generate_content(model=model, contents=[prompt], config=_cfg)
+        return r.text
     _c = anthropic.Anthropic(api_key=api_key)
-    r = _c.messages.create(model=model, max_tokens=2500,
-                           messages=[{"role": "user", "content": prompt}])
-    return r.content[0].text
+    _msgs = [{"role": "user", "content": prompt}]
+    if json_mode:
+        _msgs.append({"role": "assistant", "content": "{"})  # prefill → forces JSON from the first char
+    r = _c.messages.create(model=model, max_tokens=3000, messages=_msgs)
+    out = r.content[0].text
+    return ("{" + out) if json_mode else out
+
+
+def parse_ai_json(raw: str, api_key: str = "", model: str = "") -> dict:
+    """Extract a JSON object from an AI reply. Repairs common issues; falls back to AI self-repair."""
+    if not raw:
+        return {}
+    m = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not m:
+        return {}
+    txt = m.group(0)
+    # 1) as-is
+    try:
+        return json.loads(txt)
+    except Exception:
+        pass
+    # 2) mechanical repairs: smart quotes, trailing commas, control chars
+    t = txt
+    for _a, _b in (("“", "'"), ("”", "'"), ("‘", "'"), ("’", "'"), (" ", " ")):
+        t = t.replace(_a, _b)
+    t = re.sub(r",\s*([}\]])", r"\1", t)
+    t = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", t)
+    try:
+        return json.loads(t)
+    except Exception:
+        pass
+    # 3) AI self-repair
+    if api_key and model:
+        try:
+            fixed = ai_text_call(
+                "Rewrite the following as STRICT valid JSON (RFC 8259). Escape all double quotes and "
+                "newlines inside string values. Do not change the content. Output ONLY the JSON object:\n\n"
+                + txt[:9000],
+                api_key, model, json_mode=True)
+            m2 = re.search(r"\{.*\}", fixed, re.DOTALL)
+            if m2:
+                return json.loads(m2.group(0))
+        except Exception:
+            pass
+    return {}
 
 
 # ============================================================
@@ -2315,7 +2364,7 @@ clear trend + price at/near a key swing S/R level + healthy RSI + good risk:rewa
 A fib 38.2/50/61.8 level lining up with the S/R level is a bonus that raises confidence — not a requirement.
 If nothing qualifies, return fewer picks (even zero) and explain why in the market note. Quality over quantity.
 
-Output STRICT JSON only, no other text:
+Output STRICT JSON only, no other text. Never put double-quote characters inside text values (use single quotes if needed):
 {{"market_note_en": "1-2 sentence market overview",
  "market_note_cn": "中文一两句市场总览",
  "picks": [
@@ -2326,12 +2375,15 @@ Output STRICT JSON only, no other text:
  ]}}"""
             with st.spinner("🤖 AI is analysing the whole market…"):
                 try:
-                    _raw = ai_text_call(_scout_prompt, api_key, model_choice)
-                    _m = re.search(r"\{.*\}", _raw, re.DOTALL)
-                    st.session_state["scout_result"]  = json.loads(_m.group(0)) if _m else {}
-                    st.session_state["scout_digests"] = _digests
-                    import datetime as _dt_sc
-                    st.session_state["scout_time"] = _dt_sc.datetime.now().strftime("%b %d, %H:%M")
+                    _raw = ai_text_call(_scout_prompt, api_key, model_choice, json_mode=True)
+                    _parsed = parse_ai_json(_raw, api_key, model_choice)
+                    if not _parsed:
+                        st.error("❌ AI returned an unreadable response — hit Scan again. AI 返回格式异常，请再扫描一次。")
+                    else:
+                        st.session_state["scout_result"]  = _parsed
+                        st.session_state["scout_digests"] = _digests
+                        import datetime as _dt_sc
+                        st.session_state["scout_time"] = _dt_sc.datetime.now().strftime("%b %d, %H:%M")
                 except Exception as _ae:
                     st.error(f"❌ Scout failed: {_ae}")
 
@@ -2430,7 +2482,7 @@ TASK: For EACH zone, in the SAME order, explain WHY it is a valid support/resist
 - recency (freshly tested vs stale)
 Rate each zone strength 1-5. Then say which single zone matters MOST right now given current price, and what to watch for there.
 
-Output STRICT JSON only:
+Output STRICT JSON only. Never put double-quote characters inside text values (use single quotes if needed):
 {{"summary_en": "2-3 sentences: which zone matters most now and why",
  "summary_cn": "中文总结 2-3 句",
  "zones": [
@@ -2439,13 +2491,18 @@ Output STRICT JSON only:
      "why_cn": "中文解释 3-4 句，引用真实数据"}}
  ]}}"""
                     with st.spinner("🤖 AI is explaining every zone…"):
-                        _kl_raw = ai_text_call(_kl_prompt, api_key, model_choice)
-                        _kl_m = re.search(r"\{.*\}", _kl_raw, re.DOTALL)
-                        st.session_state["kl_result"] = json.loads(_kl_m.group(0)) if _kl_m else {}
-                        st.session_state["kl_meta"] = {
-                            "label": _kl_label, "tf": _kl_tf, "price": _kl_price,
-                            "zones": _kl_zones,
-                        }
+                        _kl_raw = ai_text_call(_kl_prompt, api_key, model_choice, json_mode=True)
+                        _kl_parsed = parse_ai_json(_kl_raw, api_key, model_choice)
+                        if not _kl_parsed:
+                            st.error("❌ AI returned an unreadable response — please try again. AI 返回格式异常，请再试一次。")
+                            with st.expander("🔍 Raw AI response (debug)"):
+                                st.code((_kl_raw or "")[:4000])
+                        else:
+                            st.session_state["kl_result"] = _kl_parsed
+                            st.session_state["kl_meta"] = {
+                                "label": _kl_label, "tf": _kl_tf, "price": _kl_price,
+                                "zones": _kl_zones,
+                            }
             except Exception as _kle:
                 st.error(f"❌ Key Levels failed: {_kle}")
 
