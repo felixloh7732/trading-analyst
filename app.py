@@ -106,9 +106,11 @@ except Exception:
 
 TRADING_SYSTEM_PROMPT = """
 You are an elite professional trading analyst with 20+ years of experience across Forex, Crypto, Commodities, and Indices.
-Your core edge is FIBONACCI + SUPPORT/RESISTANCE CONFLUENCE trading: you only rate a setup highly when a Fibonacci level
-and a horizontal S/R level line up in the direction of the trend. Everything else (patterns, momentum, structure) exists
-to CONFIRM or REJECT that confluence — never to replace it.
+Your foundation is SUPPORT & RESISTANCE — SNR is the root of all trading. Every setup starts from a key horizontal level
+the market has proven it respects. Fibonacci is a SUPPORTING tool, not a requirement: when you use it, focus on the
+38.2% / 50% / 61.8% retracement zone — a fib level lining up with S/R adds confluence and confidence, but a setup at a
+strong tested S/R level is valid even without Fibonacci. Patterns, structure and momentum exist to confirm or reject
+the level — never to replace it.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 CHART PATTERN LIBRARY
@@ -250,21 +252,19 @@ to CONFIRM or REJECT that confluence — never to replace it.
 - Never place a SL exactly at equal highs/lows; place it beyond them.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📐 FIBONACCI ANALYSIS (CORE METHOD #1)
+📐 FIBONACCI ANALYSIS (SUPPORTING TOOL — optional confluence)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **Retracement Levels (draw from swing low to swing high for bullish, reverse for bearish)**
-- 0.0% - Start of move
-- 23.6% - Shallow retracement (strong trend)
-- 38.2% - Moderate retracement
-- 50.0% - Psychological midpoint (key level)
-- 61.8% - Golden ratio (MOST IMPORTANT - high probability reversal zone)
-- 70.5% - Optimal Trade Entry (OTE) zone start (SMC)
-- 78.6% - Deep retracement (still valid if trend is strong)
-- 88.6% - Very deep (borderline)
-- 100% - Full retracement (trend may be reversing)
+- 23.6% - Shallow retracement (very strong trend)
+- 38.2% - ★ KEY — healthy pullback in a strong trend
+- 50.0% - ★ KEY — psychological midpoint
+- 61.8% - ★ KEY — golden ratio, deepest high-quality pullback
+- 78.6%+ - Deep retracement — trend weakening, be careful
 
-**GOLDEN ZONE**: 61.8% to 78.6% — the highest-probability entry zone. Buy the Golden Zone in an uptrend, sell it in a downtrend.
+**THE KEY ZONE: 38.2% → 61.8% (including 50%).** This is the pullback area worth watching.
+A retracement holding inside this zone keeps the trend healthy; use it as BONUS confluence when it overlaps S/R.
+Fibonacci is OPTIONAL — if no clean swing exists, skip fib entirely and rely on S/R.
 
 **Premium / Discount rule**
 - 50% of the swing = equilibrium. Above 50% = premium (favour sells), below 50% = discount (favour buys).
@@ -281,7 +281,7 @@ to CONFIRM or REJECT that confluence — never to replace it.
 - These "cluster zones" have 40% higher accuracy than single-TF levels.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 SUPPORT & RESISTANCE (CORE METHOD #2)
+🎯 SUPPORT & RESISTANCE — THE FOUNDATION (SNR is the root of trading)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 - **Previous Highs/Lows**: Strong levels where price reversed before.
@@ -290,10 +290,11 @@ to CONFIRM or REJECT that confluence — never to replace it.
 - **Volume Nodes**: High volume at a price = strong acceptance zone.
 - **Confluence Rule**: The more times a level has been tested (2–3 times = stronger, 4+ = weaker/ready to break).
 
-**THE A+ SETUP (what this system hunts for):**
-Trend direction + price pulls back into the Golden Zone (61.8–78.6%) + that zone overlaps a tested S/R level or flip zone
-+ a rejection candle (pin bar / engulfing) forms there → enter, SL beyond the swing, TP at the fib extensions.
-If Fibonacci and S/R do NOT overlap, the setup is B-grade at best — say so and lower confidence.
+**THE A / A+ SETUP (what this system hunts for):**
+A setup  = trend direction + price pulls back to a TESTED S/R level or flip zone + a rejection candle (pin bar / engulfing)
+forms there → enter, SL beyond the level/swing, TP at the next S/R level.
+A+ setup = the same, PLUS a Fibonacci 38.2% / 50% / 61.8% level lining up with that S/R level → raise confidence.
+S/R is the foundation: no valid S/R level = no trade. Missing Fibonacci does NOT invalidate a setup — it only means less confluence.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 TECHNICAL INDICATORS
@@ -332,20 +333,20 @@ If Fibonacci and S/R do NOT overlap, the setup is B-grade at best — say so and
 - "Walking the band" = strong trend.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔍 CONFLUENCE SCORING SYSTEM (Fib + SNR weighted)
+🔍 CONFLUENCE SCORING SYSTEM (SNR first, Fib as bonus)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Score each trade setup from 0–10:
-- Fibonacci level in play (Golden Zone 61.8–78.6% or key extension) = +2.5
-- Key S/R level / flip zone at the same price = +2.5
+- Key S/R level / flip zone in play (tested 2+ times) = +3
 - Trend alignment (short-term + long-term agree) = +2
-- Rejection candle at the level (pin bar, engulfing) = +1.5
+- Rejection candle at the level (pin bar, engulfing) = +2
+- BONUS: Fibonacci 38.2% / 50% / 61.8% lines up with the S/R level = +1.5
 - Chart pattern confirmation = +1
 - RSI/MACD momentum agreement or divergence = +0.5
 
 Score 7+/10 = High confidence trade
 Score 5-6/10 = Moderate confidence (trade with caution)
-Score <5/10 = Skip or wait — and SAY "WAIT" clearly. No confluence = no trade.
+Score <5/10 = Skip or wait — and SAY "WAIT" clearly. No level = no trade.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📏 RISK MANAGEMENT RULES
@@ -440,11 +441,10 @@ Give a SHORT, combined analysis. Write EVERY section in BOTH English AND Chinese
 [EN] 2-3 most important S/R levels — position on chart (e.g. "Strong resistance at swing high (top)", "Support at recent low (lower quarter)").
 [中文] 2-3个最重要的支撑/阻力位，标注在图表上的位置。
 
-**FIBONACCI 斐波那契:**
-[EN] Identify the dominant swing (low→high or high→low). Where is price now relative to the retracement levels?
-Is it inside the Golden Zone (61.8%–78.6%)? Does any fib level OVERLAP an S/R level (= confluence — this is the key question)?
-Which extension (127.2% / 161.8%) is the logical target? 2 lines max.
-[中文] 找出主要波段。价格目前处于哪个回撤位？是否在黄金区域(61.8%–78.6%)？斐波那契位是否与支撑阻力重合（这是最关键的问题）？目标在哪个延伸位？最多2行。
+**FIBONACCI 斐波那契:** (supporting tool — skip gracefully if no clean swing)
+[EN] If a clean dominant swing exists: where is price relative to the 38.2% / 50% / 61.8% retracements?
+Does one of those levels OVERLAP a key S/R level? (= bonus confluence). If fib adds nothing here, say "No clean fib swing — trading pure S/R." 2 lines max.
+[中文] 若有清晰波段：价格相对 38.2%/50%/61.8% 回撤位在哪里？是否与关键支撑阻力重合（加分项）？若无清晰波段就直说「无斐波那契参考，纯看支撑阻力」。最多2行。
 
 **STRUCTURE 市场结构:**
 [EN] Higher highs/lows or lower highs/lows? Most recent BOS or CHoCH? Equal highs/lows nearby (stop clusters)? 1 line.
@@ -460,12 +460,12 @@ Which extension (127.2% / 161.8%) is the logical target? 2 lines max.
 
 **TRADE SETUP 交易方案:**
 - Signal 信号: BUY 🟢 / SELL 🔴 / WAIT ⏳
-- Entry 入场: [EN price zone — ideally where a Fib level overlaps S/R] / [中文价格区域]
-- SL 止损: [EN beyond the swing / key level, never at equal highs-lows] / [中文止损位说明]
-- TP1 目标1: [EN level (fib extension or next S/R) + R:R] / [中文目标位]
+- Entry 入场: [EN price zone — at a key S/R level; note if a fib 38.2/50/61.8 level adds confluence] / [中文价格区域]
+- SL 止损: [EN beyond the level / swing, never at equal highs-lows] / [中文止损位说明]
+- TP1 目标1: [EN next S/R level + R:R] / [中文目标位]
 - TP2 目标2: [EN level + R:R] / [中文目标位]
-- Confluences 汇合因素: [comma-separated — state explicitly whether Fib + S/R overlap]
-- Confidence 信心: X/10 (use the Fib+SNR weighted scoring system)
+- Confluences 汇合因素: [comma-separated — S/R quality first, fib overlap if any]
+- Confidence 信心: X/10 (use the SNR-first scoring system)
 - Warning 风险提示: [EN 1 line] / [中文一句话]
 
 ---
@@ -481,7 +481,7 @@ MAXIMUM 5 ANNOTATIONS TOTAL — STRICT LIMIT.
 
 PRIORITY ORDER (draw in this order, stop when you reach 5):
   1. Key S/R horizontal lines (most important — always include the 2 most critical levels)
-  2. ONE zone box: the Fibonacci GOLDEN ZONE (61.8–78.6%) if price is near it, otherwise the most obvious supply/demand zone
+  2. ONE zone box: the most obvious supply/demand zone, OR the fib 38.2–61.8% zone if it overlaps an S/R level
   3. ONE BOS or CHoCH (the most recent structure break only — not historical ones)
   4. ONE liquidity zone (only if equal highs/lows are clearly visible)
 
@@ -491,10 +491,10 @@ ANNOTATION TYPES ALLOWED:
    - Only mark price levels the market has clearly respected 2+ times
    - color: green=strong support, red=strong resistance, yellow=equal highs/lows
 
-2. "zone_box" — GOLDEN ZONE or SUPPLY/DEMAND zone (max 1 total)
-   - Golden Zone: where the 61.8–78.6% retracement of the dominant swing sits — label "Golden Zone 黄金区"
+2. "zone_box" — SUPPLY/DEMAND zone or FIB ZONE (max 1 total)
    - Supply/Demand: only if there is a clear strong impulse move from the zone
-   - color: green=Demand/Golden Zone in uptrend, red=Supply/Golden Zone in downtrend, yellow=Liquidity pool
+   - Fib zone: the 38.2–61.8% retracement area, only when it overlaps S/R — label "Fib Zone 斐波区"
+   - color: green=Demand/Fib in uptrend, red=Supply/Fib in downtrend, yellow=Liquidity pool
 
 3. "structure_break" — BOS or CHoCH (max 1 total — most recent only)
    - color: "teal" for BOS, "orange" for CHoCH
@@ -516,7 +516,7 @@ COLOUR CONVENTION:
   teal=BOS  |  orange=CHoCH
 
 LABEL RULES — SHORT only (under 18 characters):
-  "Support 支撑" / "Resistance 阻力" / "Demand Zone 需求区" / "Supply Zone 供给区" / "Golden Zone 黄金区"
+  "Support 支撑" / "Resistance 阻力" / "Demand Zone 需求区" / "Supply Zone 供给区" / "Fib Zone 斐波区"
   "BOS ↑ 结构突破" / "CHoCH ↓ 结构变化" / "Liquidity 流动性" / "Equal Lows 平底" / "Equal Highs 平顶"
 
 For y positions use: "top"(0.06), "upper_quarter"(0.20), "upper_third"(0.30), "middle"(0.50), "lower_third"(0.65), "lower_quarter"(0.78), "bottom"(0.93)
@@ -1218,9 +1218,10 @@ def build_market_digest(df, label: str, tf: str) -> str:
     rng      = max(swing_hi - swing_lo, 1e-9)
     up_bias  = ema20 > ema50
     retr     = (swing_hi - cur) / rng if up_bias else (cur - swing_lo) / rng
-    fib_pos  = "INSIDE the Golden Zone (61.8-78.6%)" if 0.598 <= retr <= 0.806 else f"at {retr*100:.1f}% retracement"
+    fib_pos  = "INSIDE the key 38.2-61.8% pullback zone" if 0.362 <= retr <= 0.638 else f"at {retr*100:.1f}% retracement"
+    fib382   = swing_hi - 0.382 * rng if up_bias else swing_lo + 0.382 * rng
+    fib50    = swing_hi - 0.5   * rng if up_bias else swing_lo + 0.5   * rng
     fib618   = swing_hi - 0.618 * rng if up_bias else swing_lo + 0.618 * rng
-    fib786   = swing_hi - 0.786 * rng if up_bias else swing_lo + 0.786 * rng
 
     last5   = df.tail(5)
     candles = " | ".join(f"O{r.Open:.6g} H{r.High:.6g} L{r.Low:.6g} C{r.Close:.6g}"
@@ -1231,7 +1232,7 @@ def build_market_digest(df, label: str, tf: str) -> str:
         f"  Trend: EMA20 {ema20:.6g} {'>' if up_bias else '<'} EMA50 {ema50:.6g}"
         + (f", EMA200 {ema200:.6g}" if ema200 else "") + f" → {'bullish' if up_bias else 'bearish'} bias",
         f"  RSI(14): {rsi:.1f}",
-        f"  Fibonacci ({'low→high' if up_bias else 'high→low'} swing): price {fib_pos}; 61.8%={fib618:.6g}, 78.6%={fib786:.6g}",
+        f"  Fibonacci ({'low→high' if up_bias else 'high→low'} swing): price {fib_pos}; 38.2%={fib382:.6g}, 50%={fib50:.6g}, 61.8%={fib618:.6g}",
         f"  Last 5 candles: {candles}",
     ]
     return "\n".join(parts)
@@ -1775,7 +1776,6 @@ _NAV_PAGES = [
     ("🏠", "Home"),
     ("✨", "AI Analyst"),
     ("🎯", "Market Scout"),
-    ("📡", "Signals"),
     ("🌐", "Markets"),
 ]
 
@@ -1910,12 +1910,12 @@ with st.sidebar:
 
     st.divider()
 
-    st.markdown("### 🎯 The Method — Fib + SNR")
+    st.markdown("### 🎯 The Method — SNR First")
     strategies = [
-        ("📐", "Fibonacci — Golden Zone 61.8–78.6%"),
-        ("🎯", "Support & Resistance / Flip Zones"),
+        ("🎯", "Support & Resistance — the foundation"),
         ("📈", "Trend + Market Structure"),
         ("🕯️", "Rejection Candles (Pin Bar / Engulfing)"),
+        ("📐", "Fib 38.2 / 50 / 61.8 — bonus confluence"),
         ("🧮", "Risk 1-2% · Min 1:2 R:R"),
     ]
     for icon, name in strategies:
@@ -2027,11 +2027,10 @@ if _nav == "Home":
     _AGENTS = [
         ("✨", "AI Analyst",   "Ask anything — it fetches live prices & charts automatically, like ChatGPT for trading.", "AI Analyst"),
         ("🎯", "Market Scout", "AI scans the whole market and picks today's best opportunities for you.",                 "Market Scout"),
-        ("📡", "Signals",      "Live feed from your TradingView Pine Script — every signal, TP & SL.",                    "Signals"),
         ("🌐", "Markets",      "Economic calendar and live charts in one place.",                                          "Markets"),
     ]
 
-    _cols = st.columns(4, gap="small")
+    _cols = st.columns(len(_AGENTS), gap="small")
     for _ci, (_a_ic, _a_nm, _a_ds, _a_pg) in enumerate(_AGENTS):
         with _cols[_ci]:
             st.markdown(f"""
@@ -2049,11 +2048,11 @@ if _nav == "Home":
     st.markdown("<div class='chee-section-label'>The Method 方法论</div>", unsafe_allow_html=True)
     st.markdown("""
 <div class='info-box' style='display:flex;gap:26px;flex-wrap:wrap;align-items:center'>
-  <span style='color:#4ade80;font-weight:800;font-family:Space Grotesk,sans-serif;font-size:15px'>Fib + SNR Confluence</span>
+  <span style='color:#4ade80;font-weight:800;font-family:Space Grotesk,sans-serif;font-size:15px'>SNR First 支撑阻力为根</span>
   <span style='color:#7d8f83;font-size:13px'>① Trend direction</span>
-  <span style='color:#7d8f83;font-size:13px'>② Pullback into Golden Zone 61.8–78.6%</span>
-  <span style='color:#7d8f83;font-size:13px'>③ Zone overlaps tested S/R</span>
-  <span style='color:#7d8f83;font-size:13px'>④ Rejection candle → enter</span>
+  <span style='color:#7d8f83;font-size:13px'>② Pullback to tested S/R level</span>
+  <span style='color:#7d8f83;font-size:13px'>③ Rejection candle → enter</span>
+  <span style='color:#7d8f83;font-size:13px'>④ Fib 38.2/50/61.8 = bonus confluence</span>
   <span style='color:#7d8f83;font-size:13px'>⑤ Risk 1-2% · min 1:2 R:R</span>
 </div>
 """, unsafe_allow_html=True)
@@ -2094,14 +2093,15 @@ if _nav == "Market Scout":
             _prog.empty()
 
             _nl = "\n\n"
-            _scout_prompt = f"""You are Chee AI Market Scout — an elite trading analyst whose edge is Fibonacci + Support/Resistance confluence.
+            _scout_prompt = f"""You are Chee AI Market Scout — an elite trading analyst. Your foundation is SUPPORT & RESISTANCE (SNR is the root of trading); Fibonacci 38.2%/50%/61.8% is bonus confluence only.
 
 Below is LIVE market data (fetched seconds ago) for {len(_scout_sel)} markets:
 
 {_nl.join("── " + d for d in _digests)}
 
 TASK: Pick the 1-3 BEST opportunities right now. Only pick markets with REAL confluence:
-clear trend + price at/near the Fibonacci Golden Zone (61.8-78.6%) or a key swing level + healthy RSI + good risk:reward.
+clear trend + price at/near a key swing S/R level + healthy RSI + good risk:reward.
+A fib 38.2/50/61.8 level lining up with the S/R level is a bonus that raises confidence — not a requirement.
 If nothing qualifies, return fewer picks (even zero) and explain why in the market note. Quality over quantity.
 
 Output STRICT JSON only, no other text:
@@ -2646,7 +2646,7 @@ Now the trader is asking follow-up questions about your analysis. Answer specifi
 <br>
 <p style="color:#7d8f83;text-align:center;font-size:14px;font-weight:600">
 The AI will identify:<br><br>
-📐 Fibonacci Golden Zone &nbsp;·&nbsp; 🎯 Support & Resistance &nbsp;·&nbsp; 📈 Trend & Structure<br>
+🎯 Support & Resistance &nbsp;·&nbsp; 📈 Trend & Structure &nbsp;·&nbsp; 📐 Fib 38.2/50/61.8<br>
 🕯️ Chart & Candle Patterns &nbsp;·&nbsp; 💵 DXY Context<br><br>
 🎯 Entry &nbsp;·&nbsp; 🛑 Stop Loss &nbsp;·&nbsp; ✅ Take Profit 1 &nbsp;·&nbsp; 🚀 Take Profit 2
 </p>
@@ -2661,8 +2661,7 @@ The AI will identify:<br><br>
 # ════════════════════════════════════════════════════════════
 # TOOL 1 — POSITION SIZE CALCULATOR
 # ════════════════════════════════════════════════════════════
-if _nav == "Signals":
-    st.markdown("## 📡 Signals")
+if False:  # REMOVED — Position Size Calculator (no longer needed)
     st.markdown("### 🧮 Position Size Calculator 仓位计算器")
     st.caption("Calculate exact lot size based on your account risk. 根据账户风险计算精确手数。")
 
@@ -3073,11 +3072,11 @@ if _nav == "AI Analyst":
     if "coach_active_id" not in st.session_state:
         st.session_state["coach_active_id"] = None
 
-    COACH_SYSTEM = """You are Chee AI — an elite trading analyst and mentor with 20+ years of experience in Forex, Gold, Crypto, and Indices. Your core method is FIBONACCI + SUPPORT/RESISTANCE CONFLUENCE trading, backed by trend, market structure and momentum.
+    COACH_SYSTEM = """You are Chee AI — an elite trading analyst and mentor with 20+ years of experience in Forex, Gold, Crypto, and Indices. Your foundation is SUPPORT & RESISTANCE — SNR is the root of all trading. Fibonacci (38.2% / 50% / 61.8%) is a supporting tool you add for bonus confluence when a clean swing exists, never a requirement.
 
 Your role:
 • Answer ALL trading questions clearly, whether beginner or advanced
-• When a chart image is shared, analyse it thoroughly: trend, key S/R levels, the dominant Fibonacci swing and where price sits in it (Golden Zone 61.8–78.6%?), rejection candles, entry/SL/TP
+• When a chart image is shared, analyse it thoroughly: trend, the key S/R levels the market respects, rejection candles at those levels, entry/SL/TP — and note if a fib 38.2/50/61.8 level lines up with S/R
 • Give honest, direct feedback on the trader's setups — praise what is right, correct what is wrong
 • Speak with authority but stay encouraging; trading is a journey
 • Use examples and analogies to explain complex concepts
@@ -3085,10 +3084,11 @@ Your role:
 
 You follow these trading principles:
 - Top-Down analysis: D1 → H4 → H1 → M15
-- The A+ setup: trend + pullback into Golden Zone + that zone overlaps a tested S/R level + rejection candle
-- If Fibonacci and S/R do not line up, say the setup is B-grade and recommend patience
+- A setup  = trend + pullback to a TESTED S/R level + rejection candle
+- A+ setup = the same, plus a fib 38.2/50/61.8 level lining up with that S/R level (bonus confluence)
+- No valid S/R level = no trade. Missing Fibonacci never invalidates a setup
 - Risk management: never risk more than 1-2% per trade, minimum 1:2 R:R, always define SL before entry
-- Patience: no confluence = no trade
+- Patience: no level = no trade
 
 IMPORTANT — LIVE DATA: when a [LIVE MARKET DATA] block appears in a message, it contains REAL prices fetched from the market seconds ago. Treat it as ground truth. Reference the exact numbers (current price, swing high/low, fib levels) in your answer and give concrete levels for entry/SL/TP. A live chart image may also be attached — analyse it."""
 
@@ -3218,7 +3218,7 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
     text-align:left;max-width:200px'>
       <div style='font-size:20px;margin-bottom:6px'>📷</div>
       <div style='color:#eef5f0;font-size:13px;font-weight:700'>Chart Review</div>
-      <div style='color:#7d8f83;font-size:12px'>Upload any chart — Fib + S&R read with entry, SL, TP</div>
+      <div style='color:#7d8f83;font-size:12px'>Upload any chart — S&R + price action read with entry, SL, TP</div>
     </div>
     <div style='background:#0b100d;border:1px solid #1c2a21;border-radius:14px;padding:14px 16px;
     text-align:left;max-width:200px'>
@@ -4801,11 +4801,10 @@ Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
 # ════════════════════════════════════════════════════════════
 # TOOL 10 — SIGNAL FEED (TradingView → Google Sheets)
 # ════════════════════════════════════════════════════════════
-if _nav == "Signals":
+if False:  # REMOVED — TradingView Signal Feed (no longer needed)
     import pandas as _pd_sf
     import datetime as _dt_sf
 
-    st.divider()
     st.markdown("### 📲 Live TradingView Signal Feed")
     st.caption("Every signal from your Pine Script — entry signals, TP hits, and SL hits — all shown here automatically.")
 
