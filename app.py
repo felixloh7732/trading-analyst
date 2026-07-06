@@ -1932,20 +1932,22 @@ with st.sidebar:
 
     # ── AI Model selector ─────────────────────────────────────
     _model_options = [
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "claude-opus-4-5",
-        "claude-sonnet-4-5",
+        "gemini-3.5-flash",
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "claude-fable-5",
+        "claude-opus-4-8",
+        "claude-sonnet-5",
     ]
-    _saved_model = st.session_state.get("saved_model_choice", "gemini-2.0-flash")
+    _saved_model = st.session_state.get("saved_model_choice", "gemini-3.5-flash")
     _model_idx = _model_options.index(_saved_model) if _saved_model in _model_options else 0
 
     model_choice = st.selectbox(
         "🤖 AI Model",
         _model_options,
         index=_model_idx,
-        help="✅ Gemini models = FREE  |  Claude models = paid",
+        help="✅ Gemini = free tier available (3.5 Flash = newest, fast & smart) | Claude = paid (Fable 5 = most intelligent, Opus 4.8 / Sonnet 5 = strong & cheaper)",
         key="model_select",
     )
 
@@ -2099,31 +2101,35 @@ if _nav == "Home":
 <div class='chee-hero'>
   <svg class='chee-art' viewBox='0 0 400 250' xmlns='http://www.w3.org/2000/svg'>
     <defs>
-      <linearGradient id='gPeak' x1='0' y1='0' x2='0' y2='1'>
-        <stop offset='0' stop-color='#f0d68a'/><stop offset='0.55' stop-color='#8a6f2e'/><stop offset='1' stop-color='#171208'/>
+      <linearGradient id='gGold' x1='0' y1='0' x2='1' y2='1'>
+        <stop offset='0' stop-color='#f7ecd0'/><stop offset='0.5' stop-color='#e8c76e'/><stop offset='1' stop-color='#8a6f2e'/>
       </linearGradient>
-      <linearGradient id='gPeak2' x1='0' y1='0' x2='0' y2='1'>
-        <stop offset='0' stop-color='#c7a651'/><stop offset='1' stop-color='#0d0a04'/>
-      </linearGradient>
-      <linearGradient id='gGlow' x1='0' y1='0' x2='0' y2='1'>
-        <stop offset='0' stop-color='#e8c76e' stop-opacity='0.35'/><stop offset='1' stop-color='#e8c76e' stop-opacity='0'/>
-      </linearGradient>
+      <radialGradient id='gOrb' cx='0.5' cy='0.5' r='0.5'>
+        <stop offset='0' stop-color='#e8c76e' stop-opacity='0.28'/>
+        <stop offset='0.6' stop-color='#e8c76e' stop-opacity='0.07'/>
+        <stop offset='1' stop-color='#e8c76e' stop-opacity='0'/>
+      </radialGradient>
     </defs>
-    <circle cx='330' cy='38' r='1.6' fill='#f7ecd0' opacity='.9'/>
-    <circle cx='265' cy='22' r='1.1' fill='#f7ecd0' opacity='.6'/>
-    <circle cx='372' cy='70' r='1.2' fill='#f7ecd0' opacity='.7'/>
-    <circle cx='300' cy='60' r='.9' fill='#f7ecd0' opacity='.5'/>
-    <circle cx='236' cy='52' r='1.3' fill='#f7ecd0' opacity='.55'/>
-    <ellipse cx='265' cy='150' rx='160' ry='70' fill='url(#gGlow)'/>
-    <polygon points='140,250 235,95 330,250' fill='url(#gPeak2)' opacity='.7'/>
-    <polygon points='230,250 310,120 390,250' fill='url(#gPeak2)' opacity='.85'/>
-    <polygon points='175,250 265,72 355,250' fill='url(#gPeak)'/>
-    <polygon points='247,108 265,72 283,108 265,96' fill='#f7ecd0' opacity='.85'/>
-    <rect x='258' y='52' width='4.5' height='22' fill='#f0d68a'/>
-    <rect x='250' y='58' width='3.5' height='16' fill='#c7a651'/>
-    <rect x='268' y='58' width='3.5' height='16' fill='#c7a651'/>
-    <rect x='255' y='48' width='11' height='5' fill='#f0d68a'/>
-    <polygon points='260.2,42 260.2,52 267,47' fill='#e8c76e'/>
+    <circle cx='265' cy='125' r='120' fill='url(#gOrb)'/>
+    <ellipse cx='265' cy='125' rx='112' ry='36' fill='none' stroke='#e8c76e' stroke-opacity='.28' stroke-width='1' transform='rotate(-18 265 125)'/>
+    <ellipse cx='265' cy='125' rx='134' ry='46' fill='none' stroke='#e8c76e' stroke-opacity='.13' stroke-width='1' transform='rotate(-18 265 125)'/>
+    <circle cx='168' cy='158' r='2.6' fill='#f0d68a'/>
+    <circle cx='368' cy='94' r='2' fill='#f0d68a' opacity='.8'/>
+    <path d='M 332 78 A 82 82 0 1 0 332 172' fill='none' stroke='url(#gGold)' stroke-width='7' stroke-linecap='round'/>
+    <g stroke-linecap='round'>
+      <line x1='237' y1='98' x2='237' y2='168' stroke='#8a6f2e' stroke-width='2'/>
+      <rect x='229' y='114' width='16' height='38' rx='3' fill='#b9973f'/>
+      <line x1='267' y1='80' x2='267' y2='154' stroke='#c7a651' stroke-width='2'/>
+      <rect x='259' y='94' width='16' height='42' rx='3' fill='#e8c76e'/>
+      <line x1='297' y1='62' x2='297' y2='134' stroke='#e8c76e' stroke-width='2'/>
+      <rect x='289' y='76' width='16' height='40' rx='3' fill='#f0d68a'/>
+    </g>
+    <path d='M 344 50 l 3.5 9 9 3.5 -9 3.5 -3.5 9 -3.5 -9 -9 -3.5 9 -3.5 z' fill='#f7ecd0' opacity='.95'/>
+    <path d='M 196 58 l 2.3 6 6 2.3 -6 2.3 -2.3 6 -2.3 -6 -6 -2.3 6 -2.3 z' fill='#e8c76e' opacity='.7'/>
+    <circle cx='352' cy='152' r='1.6' fill='#f7ecd0' opacity='.8'/>
+    <circle cx='206' cy='190' r='1.3' fill='#f7ecd0' opacity='.5'/>
+    <circle cx='182' cy='104' r='1.1' fill='#f7ecd0' opacity='.6'/>
+    <circle cx='318' cy='34' r='1.2' fill='#f7ecd0' opacity='.6'/>
   </svg>
   <p class='hi'>{_greet}<br><span class='accent'>Chee</span></p>
   <p class='sub'>Your Personal AI Financial Analyst</p>
