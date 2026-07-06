@@ -1235,7 +1235,75 @@ def build_market_digest(df, label: str, tf: str) -> str:
         f"  Fibonacci ({'low→high' if up_bias else 'high→low'} swing): price {fib_pos}; 38.2%={fib382:.6g}, 50%={fib50:.6g}, 61.8%={fib618:.6g}",
         f"  Last 5 candles: {candles}",
     ]
+    _zones = find_sr_zones(df, max_zones=4)
+    if _zones:
+        _zsum = "; ".join(
+            f"{z['kind'][:3].upper()} {z['low']:.6g}-{z['high']:.6g} ({z['touches']}x tested{', flip' if z['flip'] else ''})"
+            for z in _zones)
+        parts.append(f"  Auto-detected S/R zones: {_zsum}")
     return "\n".join(parts)
+
+
+def find_sr_zones(df, lookback: int = 250, window: int = 3, max_zones: int = 6) -> list:
+    """Detect key S/R zones from swing pivots: cluster nearby pivots, count touches, flag flip zones."""
+    d = df.tail(lookback)
+    highs, lows, closes = d["High"].values, d["Low"].values, d["Close"].values
+    n = len(d)
+    if n < window * 2 + 2:
+        return []
+    pivots = []
+    for i in range(window, n - window):
+        if highs[i] >= max(highs[i - window:i + window + 1]):
+            pivots.append(("H", float(highs[i]), i))
+        if lows[i] <= min(lows[i - window:i + window + 1]):
+            pivots.append(("L", float(lows[i]), i))
+    if not pivots:
+        return []
+    rng = max(float(highs.max()) - float(lows.min()), 1e-9)
+    tol = rng * 0.018  # cluster tolerance: 1.8% of visible range
+    pivots.sort(key=lambda p: p[1])
+    clusters, cur = [], [pivots[0]]
+    for p in pivots[1:]:
+        if p[1] - cur[-1][1] <= tol:
+            cur.append(p)
+        else:
+            clusters.append(cur)
+            cur = [p]
+    clusters.append(cur)
+
+    price_now = float(closes[-1])
+    out = []
+    for z in clusters:
+        prices = [p[1] for p in z]
+        center = sum(prices) / len(prices)
+        n_high = sum(1 for p in z if p[0] == "H")
+        n_low  = sum(1 for p in z if p[0] == "L")
+        out.append({
+            "low": min(prices), "high": max(prices), "center": center,
+            "touches": len(z),
+            "kind": "resistance" if center > price_now else "support",
+            "flip": n_high > 0 and n_low > 0,
+            "swing_highs": n_high, "swing_lows": n_low,
+            "bars_since_last_touch": n - 1 - max(p[2] for p in z),
+        })
+    # strongest first (touches, then proximity to price), then return sorted high→low
+    out.sort(key=lambda z: (-z["touches"], abs(z["center"] - price_now)))
+    strongest = [z for z in out if z["touches"] >= 2][:max_zones] or out[:max_zones]
+    strongest.sort(key=lambda z: -z["center"])
+    return strongest
+
+
+def sr_zones_text(zones: list) -> str:
+    """Compact one-line-per-zone text for AI prompts."""
+    lines = []
+    for z in zones:
+        lines.append(
+            f"{z['kind'].upper()} zone {z['low']:.6g}–{z['high']:.6g}"
+            f" | touched {z['touches']}x ({z['swing_highs']} swing-highs, {z['swing_lows']} swing-lows)"
+            + (" | FLIP ZONE (acted as both support & resistance)" if z['flip'] else "")
+            + f" | last tested {z['bars_since_last_touch']} bars ago"
+        )
+    return "\n".join(lines)
 
 
 def ai_text_call(prompt: str, api_key: str, model: str) -> str:
@@ -1859,6 +1927,7 @@ _NAV_PAGES = [
     ("🏠", "Home"),
     ("✨", "AI Analyst"),
     ("🎯", "Market Scout"),
+    ("🧱", "Key Levels"),
     ("🌐", "Markets"),
 ]
 
@@ -2168,6 +2237,7 @@ if _nav == "Home":
     _AGENTS = [
         ("✨", "AI Analyst",   "Ask anything — it fetches live prices & charts automatically, like ChatGPT for trading.", "AI Analyst"),
         ("🎯", "Market Scout", "AI scans the whole market and picks today's best opportunities for you.",                 "Market Scout"),
+        ("🧱", "Key Levels",   "Key S/R zones for any pair — with the reasoning behind every level.",                     "Key Levels"),
         ("🌐", "Markets",      "Economic calendar and live charts in one place.",                                          "Markets"),
     ]
 
@@ -2305,6 +2375,142 @@ Output STRICT JSON only, no other text:
 <div class='info-box' style='text-align:center;padding:44px 20px'>
 <p style='color:#cfe0d4;font-size:15px;font-weight:600;margin:0'>Hit Scan — I'll fetch live data for every market and pick today's best setups.<br><br>
 <span style='color:#7d8f83;font-size:13px;font-weight:400'>点击扫描 — AI 获取所有市场的实时数据后，自动挑出今天最有机会的交易对，并给出入场、止损、目标位和理由。可能是一个，也可能是多个，AI 自己判断。</span></p>
+</div>""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# KEY LEVELS — auto-detected S/R zones + AI explains WHY
+# ════════════════════════════════════════════════════════════
+if _nav == "Key Levels":
+    st.markdown("## Key Levels")
+    st.caption("Auto-detected support & resistance zones — and the reasoning behind every one · 自动检测关键支撑阻力区域，并解释为什么")
+
+    _kl_opts = {label: td for kws, td, label in _SYMBOL_KEYWORDS}
+    _kl_c1, _kl_c2, _kl_c3 = st.columns([2.4, 1.3, 1.3])
+    with _kl_c1:
+        _kl_label = st.selectbox("Market 市场", list(_kl_opts.keys()), key="kl_market")
+    with _kl_c2:
+        _kl_tf = st.selectbox("Timeframe 时间框架", ["1h", "4h", "1day"], index=2, key="kl_tf")
+    with _kl_c3:
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+        _kl_go = st.button("🧱 Find Key Levels", type="primary", use_container_width=True, key="kl_go")
+
+    if _kl_go:
+        if not api_key:
+            st.warning("👈 Enter your AI API key in the sidebar first.")
+        elif not twelve_data_key:
+            st.warning("👈 Enter your Twelve Data key in the sidebar first (free at twelvedata.com).")
+        else:
+            try:
+                _kl_sym = _kl_opts[_kl_label]
+                with st.spinner(f"📡 Fetching {_kl_label} candles & detecting zones…"):
+                    _kl_df    = td_fetch_df(_kl_sym, _kl_tf, 400, twelve_data_key)
+                    _kl_zones = find_sr_zones(_kl_df, lookback=350, max_zones=6)
+                    _kl_price = float(_kl_df["Close"].iloc[-1])
+                if not _kl_zones:
+                    st.info("Not enough swing structure to detect zones — try a different timeframe.")
+                else:
+                    _kl_digest = build_market_digest(_kl_df, _kl_label, _kl_tf.upper())
+                    _kl_zone_txt = sr_zones_text(_kl_zones)
+                    _kl_prompt = f"""You are Chee AI — an elite analyst whose foundation is Support & Resistance. SNR is the root of trading.
+
+Live market context for {_kl_label} ({_kl_tf}):
+{_kl_digest}
+
+Auto-detected S/R zones (from swing-pivot clustering, sorted high→low). These stats are REAL — use them:
+{_kl_zone_txt}
+
+Current price: {_kl_price:.6g}
+
+TASK: For EACH zone, in the SAME order, explain WHY it is a valid support/resistance zone. Be specific and educational:
+- how many times it was tested and what that means (2-3 touches = strong, 4+ = weakening)
+- swing structure (rejected as swing-high? held as swing-low?)
+- flip behaviour if flagged (old support became resistance or vice versa — why that matters)
+- round-number psychology if the zone sits near a round number
+- Fibonacci 38.2/50/61.8 overlap if any (bonus confluence only)
+- recency (freshly tested vs stale)
+Rate each zone strength 1-5. Then say which single zone matters MOST right now given current price, and what to watch for there.
+
+Output STRICT JSON only:
+{{"summary_en": "2-3 sentences: which zone matters most now and why",
+ "summary_cn": "中文总结 2-3 句",
+ "zones": [
+   {{"range": "3970–3985", "type": "resistance", "strength": 4,
+     "why_en": "3-4 sentences explaining why this zone is S/R, citing the real stats",
+     "why_cn": "中文解释 3-4 句，引用真实数据"}}
+ ]}}"""
+                    with st.spinner("🤖 AI is explaining every zone…"):
+                        _kl_raw = ai_text_call(_kl_prompt, api_key, model_choice)
+                        _kl_m = re.search(r"\{.*\}", _kl_raw, re.DOTALL)
+                        st.session_state["kl_result"] = json.loads(_kl_m.group(0)) if _kl_m else {}
+                        st.session_state["kl_meta"] = {
+                            "label": _kl_label, "tf": _kl_tf, "price": _kl_price,
+                            "zones": _kl_zones,
+                        }
+            except Exception as _kle:
+                st.error(f"❌ Key Levels failed: {_kle}")
+
+    _klr = st.session_state.get("kl_result")
+    _klm = st.session_state.get("kl_meta")
+    if _klr and _klm:
+        st.markdown(f"""<div class='info-box' style='display:flex;justify-content:space-between;align-items:center'>
+<span style='font-family:Playfair Display,Georgia,serif;font-size:20px;color:#f3ead7'>{_klm['label']}
+<span style='color:#7d8f83;font-size:13px;font-family:Inter,sans-serif'>&nbsp;· {_klm['tf'].upper()}</span></span>
+<span style='font-family:JetBrains Mono,monospace;font-size:19px;font-weight:700;color:#e8c76e'>{_klm['price']:.6g}</span>
+</div>""", unsafe_allow_html=True)
+
+        if _klr.get("summary_en") or _klr.get("summary_cn"):
+            st.markdown(f"""<div class='info-box'><p style='color:#cfe0d4;font-size:14px;margin:0'>
+🧭 {_klr.get('summary_en', '')}<br><span style='color:#7d8f83'>{_klr.get('summary_cn', '')}</span></p></div>""",
+                        unsafe_allow_html=True)
+
+        _kl_ai_zones = _klr.get("zones", []) or []
+        _price_marker_drawn = False
+        for _zi, _z in enumerate(_klm["zones"]):
+            _ai = _kl_ai_zones[_zi] if _zi < len(_kl_ai_zones) else {}
+            # current-price marker between resistance block and support block
+            if not _price_marker_drawn and _z["center"] < _klm["price"]:
+                st.markdown(f"""<div style='display:flex;align-items:center;gap:12px;margin:14px 2px'>
+<div style='flex:1;height:1px;background:linear-gradient(90deg,transparent,#e8c76e,transparent)'></div>
+<span style='color:#e8c76e;font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700'>▸ PRICE NOW {_klm['price']:.6g} ◂</span>
+<div style='flex:1;height:1px;background:linear-gradient(90deg,transparent,#e8c76e,transparent)'></div>
+</div>""", unsafe_allow_html=True)
+                _price_marker_drawn = True
+
+            _is_res = _z["kind"] == "resistance"
+            _zc  = "#f87171" if _is_res else "#4ade80"
+            _zbg = "rgba(239,68,68,0.07)" if _is_res else "rgba(34,197,94,0.07)"
+            _zbd = "rgba(248,113,113,0.35)" if _is_res else "rgba(74,222,128,0.35)"
+            _stars = "★" * int(_ai.get("strength", min(_z["touches"], 5))) or "★"
+            _flip_badge = ("<span style='background:rgba(232,199,110,0.12);border:1px solid rgba(232,199,110,0.45);"
+                           "color:#e8c76e;font-size:10px;font-weight:800;letter-spacing:1px;padding:2px 8px;"
+                           "border-radius:999px;margin-left:8px'>FLIP ZONE 翻转区</span>") if _z["flip"] else ""
+            st.markdown(f"""
+<div style='background:{_zbg};border:1px solid {_zbd};border-radius:16px;padding:16px 18px;margin:8px 0'>
+  <div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>
+    <span>
+      <span style='color:{_zc};font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase'>{_z['kind']}</span>
+      {_flip_badge}
+    </span>
+    <span style='color:#e8c76e;font-size:13px;letter-spacing:2px'>{_stars}</span>
+  </div>
+  <div style='font-family:JetBrains Mono,monospace;font-size:20px;font-weight:700;color:#eef5f0;margin:6px 0 2px 0'>
+    {_z['low']:.6g} – {_z['high']:.6g}
+  </div>
+  <div style='color:#7d8f83;font-size:12px;margin-bottom:10px'>
+    tested {_z['touches']}× · {_z['swing_highs']} swing-highs / {_z['swing_lows']} swing-lows · last touch {_z['bars_since_last_touch']} bars ago
+  </div>
+  <p style='color:#cfe0d4;font-size:13.5px;margin:0 0 4px 0'>{_ai.get('why_en', '')}</p>
+  <p style='color:#7d8f83;font-size:13px;margin:0'>{_ai.get('why_cn', '')}</p>
+</div>""", unsafe_allow_html=True)
+
+        if not _price_marker_drawn:
+            st.markdown(f"<p style='color:#e8c76e;text-align:center;font-family:JetBrains Mono,monospace;font-size:13px'>▸ PRICE NOW {_klm['price']:.6g} ◂ (below all zones)</p>", unsafe_allow_html=True)
+        st.caption("⚠️ AI analysis, not financial advice · 仅供参考")
+    elif not _kl_go:
+        st.markdown("""
+<div class='info-box' style='text-align:center;padding:44px 20px'>
+<p style='color:#cfe0d4;font-size:15px;font-weight:600;margin:0'>Pick a market, hit Find — I'll detect every key S/R zone from real swing data,<br>then explain exactly why each level is support or resistance.<br><br>
+<span style='color:#7d8f83;font-size:13px;font-weight:400'>选择市场后点击查找 — 程序先从真实K线的摆动点检测出关键区域（测试次数、翻转行为都是真实统计），再由 AI 逐个解释为什么这里是支撑/阻力。聊天里直接问某个品种的关键位也可以。</span></p>
 </div>""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
@@ -3231,7 +3437,8 @@ You follow these trading principles:
 - Risk management: never risk more than 1-2% per trade, minimum 1:2 R:R, always define SL before entry
 - Patience: no level = no trade
 
-IMPORTANT — LIVE DATA: when a [LIVE MARKET DATA] block appears in a message, it contains REAL prices fetched from the market seconds ago. Treat it as ground truth. Reference the exact numbers (current price, swing high/low, fib levels) in your answer and give concrete levels for entry/SL/TP. A live chart image may also be attached — analyse it."""
+IMPORTANT — LIVE DATA: when a [LIVE MARKET DATA] block appears in a message, it contains REAL prices fetched from the market seconds ago. Treat it as ground truth. Reference the exact numbers (current price, swing high/low, fib levels) in your answer and give concrete levels for entry/SL/TP. A live chart image may also be attached — analyse it.
+The block may include "Auto-detected S/R zones" with real touch counts and flip flags — when the trader asks about support/resistance, use those zones and EXPLAIN WHY each one is valid (times tested, swing structure, flip behaviour, round numbers, fib overlap, recency)."""
 
     def _coach_title(messages):
         """Auto-generate a conversation title from the first user message."""
