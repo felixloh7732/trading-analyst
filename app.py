@@ -1230,6 +1230,42 @@ def td_fetch_df(symbol: str, interval: str, outputsize: int, api_key_td: str):
     return df.set_index("Date")
 
 
+# yfinance tickers — free live data, no API key needed
+_YF_TICKERS = {
+    "Gold (XAUUSD)":     "GC=F",
+    "Silver (XAGUSD)":   "SI=F",
+    "EURUSD":            "EURUSD=X",
+    "GBPUSD":            "GBPUSD=X",
+    "USDJPY":            "USDJPY=X",
+    "AUDUSD":            "AUDUSD=X",
+    "NZDUSD":            "NZDUSD=X",
+    "USDCAD":            "USDCAD=X",
+    "USDCHF":            "USDCHF=X",
+    "Bitcoin (BTCUSD)":  "BTC-USD",
+    "Ethereum (ETHUSD)": "ETH-USD",
+}
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def yf_fetch_df(ticker: str, tf: str = "H1"):
+    """Fetch candles from yfinance (free, no key). tf: H1 / H4 / D1. Returns Open/High/Low/Close df."""
+    import yfinance as yf
+    if tf == "D1":
+        df = yf.Ticker(ticker).history(period="2y", interval="1d")
+    else:
+        df = yf.Ticker(ticker).history(period="60d", interval="1h")
+    if df is None or df.empty:
+        raise RuntimeError(f"yfinance returned no data for {ticker} — try another timeframe.")
+    cols = [c for c in ("Open", "High", "Low", "Close", "Volume") if c in df.columns]
+    df = df[cols].copy()
+    if tf == "H4":
+        _agg = {"Open": "first", "High": "max", "Low": "min", "Close": "last"}
+        if "Volume" in df.columns:
+            _agg["Volume"] = "sum"
+        df = df.resample("4h").agg(_agg).dropna(subset=["Open", "High", "Low", "Close"])
+    return df
+
+
 def build_market_digest(df, label: str, tf: str) -> str:
     """Compress a candle DataFrame into a compact text digest for the AI (Fib + SNR focused)."""
     closes = df["Close"]
@@ -1999,6 +2035,33 @@ st.markdown("""
 
   /* Section labels slightly warmer */
   .chee-section-label { color: #8a9a8e; }
+
+  /* ── Segmented control (Read/Risk pills) — force dark + green/gold ── */
+  [data-testid="stSegmentedControl"] button,
+  div[data-baseweb="button-group"] button,
+  button[data-testid="stBaseButton-segmented_control"] {
+    background: #0c130f !important;
+    color: #8fa896 !important;
+    border: 1px solid #2b4534 !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+  }
+  [data-testid="stSegmentedControl"] button p,
+  div[data-baseweb="button-group"] button p { color: inherit !important; }
+  [data-testid="stSegmentedControl"] button:hover,
+  div[data-baseweb="button-group"] button:hover {
+    color: #4ade80 !important; border-color: rgba(74,222,128,0.5) !important;
+  }
+  button[data-testid="stBaseButton-segmented_controlActive"],
+  [data-testid="stSegmentedControl"] button[aria-checked="true"],
+  [data-testid="stSegmentedControl"] button[kind="segmented_controlActive"],
+  div[data-baseweb="button-group"] button[aria-checked="true"] {
+    background: linear-gradient(135deg, rgba(34,197,94,0.20), rgba(232,199,110,0.10)) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(74,222,128,0.6) !important;
+    box-shadow: 0 0 14px rgba(34,197,94,0.20) !important;
+  }
+  button[data-testid="stBaseButton-segmented_controlActive"] p { color: #4ade80 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -2487,13 +2550,26 @@ if _nav == "Read My Chart":
 
     _rc_pad_l, _rc_mid, _rc_pad_r = st.columns([1, 2.6, 1])
     with _rc_mid:
-        _rc_file = st.file_uploader(
-            "Drop chart, or click to choose 拖入图表或点击选择",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="rc_upload",
+        _rc_src_opts = ["📡 Auto-fetch live data 自动抓取实时数据"] + list(_YF_TICKERS.keys())
+        _rc_src = st.selectbox(
+            "Source 来源 — auto-fetch or upload 自动抓取或上传",
+            _rc_src_opts, index=1, key="rc_src",
+            help="Pick a market → live candles are fetched from Yahoo Finance automatically (free, no key). Or choose the first option to upload your own screenshot.",
         )
-        if _rc_file:
-            st.image(_rc_file, use_container_width=True)
+        _rc_auto = _rc_src != _rc_src_opts[0]
+
+        _rc_file = None
+        if _rc_auto:
+            _rc_atf = _rc_seg("Timeframe 时间框架", ["H1", "H4", "D1"], "H1", "rc_atf")
+            st.caption(f"📡 I'll fetch live {_rc_src} {_rc_atf} candles from Yahoo Finance and read them — no screenshot needed. 自动抓取实时K线，无需截图。")
+        else:
+            _rc_file = st.file_uploader(
+                "Drop chart, or click to choose 拖入图表或点击选择",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="rc_upload",
+            )
+            if _rc_file:
+                st.image(_rc_file, use_container_width=True)
 
         _rc_mode_label = _rc_seg("Read 解读方式", ["⚡ Auto", "🎯 Signal", "🔬 Analysis"], "⚡ Auto", "rc_mode")
         _rc_mode = {"⚡ Auto": "auto", "🎯 Signal": "signal", "🔬 Analysis": "analysis"}[_rc_mode_label]
@@ -2516,29 +2592,45 @@ if _nav == "Read My Chart":
             _rc_note = st.text_area("Note for the AI", placeholder="e.g. I'm already long from 4120…", height=70, key="rc_note")
 
         _rc_go = st.button("✨ Analyse Chart", type="primary", use_container_width=True,
-                           disabled=not _rc_file, key="rc_go")
+                           disabled=not (_rc_auto or _rc_file), key="rc_go")
 
-    if _rc_go and _rc_file:
+    if _rc_go and (_rc_auto or _rc_file):
         if not api_key:
             st.warning("👈 Enter your AI API key in the sidebar first.")
         else:
             try:
-                _rc_img = Image.open(_rc_file)
-                _rc_market = _rc_pair.strip() if _rc_pair and _rc_pair.strip() else \
-                    "(auto-detect the instrument from the chart itself)"
-                _rc_tf = "(auto-detect the timeframe from the chart itself)" if not (_rc_pair and _rc_pair.strip()) \
-                    else "(as stated or visible on the chart)"
-                with st.spinner("🤖 Reading your chart — 15-30 seconds…"):
+                _rc_ctx = _rc_note.strip() if _rc_note else ""
+                if _rc_auto:
+                    # ── Auto-fetch live candles (yfinance, free) ──
+                    with st.spinner(f"📡 Fetching live {_rc_src} {_rc_atf} data from Yahoo Finance…"):
+                        _ydf = yf_fetch_df(_YF_TICKERS[_rc_src], _rc_atf)
+                        _rc_img = generate_chart_image_from_df(_ydf.tail(160), _rc_src, _rc_atf)
+                    _rc_ctx = (
+                        "[LIVE MARKET DATA — fetched seconds ago via Yahoo Finance, treat as ground truth. "
+                        "The chart image was generated from this exact data.]\n"
+                        + build_market_digest(_ydf, _rc_src, _rc_atf)
+                        + (f"\n\nTrader note: {_rc_ctx}" if _rc_ctx else "")
+                    )
+                    _rc_market = _rc_src
+                    _rc_tf = _rc_atf
+                else:
+                    _rc_img = Image.open(_rc_file)
+                    _rc_market = _rc_pair.strip() if _rc_pair and _rc_pair.strip() else \
+                        "(auto-detect the instrument from the chart itself)"
+                    _rc_tf = "(auto-detect the timeframe from the chart itself)" if not (_rc_pair and _rc_pair.strip()) \
+                        else "(as stated or visible on the chart)"
+                with st.spinner("🤖 Reading the chart — 15-30 seconds…"):
                     _rc_text = analyze_chart_with_ai(
                         _rc_img, api_key, model_choice,
                         _rc_market, _rc_tf,
-                        context=_rc_note or "",
+                        context=_rc_ctx,
                         mode=_rc_mode, risk=_rc_risk,
                     )
                 st.session_state["rc_result"] = _rc_text
                 st.session_state["rc_image"]  = _rc_img
                 st.session_state["rc_ann"]    = None
                 st.session_state["rc_modes"]  = (_rc_mode_label, _rc_risk_label)
+                st.session_state["rc_live"]   = bool(_rc_auto)
             except anthropic.AuthenticationError:
                 st.error("❌ Invalid API key.")
             except Exception as _rce:
@@ -2602,6 +2694,9 @@ if _nav == "Read My Chart":
                                data=pil_to_download_bytes(st.session_state["rc_ann"]),
                                file_name="chee_ai_chart.png", mime="image/png",
                                use_container_width=True, key="rc_dl")
+        elif st.session_state.get("rc_live") and st.session_state.get("rc_image") is not None:
+            st.image(pil_to_download_bytes(st.session_state["rc_image"]),
+                     caption="Live chart · auto-fetched from Yahoo Finance", use_container_width=True)
 
         _rc_clean = re.sub(r"```json.*?```", "", _rt, flags=re.DOTALL).strip()
         st.markdown(_rc_clean)
