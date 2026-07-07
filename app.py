@@ -1266,6 +1266,29 @@ def yf_fetch_df(ticker: str, tf: str = "H1"):
     return df
 
 
+def fetch_candles_any(label: str, tf: str, td_key: str = ""):
+    """Fetch live candles: yfinance first (free, no key); fall back to Twelve Data.
+    Returns (df, source_name). Raises RuntimeError with a friendly fix if neither works."""
+    _yf_problem = None
+    try:
+        return yf_fetch_df(_YF_TICKERS[label], tf), "Yahoo Finance"
+    except (ImportError, ModuleNotFoundError):
+        _yf_problem = "yfinance is not installed"
+    except Exception as _e:
+        _yf_problem = str(_e)
+    # Fallback: Twelve Data
+    _td_map = {lbl: td for _kws, td, lbl in _SYMBOL_KEYWORDS}
+    if td_key and label in _td_map:
+        _iv = {"H1": "1h", "H4": "4h", "D1": "1day"}.get(tf, "1h")
+        return td_fetch_df(_td_map[label], _iv, 350, td_key), "Twelve Data"
+    raise RuntimeError(
+        f"Live data unavailable ({_yf_problem}). Fix: run `pip install yfinance` locally, "
+        "or on Streamlit Cloud just reboot the app (requirements.txt already includes yfinance), "
+        "or add a free Twelve Data key in the sidebar as backup. "
+        "本地请运行 pip install yfinance；云端重启 app 即可；或在侧栏填入 Twelve Data key 作为备用。"
+    )
+
+
 def build_market_digest(df, label: str, tf: str) -> str:
     """Compress a candle DataFrame into a compact text digest for the AI (Fib + SNR focused)."""
     closes = df["Close"]
@@ -2052,16 +2075,27 @@ st.markdown("""
   div[data-baseweb="button-group"] button:hover {
     color: #4ade80 !important; border-color: rgba(74,222,128,0.5) !important;
   }
+  /* SELECTED pill — solid green, dark text, unmistakable */
+  button[kind="segmented_controlActive"],
   button[data-testid="stBaseButton-segmented_controlActive"],
   [data-testid="stSegmentedControl"] button[aria-checked="true"],
-  [data-testid="stSegmentedControl"] button[kind="segmented_controlActive"],
-  div[data-baseweb="button-group"] button[aria-checked="true"] {
-    background: linear-gradient(135deg, rgba(34,197,94,0.20), rgba(232,199,110,0.10)) !important;
-    color: #4ade80 !important;
-    border: 1px solid rgba(74,222,128,0.6) !important;
-    box-shadow: 0 0 14px rgba(34,197,94,0.20) !important;
+  [data-testid="stSegmentedControl"] button[aria-selected="true"],
+  div[data-baseweb="button-group"] button[aria-checked="true"],
+  div[data-baseweb="button-group"] button[aria-selected="true"] {
+    background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+    color: #04120a !important;
+    border: 1px solid #4ade80 !important;
+    box-shadow: 0 0 16px rgba(34,197,94,0.45) !important;
+    font-weight: 800 !important;
   }
-  button[data-testid="stBaseButton-segmented_controlActive"] p { color: #4ade80 !important; }
+  button[kind="segmented_controlActive"] p,
+  button[data-testid="stBaseButton-segmented_controlActive"] p,
+  [data-testid="stSegmentedControl"] button[aria-checked="true"] p,
+  [data-testid="stSegmentedControl"] button[aria-selected="true"] p,
+  div[data-baseweb="button-group"] button[aria-checked="true"] p,
+  div[data-baseweb="button-group"] button[aria-selected="true"] p {
+    color: #04120a !important; font-weight: 800 !important;
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -2561,7 +2595,7 @@ if _nav == "Read My Chart":
         _rc_file = None
         if _rc_auto:
             _rc_atf = _rc_seg("Timeframe 时间框架", ["H1", "H4", "D1"], "H1", "rc_atf")
-            st.caption(f"📡 I'll fetch live {_rc_src} {_rc_atf} candles from Yahoo Finance and read them — no screenshot needed. 自动抓取实时K线，无需截图。")
+            st.caption(f"📡 I'll fetch live {_rc_src} {_rc_atf} candles automatically and read them — no screenshot needed. 自动抓取实时K线，无需截图。")
         else:
             _rc_file = st.file_uploader(
                 "Drop chart, or click to choose 拖入图表或点击选择",
@@ -2601,12 +2635,12 @@ if _nav == "Read My Chart":
             try:
                 _rc_ctx = _rc_note.strip() if _rc_note else ""
                 if _rc_auto:
-                    # ── Auto-fetch live candles (yfinance, free) ──
-                    with st.spinner(f"📡 Fetching live {_rc_src} {_rc_atf} data from Yahoo Finance…"):
-                        _ydf = yf_fetch_df(_YF_TICKERS[_rc_src], _rc_atf)
+                    # ── Auto-fetch live candles (yfinance → Twelve Data fallback) ──
+                    with st.spinner(f"📡 Fetching live {_rc_src} {_rc_atf} data…"):
+                        _ydf, _rc_srcname = fetch_candles_any(_rc_src, _rc_atf, twelve_data_key)
                         _rc_img = generate_chart_image_from_df(_ydf.tail(160), _rc_src, _rc_atf)
                     _rc_ctx = (
-                        "[LIVE MARKET DATA — fetched seconds ago via Yahoo Finance, treat as ground truth. "
+                        f"[LIVE MARKET DATA — fetched seconds ago via {_rc_srcname}, treat as ground truth. "
                         "The chart image was generated from this exact data.]\n"
                         + build_market_digest(_ydf, _rc_src, _rc_atf)
                         + (f"\n\nTrader note: {_rc_ctx}" if _rc_ctx else "")
@@ -2696,7 +2730,7 @@ if _nav == "Read My Chart":
                                use_container_width=True, key="rc_dl")
         elif st.session_state.get("rc_live") and st.session_state.get("rc_image") is not None:
             st.image(pil_to_download_bytes(st.session_state["rc_image"]),
-                     caption="Live chart · auto-fetched from Yahoo Finance", use_container_width=True)
+                     caption="Live chart · auto-fetched 自动抓取的实时图表", use_container_width=True)
 
         _rc_clean = re.sub(r"```json.*?```", "", _rt, flags=re.DOTALL).strip()
         st.markdown(_rc_clean)
