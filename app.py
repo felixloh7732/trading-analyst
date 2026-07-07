@@ -390,6 +390,17 @@ The US Dollar Index (DXY) measures USD strength. It inversely correlates with mo
 # HELPER FUNCTIONS
 # ============================================================
 
+def claude_text(resp) -> str:
+    """Extract text from a Claude API response, skipping thinking blocks (new Claude models)."""
+    try:
+        for _blk in resp.content:
+            if getattr(_blk, "type", "") == "text":
+                return _blk.text or ""
+        return ""
+    except Exception:
+        return ""
+
+
 def encode_image_to_base64(image: Image.Image) -> str:
     """Convert PIL Image to base64 string."""
     buffered = io.BytesIO()
@@ -628,7 +639,7 @@ Example — bullish with ascending triangle:
                 }
             ],
         )
-        return response.content[0].text
+        return claude_text(response)
 
 
 def parse_json_from_analysis(analysis_text: str) -> dict:
@@ -1333,23 +1344,57 @@ def build_market_digest(df, label: str, tf: str) -> str:
     return "\n".join(parts)
 
 
-def find_sr_zones(df, lookback: int = 250, window: int = 3, max_zones: int = 6) -> list:
-    """Detect key S/R zones from swing pivots: cluster nearby pivots, count touches, flag flip zones."""
+def find_sr_zones(df, lookback: int = 250, max_zones: int = 6, htf_df=None) -> list:
+    """Detect S/R zones the way a professional trader draws them.
+
+    Method (transparent, all stats are real):
+    1. Significant swing pivots only — window 5 (plus MAJOR swings, window 12, weighted heavier).
+       Minor 3-bar wiggles a trader would ignore are ignored here too.
+    2. Clustering tolerance = 0.6 × ATR(14) — adapts to each market's volatility instead of a fixed %.
+    3. Each zone is SCORED like a trader judges it:
+       touches (capped — 5+ touches means worn out, not stronger) + REACTION strength (how many ATR
+       price bounced away after each touch) + recency decay (fresh levels beat stale ones) +
+       flip behaviour + contains a major swing + ROUND NUMBER proximity + HIGHER-TIMEFRAME confirmation.
+    4. Zone width is kept realistic: 0.25–1.2 ATR.
+    """
+    import math
     d = df.tail(lookback)
     highs, lows, closes = d["High"].values, d["Low"].values, d["Close"].values
     n = len(d)
-    if n < window * 2 + 2:
+    if n < 30:
         return []
+
+    # ── ATR(14) ──
+    trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i - 1]), abs(lows[i] - closes[i - 1]))
+           for i in range(1, n)]
+    atr = sum(trs[-14:]) / min(14, len(trs))
+    if atr <= 0:
+        atr = max((float(highs.max()) - float(lows.min())) / 100.0, 1e-9)
+
+    # ── Swing pivots: significant (w=5) + major (w=12, heavier weight) ──
     pivots = []
-    for i in range(window, n - window):
-        if highs[i] >= max(highs[i - window:i + window + 1]):
-            pivots.append(("H", float(highs[i]), i))
-        if lows[i] <= min(lows[i - window:i + window + 1]):
-            pivots.append(("L", float(lows[i]), i))
+    for w, wt in ((5, 1.0), (12, 1.6)):
+        for i in range(w, n - w):
+            if highs[i] >= max(highs[i - w:i + w + 1]):
+                pivots.append(["H", float(highs[i]), i, wt])
+            if lows[i] <= min(lows[i - w:i + w + 1]):
+                pivots.append(["L", float(lows[i]), i, wt])
     if not pivots:
         return []
-    rng = max(float(highs.max()) - float(lows.min()), 1e-9)
-    tol = rng * 0.018  # cluster tolerance: 1.8% of visible range
+
+    # ── Reaction strength: how far price moved away within 6 bars after the touch (in ATR) ──
+    for p in pivots:
+        _k, _pr, _i, _wt = p[0], p[1], p[2], p[3]
+        j2 = min(n, _i + 7)
+        if _i + 1 < j2:
+            react = ((_pr - float(min(lows[_i + 1:j2]))) / atr) if _k == "H" \
+                else ((float(max(highs[_i + 1:j2])) - _pr) / atr)
+        else:
+            react = 0.0
+        p.append(max(react, 0.0))
+
+    # ── Cluster pivots within 0.6 ATR ──
+    tol = 0.6 * atr
     pivots.sort(key=lambda p: p[1])
     clusters, cur = [], [pivots[0]]
     for p in pivots[1:]:
@@ -1361,37 +1406,87 @@ def find_sr_zones(df, lookback: int = 250, window: int = 3, max_zones: int = 6) 
     clusters.append(cur)
 
     price_now = float(closes[-1])
+
+    # ── Round-number ladder (step ≈ ≥0.4% of price, from a 'nice' ladder) ──
+    _steps = [0.0001, 0.00025, 0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05,
+              0.1, 0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000]
+    step = next((s for s in _steps if s >= price_now * 0.004), _steps[-1])
+
+    # ── Higher-timeframe zones for confirmation ──
+    htf_zones = []
+    if htf_df is not None and len(htf_df) >= 30:
+        htf_zones = find_sr_zones(htf_df, lookback=min(len(htf_df), 300), max_zones=8)
+
+    half_life = lookback / 3.0
     out = []
     for z in clusters:
-        prices = [p[1] for p in z]
-        center = sum(prices) / len(prices)
-        n_high = sum(1 for p in z if p[0] == "H")
-        n_low  = sum(1 for p in z if p[0] == "L")
+        prices     = [p[1] for p in z]
+        touch_bars = sorted(set(p[2] for p in z))
+        center     = sum(prices) / len(prices)
+        touches    = len(touch_bars)
+        n_high     = sum(1 for p in z if p[0] == "H")
+        n_low      = sum(1 for p in z if p[0] == "L")
+        recency    = sum(math.exp(-(n - 1 - i) / half_life) for i in touch_bars)
+        react      = sum(p[4] for p in z) / len(z)
+        major      = any(p[3] > 1.0 for p in z)
+        flip       = n_high > 0 and n_low > 0
+        rnd        = abs(center / step - round(center / step)) * step <= max(0.25 * atr, step * 0.15)
+        rnd_level  = round(center / step) * step if rnd else None
+        htf_ok     = any(hz["low"] - tol <= center <= hz["high"] + tol for hz in htf_zones)
+
+        score = (1.6 * min(touches, 4)          # tested, but 5+ touches ≠ stronger
+                 + 1.4 * recency                # fresh levels matter more
+                 + 1.1 * min(react, 3.0)        # strong rejections = real level
+                 + (1.5 if flip else 0.0)
+                 + (1.2 if major else 0.0)
+                 + (2.0 if htf_ok else 0.0)
+                 + (0.9 if rnd else 0.0))
+
+        lo, hi = min(prices), max(prices)
+        if hi - lo < 0.25 * atr:
+            lo, hi = center - 0.125 * atr, center + 0.125 * atr
+        if hi - lo > 1.2 * atr:
+            lo, hi = center - 0.6 * atr, center + 0.6 * atr
+
         out.append({
-            "low": min(prices), "high": max(prices), "center": center,
-            "touches": len(z),
+            "low": lo, "high": hi, "center": center,
+            "touches": touches,
             "kind": "resistance" if center > price_now else "support",
-            "flip": n_high > 0 and n_low > 0,
-            "swing_highs": n_high, "swing_lows": n_low,
-            "bars_since_last_touch": n - 1 - max(p[2] for p in z),
+            "flip": flip, "swing_highs": n_high, "swing_lows": n_low,
+            "bars_since_last_touch": n - 1 - max(touch_bars),
+            "avg_reaction_atr": round(react, 2),
+            "major_swing": major,
+            "round_level": rnd_level,
+            "htf_confirmed": htf_ok,
+            "score": round(score, 2),
         })
-    # strongest first (touches, then proximity to price), then return sorted high→low
-    out.sort(key=lambda z: (-z["touches"], abs(z["center"] - price_now)))
-    strongest = [z for z in out if z["touches"] >= 2][:max_zones] or out[:max_zones]
+
+    out = [z for z in out if z["touches"] >= 2 or z["major_swing"]]
+    out.sort(key=lambda z: -z["score"])
+    strongest = out[:max_zones]
     strongest.sort(key=lambda z: -z["center"])
     return strongest
 
 
 def sr_zones_text(zones: list) -> str:
-    """Compact one-line-per-zone text for AI prompts."""
+    """Compact one-line-per-zone text for AI prompts — includes the real scoring drivers."""
     lines = []
     for z in zones:
-        lines.append(
-            f"{z['kind'].upper()} zone {z['low']:.6g}–{z['high']:.6g}"
-            f" | touched {z['touches']}x ({z['swing_highs']} swing-highs, {z['swing_lows']} swing-lows)"
-            + (" | FLIP ZONE (acted as both support & resistance)" if z['flip'] else "")
-            + f" | last tested {z['bars_since_last_touch']} bars ago"
-        )
+        bits = [
+            f"{z['kind'].upper()} zone {z['low']:.6g}–{z['high']:.6g} (score {z.get('score', '—')})",
+            f"touched {z['touches']}x ({z['swing_highs']} swing-highs, {z['swing_lows']} swing-lows)",
+            f"avg reaction after touch ≈ {z.get('avg_reaction_atr', 0)} ATR",
+            f"last tested {z['bars_since_last_touch']} bars ago",
+        ]
+        if z.get("flip"):
+            bits.append("FLIP ZONE (acted as both support & resistance)")
+        if z.get("major_swing"):
+            bits.append("contains a MAJOR swing point")
+        if z.get("htf_confirmed"):
+            bits.append("CONFIRMED on the D1 higher timeframe")
+        if z.get("round_level"):
+            bits.append(f"sits at round number {z['round_level']:.6g}")
+        lines.append(" | ".join(bits))
     return "\n".join(lines)
 
 
@@ -1416,7 +1511,7 @@ def ai_text_call(prompt: str, api_key: str, model: str, json_mode: bool = False)
               "no commentary. The very first character of your reply must be '{' and the last must be '}'.")
     r = _c.messages.create(model=model, max_tokens=3000,
                            messages=[{"role": "user", "content": _p}])
-    return r.content[0].text
+    return claude_text(r)
 
 
 def parse_ai_json(raw: str, api_key: str = "", model: str = "") -> dict:
@@ -2744,27 +2839,41 @@ if _nav == "Key Levels":
     st.markdown("## Key Levels")
     st.caption("Auto-detected support & resistance zones — and the reasoning behind every one · 自动检测关键支撑阻力区域，并解释为什么")
 
-    _kl_opts = {label: td for kws, td, label in _SYMBOL_KEYWORDS}
     _kl_c1, _kl_c2, _kl_c3 = st.columns([2.4, 1.3, 1.3])
     with _kl_c1:
-        _kl_label = st.selectbox("Market 市场", list(_kl_opts.keys()), key="kl_market")
+        _kl_label = st.selectbox("Market 市场", list(_YF_TICKERS.keys()), key="kl_market")
     with _kl_c2:
-        _kl_tf = st.selectbox("Timeframe 时间框架", ["1h", "4h", "1day"], index=2, key="kl_tf")
+        _kl_tf = st.selectbox("Timeframe 时间框架", ["H1", "H4", "D1"], index=2, key="kl_tf")
     with _kl_c3:
         st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
         _kl_go = st.button("🧱 Find Key Levels", type="primary", use_container_width=True, key="kl_go")
 
+    with st.expander("🧠 How zones are detected · 检测依据（完全透明）", expanded=False):
+        st.markdown("""
+Zones are drawn the way a professional draws them — not just "count the pivots". Every stat shown is real:
+
+1. **Significant swings only 只取重要摆动点** — window-5 swing highs/lows, plus window-12 MAJOR swings (weighted heavier). Minor 3-bar wiggles are ignored, like your eye ignores them.
+2. **ATR-adaptive clustering 按波动率聚类** — pivots within 0.6 × ATR(14) merge into one zone, so zone width matches the market's actual volatility (gold zones are wider than EURUSD zones, automatically).
+3. **Scored like a trader judges 按交易员逻辑打分** — touches (capped at 4 — a level tested 6 times is worn out, not stronger) · **reaction strength** (how many ATR price bounced away after each touch — a real level rejects price hard) · **recency decay** (fresh levels beat stale ones) · flip behaviour · contains a major swing · **round-number proximity** · **D1 confirmation** (levels visible on the higher timeframe score double).
+4. **Zone width kept realistic** — 0.25 to 1.2 ATR, never a hairline or a huge blob.
+
+Top 6 zones by score are shown. If it still differs from your hand-drawn levels, tell the AI Analyst your level in chat — it will compare both against the data.
+""")
+
     if _kl_go:
         if not api_key:
             st.warning("👈 Enter your AI API key in the sidebar first.")
-        elif not twelve_data_key:
-            st.warning("👈 Enter your Twelve Data key in the sidebar first (free at twelvedata.com).")
         else:
             try:
-                _kl_sym = _kl_opts[_kl_label]
                 with st.spinner(f"📡 Fetching {_kl_label} candles & detecting zones…"):
-                    _kl_df    = td_fetch_df(_kl_sym, _kl_tf, 400, twelve_data_key)
-                    _kl_zones = find_sr_zones(_kl_df, lookback=350, max_zones=6)
+                    _kl_df, _kl_srcname = fetch_candles_any(_kl_label, _kl_tf, twelve_data_key)
+                    _kl_htf = None
+                    if _kl_tf != "D1":
+                        try:
+                            _kl_htf, _ = fetch_candles_any(_kl_label, "D1", twelve_data_key)
+                        except Exception:
+                            _kl_htf = None
+                    _kl_zones = find_sr_zones(_kl_df, lookback=350, max_zones=6, htf_df=_kl_htf)
                     _kl_price = float(_kl_df["Close"].iloc[-1])
                 if not _kl_zones:
                     st.info("Not enough swing structure to detect zones — try a different timeframe.")
@@ -2783,9 +2892,11 @@ Current price: {_kl_price:.6g}
 
 TASK: For EACH zone, in the SAME order, explain WHY it is a valid support/resistance zone. Be specific and educational:
 - how many times it was tested and what that means (2-3 touches = strong, 4+ = weakening)
-- swing structure (rejected as swing-high? held as swing-low?)
+- reaction strength (the avg ATR bounce shown — hard rejections prove real orders sit there)
+- swing structure (rejected as swing-high? held as swing-low? contains a major swing?)
 - flip behaviour if flagged (old support became resistance or vice versa — why that matters)
-- round-number psychology if the zone sits near a round number
+- D1 confirmation if flagged (a level visible on the higher timeframe is respected by bigger players)
+- round-number psychology if flagged
 - Fibonacci 38.2/50/61.8 overlap if any (bonus confluence only)
 - recency (freshly tested vs stale)
 Rate each zone strength 1-5. Then say which single zone matters MOST right now given current price, and what to watch for there.
@@ -2846,15 +2957,20 @@ Output STRICT JSON only. Never put double-quote characters inside text values (u
             _zbg = "rgba(239,68,68,0.07)" if _is_res else "rgba(34,197,94,0.07)"
             _zbd = "rgba(248,113,113,0.35)" if _is_res else "rgba(74,222,128,0.35)"
             _stars = "★" * int(_ai.get("strength", min(_z["touches"], 5))) or "★"
-            _flip_badge = ("<span style='background:rgba(232,199,110,0.12);border:1px solid rgba(232,199,110,0.45);"
-                           "color:#e8c76e;font-size:10px;font-weight:800;letter-spacing:1px;padding:2px 8px;"
-                           "border-radius:999px;margin-left:8px'>FLIP ZONE 翻转区</span>") if _z["flip"] else ""
+            _badge_css = ("font-size:10px;font-weight:800;letter-spacing:1px;padding:2px 8px;"
+                          "border-radius:999px;margin-left:8px")
+            _flip_badge = (f"<span style='background:rgba(232,199,110,0.12);border:1px solid rgba(232,199,110,0.45);"
+                           f"color:#e8c76e;{_badge_css}'>FLIP ZONE 翻转区</span>") if _z["flip"] else ""
+            _htf_badge = (f"<span style='background:rgba(34,211,238,0.10);border:1px solid rgba(34,211,238,0.4);"
+                          f"color:#67e8f9;{_badge_css}'>D1 ✓ 大级别确认</span>") if _z.get("htf_confirmed") else ""
+            _rnd_badge = (f"<span style='background:rgba(125,143,131,0.12);border:1px solid rgba(125,143,131,0.4);"
+                          f"color:#a8bcae;{_badge_css}'>ROUND {_z['round_level']:.6g}</span>") if _z.get("round_level") else ""
             st.markdown(f"""
 <div style='background:{_zbg};border:1px solid {_zbd};border-radius:16px;padding:16px 18px;margin:8px 0'>
   <div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>
     <span>
       <span style='color:{_zc};font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase'>{_z['kind']}</span>
-      {_flip_badge}
+      {_flip_badge}{_htf_badge}{_rnd_badge}
     </span>
     <span style='color:#e8c76e;font-size:13px;letter-spacing:2px'>{_stars}</span>
   </div>
@@ -2862,7 +2978,7 @@ Output STRICT JSON only. Never put double-quote characters inside text values (u
     {_z['low']:.6g} – {_z['high']:.6g}
   </div>
   <div style='color:#7d8f83;font-size:12px;margin-bottom:10px'>
-    tested {_z['touches']}× · {_z['swing_highs']} swing-highs / {_z['swing_lows']} swing-lows · last touch {_z['bars_since_last_touch']} bars ago
+    tested {_z['touches']}× · reaction ≈ {_z.get('avg_reaction_atr', '—')} ATR · {_z['swing_highs']} swing-highs / {_z['swing_lows']} swing-lows · last touch {_z['bars_since_last_touch']} bars ago
   </div>
   <p style='color:#cfe0d4;font-size:13.5px;margin:0 0 4px 0'>{_ai.get('why_en', '')}</p>
   <p style='color:#7d8f83;font-size:13px;margin:0'>{_ai.get('why_cn', '')}</p>
@@ -3341,7 +3457,7 @@ Now the trader is asking follow-up questions about your analysis. Answer specifi
                                         model=model_choice, max_tokens=1200,
                                         system=_sys, messages=_api_msgs[-12:],
                                     )
-                                    _ans = _fa.content[0].text
+                                    _ans = claude_text(_fa)
 
                                 st.markdown(_ans)
                                 st.session_state["analysis_chat"].append({"role": "assistant", "content": _ans})
@@ -4175,7 +4291,7 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                                         system=COACH_SYSTEM,
                                         messages=api_msgs[-20:],
                                     )
-                                    answer = resp_c.content[0].text
+                                    answer = claude_text(resp_c)
 
                                 conv["messages"].append({"role": "assistant", "content": answer})
                                 st.markdown(answer)
@@ -5284,7 +5400,7 @@ if False:  # REMOVED — AI Debate (gimmick, not part of the workflow)
                                 {"type": "text", "text": prompt_text},
                             ]}],
                         )
-                        return _resp.content[0].text or ""
+                        return claude_text(_resp) or ""
 
                 def _parse_debate_json(raw_text):
                     """Robustly extract JSON from AI response, stripping markdown wrappers."""
