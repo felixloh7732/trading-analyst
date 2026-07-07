@@ -406,12 +406,42 @@ def analyze_chart_with_ai(
     model: str,
     market_type: str,
     timeframe: str,
-    context: str = ""
+    context: str = "",
+    mode: str = "auto",
+    risk: str = "balanced",
 ) -> str:
-    """Send chart image to Gemini or Claude for analysis."""
+    """Send chart image to Gemini or Claude for analysis.
+    mode: auto | signal | analysis — how the read is delivered.
+    risk: conservative | balanced | aggressive — shapes entries/SL/TP and the WAIT threshold."""
     img_b64 = encode_image_to_base64(image)
 
+    _mode_directive = {
+        "signal": ("OUTPUT MODE = SIGNAL ONLY ⚡: Do NOT write the TREND/PATTERN/KEY LEVELS/FIBONACCI/"
+                   "STRUCTURE/CANDLESTICK/DXY sections. Output ONLY: the **TRADE SETUP 交易方案** section (bilingual), "
+                   "then a short **WHY 理由** list (2-3 bullets citing the exact levels), then a short "
+                   "**WHEN THIS IDEA IS WRONG 无效条件** list (1-2 bullets). Be decisive. "
+                   "Still output the JSON block at the end as required."),
+        "analysis": ("OUTPUT MODE = DEEP ANALYSIS 🔬: This is an educational deep-dive. Write ALL sections "
+                     "thoroughly (2-3 lines each). Explain WHY behind every observation — the goal is that the "
+                     "trader learns to see what you see. In TRADE SETUP, lean towards WAIT unless the setup is "
+                     "truly A-grade; focus on reading the chart, not pushing a trade."),
+    }.get(mode, "")
+
+    _risk_directive = {
+        "conservative": ("RISK PROFILE = CONSERVATIVE 🛡️: Only signal BUY/SELL for A/A+ setups (confidence 7+); "
+                         "otherwise say WAIT. Entries only after full confirmation (rejection candle closed). "
+                         "SL beyond structure with extra buffer. TP at the nearest logical level. Max 1% risk. "
+                         "When in doubt — WAIT."),
+        "aggressive": ("RISK PROFILE = AGGRESSIVE 🔥: Earlier entries acceptable — anticipating the rejection at a "
+                       "key level is allowed before full confirmation. Tighter SL, extended TPs (project to the "
+                       "next 2-3 levels). Confidence 5+ can be actionable, but ALWAYS state the added risk and "
+                       "the fast-invalidation level clearly. Still never risk more than 2%."),
+    }.get(risk, "RISK PROFILE = BALANCED ⚖️: standard rules — confirmed setups only, 1-2% risk, minimum 1:2 R:R.")
+
     user_prompt = f"""
+{_mode_directive}
+{_risk_directive}
+
 Analyze this {market_type} chart on the {timeframe} timeframe.
 {f"Trader note: {context}" if context else ""}
 
@@ -1978,6 +2008,7 @@ st.markdown("""
 _NAV_PAGES = [
     ("🏠", "Home"),
     ("✨", "AI Analyst"),
+    ("📷", "Read My Chart"),
     ("🎯", "Market Scout"),
     ("🧱", "Key Levels"),
     ("🌐", "Markets"),
@@ -2287,16 +2318,19 @@ if _nav == "Home":
     st.markdown("<div class='chee-section-label'>AI Agents</div>", unsafe_allow_html=True)
 
     _AGENTS = [
-        ("✨", "AI Analyst",   "Ask anything — it fetches live prices & charts automatically, like ChatGPT for trading.", "AI Analyst"),
-        ("🎯", "Market Scout", "AI scans the whole market and picks today's best opportunities for you.",                 "Market Scout"),
-        ("🧱", "Key Levels",   "Key S/R zones for any pair — with the reasoning behind every level.",                     "Key Levels"),
-        ("🌐", "Markets",      "Economic calendar and live charts in one place.",                                          "Markets"),
+        ("✨", "AI Analyst",    "Ask anything — it fetches live prices & charts automatically, like ChatGPT for trading.", "AI Analyst"),
+        ("📷", "Read My Chart", "Drop a screenshot — choose Auto, Signal or Analysis, and your risk style.",               "Read My Chart"),
+        ("🎯", "Market Scout",  "AI scans the whole market and picks today's best opportunities for you.",                  "Market Scout"),
+        ("🧱", "Key Levels",    "Key S/R zones for any pair — with the reasoning behind every level.",                      "Key Levels"),
+        ("🌐", "Markets",       "Economic calendar and live charts in one place.",                                           "Markets"),
     ]
 
-    _cols = st.columns(len(_AGENTS), gap="small")
-    for _ci, (_a_ic, _a_nm, _a_ds, _a_pg) in enumerate(_AGENTS):
-        with _cols[_ci]:
-            st.markdown(f"""
+    for _row_start in range(0, len(_AGENTS), 3):
+        _row_agents = _AGENTS[_row_start:_row_start + 3]
+        _cols = st.columns(3, gap="small")
+        for _ci, (_a_ic, _a_nm, _a_ds, _a_pg) in enumerate(_row_agents):
+            with _cols[_ci]:
+                st.markdown(f"""
 <div class='agent-card'>
   <span class='live'>LIVE</span>
   <div class='ic'>{_a_ic}</div>
@@ -2304,9 +2338,10 @@ if _nav == "Home":
   <div class='ds'>{_a_ds}</div>
 </div>
 """, unsafe_allow_html=True)
-            if st.button("Open →", key=f"agent_open_{_a_pg}", use_container_width=True):
-                st.session_state["nav"] = _a_pg
-                st.rerun()
+                if st.button("Open →", key=f"agent_open_{_a_pg}", use_container_width=True):
+                    st.session_state["nav"] = _a_pg
+                    st.rerun()
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     st.markdown("<div class='chee-section-label'>The Method 方法论</div>", unsafe_allow_html=True)
     st.markdown("""
@@ -2431,6 +2466,147 @@ Output STRICT JSON only, no other text. Never put double-quote characters inside
 <p style='color:#cfe0d4;font-size:15px;font-weight:600;margin:0'>Hit Scan — I'll fetch live data for every market and pick today's best setups.<br><br>
 <span style='color:#7d8f83;font-size:13px;font-weight:400'>点击扫描 — AI 获取所有市场的实时数据后，自动挑出今天最有机会的交易对，并给出入场、止损、目标位和理由。可能是一个，也可能是多个，AI 自己判断。</span></p>
 </div>""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# READ MY CHART — upload + read-mode + risk-profile (THISystem style)
+# ════════════════════════════════════════════════════════════
+if _nav == "Read My Chart":
+    st.markdown("<div style='text-align:center;margin-top:10px'>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center'>Read my chart</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;color:#7d8f83;font-size:14px;margin-top:-6px'>"
+                "Drop a screenshot, choose how you want it read, and I'll detect the pair and timeframe.<br>"
+                "上传截图，选择解读方式和风险偏好，AI 自动识别品种和时间框架。</p>", unsafe_allow_html=True)
+
+    def _rc_seg(label, options, default_opt, key):
+        """Segmented control with radio fallback for older Streamlit versions."""
+        try:
+            _v = st.segmented_control(label, options, default=default_opt, key=key)
+            return _v or default_opt
+        except Exception:
+            return st.radio(label, options, index=options.index(default_opt), key=f"{key}_radio", horizontal=True)
+
+    _rc_pad_l, _rc_mid, _rc_pad_r = st.columns([1, 2.6, 1])
+    with _rc_mid:
+        _rc_file = st.file_uploader(
+            "Drop chart, or click to choose 拖入图表或点击选择",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="rc_upload",
+        )
+        if _rc_file:
+            st.image(_rc_file, use_container_width=True)
+
+        _rc_mode_label = _rc_seg("Read 解读方式", ["⚡ Auto", "🎯 Signal", "🔬 Analysis"], "⚡ Auto", "rc_mode")
+        _rc_mode = {"⚡ Auto": "auto", "🎯 Signal": "signal", "🔬 Analysis": "analysis"}[_rc_mode_label]
+        st.caption({
+            "auto":     "I'll pick what's most useful for this chart — full read + setup. 自动：完整解读+交易方案。",
+            "signal":   "Straight to the trade: signal, entry, SL, TPs, why, and invalidation. 只要信号：直接给交易方案。",
+            "analysis": "Educational deep-dive — learn to see what the AI sees. No trade pushing. 深度分析：教学式详解。",
+        }[_rc_mode])
+
+        _rc_risk_label = _rc_seg("Risk 风险偏好", ["🛡️ Conservative", "⚖️ Balanced", "🔥 Aggressive"], "⚖️ Balanced", "rc_risk")
+        _rc_risk = {"🛡️ Conservative": "conservative", "⚖️ Balanced": "balanced", "🔥 Aggressive": "aggressive"}[_rc_risk_label]
+        st.caption({
+            "conservative": "A/A+ setups only, full confirmation, wider SL, max 1% risk. 保守：只做高确定性。",
+            "balanced":     "Confirmed setups, 1-2% risk, minimum 1:2 R:R. 平衡：标准规则。",
+            "aggressive":   "Earlier entries and wider stops range — higher risk, clearly flagged. 激进：允许提前入场，风险更高。",
+        }[_rc_risk])
+
+        with st.expander("✏️ Pair & context (optional 可选)", expanded=False):
+            _rc_pair = st.text_input("Pair / instrument (blank = auto-detect)", placeholder="e.g. XAUUSD H1", key="rc_pair")
+            _rc_note = st.text_area("Note for the AI", placeholder="e.g. I'm already long from 4120…", height=70, key="rc_note")
+
+        _rc_go = st.button("✨ Analyse Chart", type="primary", use_container_width=True,
+                           disabled=not _rc_file, key="rc_go")
+
+    if _rc_go and _rc_file:
+        if not api_key:
+            st.warning("👈 Enter your AI API key in the sidebar first.")
+        else:
+            try:
+                _rc_img = Image.open(_rc_file)
+                _rc_market = _rc_pair.strip() if _rc_pair and _rc_pair.strip() else \
+                    "(auto-detect the instrument from the chart itself)"
+                _rc_tf = "(auto-detect the timeframe from the chart itself)" if not (_rc_pair and _rc_pair.strip()) \
+                    else "(as stated or visible on the chart)"
+                with st.spinner("🤖 Reading your chart — 15-30 seconds…"):
+                    _rc_text = analyze_chart_with_ai(
+                        _rc_img, api_key, model_choice,
+                        _rc_market, _rc_tf,
+                        context=_rc_note or "",
+                        mode=_rc_mode, risk=_rc_risk,
+                    )
+                st.session_state["rc_result"] = _rc_text
+                st.session_state["rc_image"]  = _rc_img
+                st.session_state["rc_ann"]    = None
+                st.session_state["rc_modes"]  = (_rc_mode_label, _rc_risk_label)
+            except anthropic.AuthenticationError:
+                st.error("❌ Invalid API key.")
+            except Exception as _rce:
+                st.error(f"❌ Error: {_rce}")
+
+    if st.session_state.get("rc_result"):
+        _rt   = st.session_state["rc_result"]
+        _meta = parse_json_from_analysis(_rt)
+        _sig  = str(_meta.get("signal", "WAIT")).upper()
+        _conf = int(_meta.get("confidence", 5) or 5)
+        _pat  = _meta.get("pattern_name", "")
+        _m_lb, _r_lb = st.session_state.get("rc_modes", ("⚡ Auto", "⚖️ Balanced"))
+
+        st.divider()
+        _sty = {
+            "BUY":  ("", "rgba(34,197,94,0.15)",  "#4ade80", "#22c55e", "BUY"),
+            "SELL": ("sell", "rgba(239,68,68,0.15)", "#f87171", "#ef4444", "SELL"),
+        }.get(_sig, ("", "rgba(245,158,11,0.15)", "#fbbf24", "#f59e0b", "WAIT"))
+        _bias = 50 + _conf * 5 if _sig == "BUY" else (50 - _conf * 5 if _sig == "SELL" else 50)
+        _bias = max(4, min(96, _bias))
+        _conf_lb = "High confidence" if _conf >= 7 else ("Medium confidence" if _conf >= 5 else "Low confidence")
+
+        st.markdown(f"""
+<div class='chee-signal-card {_sty[0]}'>
+  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px'>
+    <span class='tag' style='background:rgba(232,199,110,0.10);border:1px solid rgba(232,199,110,0.4);color:#e8c76e'>⚡ CHEE AI READ</span>
+    <span class='tag' style='background:{_sty[1]};border:1px solid {_sty[3]};color:{_sty[2]};font-size:14px;padding:7px 22px'>{_sty[4]}</span>
+  </div>
+  <span style='display:inline-block;background:#0c120e;border:1px solid #1c2a21;border-radius:999px;
+  padding:5px 14px;color:#cfe0d4;font-size:12px;font-weight:700'>{_m_lb} · {_r_lb}{(" · 📐 " + _pat) if _pat and "No Clear" not in _pat else ""}</span>
+  <div style='margin-top:18px'>
+    <div style='display:flex;justify-content:space-between;align-items:center'>
+      <span class='k'>Which way it leans</span>
+      <span style='color:#7d8f83;font-size:12px;font-family:JetBrains Mono,monospace'>{_conf_lb} · {_conf}/10</span>
+    </div>
+    <div style='position:relative;height:8px;border-radius:999px;margin-top:10px;
+    background:linear-gradient(90deg,#7f1d1d,#3f1d1d 35%,#123322 65%,#14532d)'>
+      <div style='position:absolute;left:{_bias}%;top:-4px;transform:translateX(-50%);
+      width:10px;height:16px;border-radius:4px;background:{_sty[2]};box-shadow:0 0 12px {_sty[2]}'></div>
+    </div>
+    <div style='display:flex;justify-content:space-between;margin-top:7px'>
+      <span style='color:#7d8f83;font-size:11px;letter-spacing:2px'>BEARISH</span>
+      <span style='color:#7d8f83;font-size:11px;letter-spacing:2px'>BULLISH</span>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+        # ── Annotated chart ──
+        if _meta.get("annotations") and st.session_state.get("rc_ann") is None:
+            try:
+                with st.spinner("🎨 Drawing levels on your chart…"):
+                    st.session_state["rc_ann"] = annotate_chart(
+                        st.session_state["rc_image"], _meta["annotations"], _sig, _meta)
+            except Exception:
+                st.session_state["rc_ann"] = None
+        if st.session_state.get("rc_ann") is not None:
+            st.image(pil_to_download_bytes(st.session_state["rc_ann"]),
+                     caption="Key levels & zones drawn by Chee AI", use_container_width=True)
+            st.download_button("⬇️ Download annotated chart",
+                               data=pil_to_download_bytes(st.session_state["rc_ann"]),
+                               file_name="chee_ai_chart.png", mime="image/png",
+                               use_container_width=True, key="rc_dl")
+
+        _rc_clean = re.sub(r"```json.*?```", "", _rt, flags=re.DOTALL).strip()
+        st.markdown(_rc_clean)
+        st.caption("AI analysis only — not financial advice · 仅供参考")
+
 
 # ════════════════════════════════════════════════════════════
 # KEY LEVELS — auto-detected S/R zones + AI explains WHY
