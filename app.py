@@ -14,6 +14,8 @@ import json
 import re
 import os
 
+APP_VERSION = "2026.07.15-strategy-hardening"
+
 # ── localStorage persistence (browser-side) ──────────────────
 try:
     from streamlit_local_storage import LocalStorage as _LocalStorageClass
@@ -266,19 +268,8 @@ the level — never to replace it.
 A retracement holding inside this zone keeps the trend healthy; use it as BONUS confluence when it overlaps S/R.
 Fibonacci is OPTIONAL — if no clean swing exists, skip fib entirely and rely on S/R.
 
-**Premium / Discount rule**
-- 50% of the swing = equilibrium. Above 50% = premium (favour sells), below 50% = discount (favour buys).
-
-**Extension Levels (profit targets)**
-- 127.2% - TP1 (conservative)
-- 141.4% - TP2 (moderate)
-- 161.8% - TP3 (golden extension — main target)
-- 200.0% - TP4 (extended run)
-- 261.8% - TP5 (major move)
-
-**Multi-Timeframe Fibonacci**
-- Levels that align across 2+ timeframes = high-confluence zones.
-- These "cluster zones" have 40% higher accuracy than single-TF levels.
+Do not use Fibonacci extensions, premium/discount labels, or arbitrary Fib targets.
+Targets come from the next opposing tested S/R zone. Fibonacci never creates an entry or target by itself.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 SUPPORT & RESISTANCE — THE FOUNDATION (SNR is the root of trading)
@@ -301,8 +292,8 @@ S/R is the foundation: no valid S/R level = no trade. Missing Fibonacci does NOT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **RSI (14-period)**
-- >70 = Overbought → potential sell signal.
-- <30 = Oversold → potential buy signal.
+- RSI never creates a trade by itself. Overbought is not an automatic sell and oversold is not an automatic buy.
+- Above 50 supports bullish momentum; below 50 supports bearish momentum.
 - Regular Bearish Divergence: Price makes higher high, RSI makes lower high → sell signal.
 - Regular Bullish Divergence: Price makes lower low, RSI makes higher low → buy signal.
 - Hidden Bearish Divergence: Price makes lower high, RSI makes higher high → continuation down.
@@ -336,7 +327,15 @@ S/R is the foundation: no valid S/R level = no trade. Missing Fibonacci does NOT
 🔍 CONFLUENCE SCORING SYSTEM (SNR first, Fib as bonus)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Score each trade setup from 0–10:
+First apply the NON-NEGOTIABLE GATES. A score can never override a failed gate:
+1. Direction gate: D1 bias and H4 structure agree.
+2. Location gate: price is inside or has just retested a valid tested S/R zone.
+3. Trigger gate: a rejection candle has CLOSED at that zone.
+4. Invalidation gate: SL is beyond the zone/swing with a volatility buffer.
+5. Reward gate: the next opposing S/R provides at least 2.0R after costs.
+If any gate fails, output WAIT. Never label it A or A+.
+
+Only after every gate passes, score the setup from 0–10:
 - Key S/R level / flip zone in play (tested 2+ times) = +3
 - Trend alignment (short-term + long-term agree) = +2
 - Rejection candle at the level (pin bar, engulfing) = +2
@@ -344,46 +343,28 @@ Score each trade setup from 0–10:
 - Chart pattern confirmation = +1
 - RSI/MACD momentum agreement or divergence = +0.5
 
-Score 7+/10 = High confidence trade
-Score 5-6/10 = Moderate confidence (trade with caution)
-Score <5/10 = Skip or wait — and SAY "WAIT" clearly. No level = no trade.
+All gates + score 7+/10 = A setup.
+All gates + score 7+/10 + Fib 38.2/50/61.8 overlap within 0.20 ATR of S/R = A+ setup.
+Score below 7, or any failed gate = WAIT. No exceptions.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📏 RISK MANAGEMENT RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-- Minimum R:R = 1:2 (risk $1 to make $2)
+- Minimum executable R:R = 1:2 after spread/fees/slippage. If the next opposing S/R is closer than 2R, WAIT.
 - Ideal R:R = 1:3 or better
 - Never risk more than 1-2% of account per trade
 - SL placement: Beyond last swing point or key S/R level
-- TP1 at 1:1.5 R:R (move SL to breakeven after hit)
-- TP2 at 1:3 R:R
-- TP3 at 1:5+ R:R (if strong trend)
-- Partial TP strategy: Close 50% at TP1, move SL to breakeven, let 50% run to TP2
+- First target must be at least 2R and must coincide with a logical opposing S/R zone.
+- Optional runners may target the next tested S/R only after the first 2R target is valid.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💵 DXY CORRELATION GUIDE (美元指数关联)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-The US Dollar Index (DXY) measures USD strength. It inversely correlates with most instruments:
-
-**STRONG NEGATIVE correlation (DXY up = these go DOWN):**
-- Gold (XAUUSD) — correlation: -0.85 to -0.95
-- EUR/USD — correlation: -0.90 to -0.98
-- GBP/USD — correlation: -0.75 to -0.88
-- AUD/USD — correlation: -0.70 to -0.82
-- Most commodities (Oil, Silver, Copper)
-
-**STRONG POSITIVE correlation (DXY up = these go UP):**
-- USD/JPY — correlation: +0.75 to +0.88
-- USD/CAD — correlation: +0.65 to +0.78
-- USD/CHF — correlation: +0.70 to +0.85
-
-**Rules for DXY analysis:**
-- If DXY is Bullish → Expect Gold/EUR/GBP pairs to face headwinds (bearish pressure)
-- If DXY is Bearish → Expect Gold/EUR/GBP pairs to have tailwinds (bullish pressure)
-- DXY at key HTF resistance + Gold at key support = HIGH probability Gold bounce
-- Always mention DXY context when analysing Gold or major USD pairs
+DXY is optional context, never an entry trigger. Correlations change by regime and must not be quoted as fixed numbers.
+Never infer DXY direction from a Gold/FX chart. Mention DXY only when an actual timestamped DXY data block is supplied;
+otherwise state that DXY context is unavailable and continue with price/S&R evidence only.
 """
 
 # ============================================================
@@ -393,10 +374,16 @@ The US Dollar Index (DXY) measures USD strength. It inversely correlates with mo
 def claude_text(resp) -> str:
     """Extract text from a Claude API response, skipping thinking blocks (new Claude models)."""
     try:
+        if getattr(resp, "stop_reason", None) == "refusal":
+            return "Claude declined this request. Rephrase it as educational market analysis or choose another model."
+        chunks = []
         for _blk in resp.content:
-            if getattr(_blk, "type", "") == "text":
-                return _blk.text or ""
-        return ""
+            _type = _blk.get("type", "") if isinstance(_blk, dict) else getattr(_blk, "type", "")
+            if _type == "text":
+                _text = _blk.get("text", "") if isinstance(_blk, dict) else getattr(_blk, "text", "")
+                if _text:
+                    chunks.append(_text)
+        return "\n".join(chunks).strip()
     except Exception:
         return ""
 
@@ -441,12 +428,11 @@ def analyze_chart_with_ai(
     _risk_directive = {
         "conservative": ("RISK PROFILE = CONSERVATIVE 🛡️: Only signal BUY/SELL for A/A+ setups (confidence 7+); "
                          "otherwise say WAIT. Entries only after full confirmation (rejection candle closed). "
-                         "SL beyond structure with extra buffer. TP at the nearest logical level. Max 1% risk. "
+                         "SL beyond structure with extra buffer. TP at the nearest opposing S/R only if it offers 2R+. Max 1% risk. "
                          "When in doubt — WAIT."),
-        "aggressive": ("RISK PROFILE = AGGRESSIVE 🔥: Earlier entries acceptable — anticipating the rejection at a "
-                       "key level is allowed before full confirmation. Tighter SL, extended TPs (project to the "
-                       "next 2-3 levels). Confidence 5+ can be actionable, but ALWAYS state the added risk and "
-                       "the fast-invalidation level clearly. Still never risk more than 2%."),
+        "aggressive": ("RISK PROFILE = AGGRESSIVE 🔥: The same A/A+ gates still apply; never enter before a rejection "
+                       "candle closes. Aggressive means using the first valid retest entry, a smaller volatility buffer, "
+                       "and up to 1.5% account risk. It does NOT permit confidence below 7 or R:R below 2."),
     }.get(risk, "RISK PROFILE = BALANCED ⚖️: standard rules — confirmed setups only, 1-2% risk, minimum 1:2 R:R.")
 
     user_prompt = f"""
@@ -495,9 +481,9 @@ Does one of those levels OVERLAP a key S/R level? (= bonus confluence). If fib a
 [EN] Identify any significant single or multi-candle patterns on the LAST 3-5 candles: Doji, Hammer, Shooting Star, Engulfing (Bullish/Bearish), Morning Star, Evening Star, Pin Bar, Marubozu, Harami, Tweezer Top/Bottom. If none significant: "No key candle pattern."
 [中文] 识别最近3-5根K线的重要形态：十字星、锤子线、流星线、吞没（看涨/看跌）、晨星、暮星、钉线、大阳/大阴线、孕线、镊子顶/底。若无：「无明显K线形态」。
 
-**DXY CORRELATION 美元指数关联:** (skip this section if instrument has no USD correlation)
-[EN] Is DXY bullish or bearish based on chart context? How does this affect the current instrument? 1 line.
-[中文] 根据图表背景，美元指数是强势还是弱势？这对当前交易品种有何影响？1行。
+**DXY CONTEXT 美元指数:**
+[EN] Only discuss DXY if timestamped DXY data was explicitly supplied. Never guess it from this instrument's chart.
+[中文] 只在已提供带时间戳的 DXY 数据时评论；不可从当前品种图表猜测 DXY。
 
 **TRADE SETUP 交易方案:**
 - Signal 信号: BUY 🟢 / SELL 🔴 / WAIT ⏳
@@ -643,14 +629,8 @@ Example — bullish with ascending triangle:
 
 
 def parse_json_from_analysis(analysis_text: str) -> dict:
-    """Extract the JSON block from the AI analysis."""
-    try:
-        match = re.search(r"```json\s*(\{.*?\})\s*```", analysis_text, re.DOTALL)
-        if match:
-            return json.loads(match.group(1))
-    except Exception:
-        pass
-    return {}
+    """Extract chart metadata through the resilient multi-stage JSON parser."""
+    return parse_ai_json(analysis_text)
 
 
 def _draw_dashed_line(draw, x1, y1, x2, y2, fill, width=2, dash=12, gap=6):
@@ -1300,41 +1280,131 @@ def fetch_candles_any(label: str, tf: str, td_key: str = ""):
     )
 
 
+def _atr_series(df, period: int = 14):
+    """Wilder ATR, aligned to df.index."""
+    import pandas as pd
+    prev = df["Close"].shift(1)
+    tr = pd.concat([
+        df["High"] - df["Low"],
+        (df["High"] - prev).abs(),
+        (df["Low"] - prev).abs(),
+    ], axis=1).max(axis=1)
+    return tr.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+
+
+def _wilder_rsi(closes, period: int = 14):
+    delta = closes.diff()
+    avg_gain = delta.clip(lower=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    avg_loss = (-delta.clip(upper=0)).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    rs = avg_gain / avg_loss.replace(0, 1e-12)
+    return 100 - 100 / (1 + rs)
+
+
+def detect_rejection_candle(df) -> dict:
+    """Deterministically classify the latest CLOSED candle; never anticipates an open candle."""
+    if len(df) < 3:
+        return {"confirmed": False, "direction": "none", "pattern": "none"}
+    prev, cur = df.iloc[-2], df.iloc[-1]
+    rng = max(float(cur.High - cur.Low), 1e-12)
+    body = abs(float(cur.Close - cur.Open))
+    upper = float(cur.High - max(cur.Open, cur.Close))
+    lower = float(min(cur.Open, cur.Close) - cur.Low)
+    bull_pin = lower >= max(2 * body, 0.45 * rng) and cur.Close >= cur.Low + 0.65 * rng
+    bear_pin = upper >= max(2 * body, 0.45 * rng) and cur.Close <= cur.Low + 0.35 * rng
+    bull_engulf = (cur.Close > cur.Open and prev.Close < prev.Open
+                   and cur.Open <= prev.Close and cur.Close >= prev.Open)
+    bear_engulf = (cur.Close < cur.Open and prev.Close > prev.Open
+                   and cur.Open >= prev.Close and cur.Close <= prev.Open)
+    if bull_engulf or bull_pin:
+        return {"confirmed": True, "direction": "bullish",
+                "pattern": "bullish engulfing" if bull_engulf else "bullish pin bar"}
+    if bear_engulf or bear_pin:
+        return {"confirmed": True, "direction": "bearish",
+                "pattern": "bearish engulfing" if bear_engulf else "bearish pin bar"}
+    return {"confirmed": False, "direction": "none", "pattern": "none"}
+
+
+def detect_impulse_fib(df, lookback: int = 180, pivot_window: int = 5):
+    """Return Fib levels only for a chronological, confirmed impulse of at least 2 ATR."""
+    d = df.tail(lookback)
+    if len(d) < 40:
+        return None
+    highs, lows = d["High"].to_numpy(), d["Low"].to_numpy()
+    atr_now = float(_atr_series(d).dropna().iloc[-1])
+    ema20 = d["Close"].ewm(span=20, adjust=False).mean().iloc[-1]
+    ema50 = d["Close"].ewm(span=50, adjust=False).mean().iloc[-1]
+    bias = "bullish" if ema20 > ema50 else "bearish"
+    piv_h, piv_l = [], []
+    w = pivot_window
+    for i in range(w, len(d) - w):
+        if highs[i] == max(highs[i - w:i + w + 1]):
+            piv_h.append((i, float(highs[i])))
+        if lows[i] == min(lows[i - w:i + w + 1]):
+            piv_l.append((i, float(lows[i])))
+    candidates = []
+    if bias == "bullish":
+        for hi_i, hi in piv_h:
+            prior = [(i, p) for i, p in piv_l if i < hi_i and hi_i - i <= 100]
+            if prior:
+                lo_i, lo = min(prior, key=lambda x: x[1])
+                if hi - lo >= 2 * atr_now and hi_i < len(d) - 1:
+                    candidates.append((hi_i, lo_i, lo, hi))
+    else:
+        for lo_i, lo in piv_l:
+            prior = [(i, p) for i, p in piv_h if i < lo_i and lo_i - i <= 100]
+            if prior:
+                hi_i, hi = max(prior, key=lambda x: x[1])
+                if hi - lo >= 2 * atr_now and lo_i < len(d) - 1:
+                    candidates.append((lo_i, hi_i, lo, hi))
+    if not candidates:
+        return None
+    end_i, start_i, lo, hi = max(candidates, key=lambda x: x[0])
+    span = hi - lo
+    levels = ({0.382: hi - 0.382 * span, 0.5: hi - 0.5 * span, 0.618: hi - 0.618 * span}
+              if bias == "bullish" else
+              {0.382: lo + 0.382 * span, 0.5: lo + 0.5 * span, 0.618: lo + 0.618 * span})
+    cur = float(d["Close"].iloc[-1])
+    retr = (hi - cur) / span if bias == "bullish" else (cur - lo) / span
+    return {"direction": bias, "low": lo, "high": hi, "levels": levels,
+            "retracement": retr, "atr": atr_now,
+            "start_time": str(d.index[start_i]), "end_time": str(d.index[end_i])}
+
+
 def build_market_digest(df, label: str, tf: str) -> str:
-    """Compress a candle DataFrame into a compact text digest for the AI (Fib + SNR focused)."""
+    """Compress candles into deterministic context; AI explains but does not invent inputs."""
     closes = df["Close"]
     cur    = float(closes.iloc[-1])
-    ema20  = float(closes.ewm(span=20,  adjust=False).mean().iloc[-1])
-    ema50  = float(closes.ewm(span=50,  adjust=False).mean().iloc[-1])
+    ema20  = float(closes.ewm(span=20, adjust=False).mean().iloc[-1])
+    ema50  = float(closes.ewm(span=50, adjust=False).mean().iloc[-1])
     ema200 = float(closes.ewm(span=200, adjust=False).mean().iloc[-1]) if len(closes) >= 200 else None
-    delta  = closes.diff()
-    gain   = delta.clip(lower=0).rolling(14).mean()
-    loss   = (-delta.clip(upper=0)).rolling(14).mean()
-    rsi    = float((100 - 100 / (1 + gain / loss.replace(0, 1e-9))).iloc[-1])
-
-    look     = df.tail(150)
-    swing_hi = float(look["High"].max())
-    swing_lo = float(look["Low"].min())
-    rng      = max(swing_hi - swing_lo, 1e-9)
-    up_bias  = ema20 > ema50
-    retr     = (swing_hi - cur) / rng if up_bias else (cur - swing_lo) / rng
-    fib_pos  = "INSIDE the key 38.2-61.8% pullback zone" if 0.362 <= retr <= 0.638 else f"at {retr*100:.1f}% retracement"
-    fib382   = swing_hi - 0.382 * rng if up_bias else swing_lo + 0.382 * rng
-    fib50    = swing_hi - 0.5   * rng if up_bias else swing_lo + 0.5   * rng
-    fib618   = swing_hi - 0.618 * rng if up_bias else swing_lo + 0.618 * rng
+    rsi = float(_wilder_rsi(closes).iloc[-1])
+    atr = float(_atr_series(df).dropna().iloc[-1])
+    up_bias = ema20 > ema50
+    rejection = detect_rejection_candle(df)
+    fib = detect_impulse_fib(df)
 
     last5   = df.tail(5)
     candles = " | ".join(f"O{r.Open:.6g} H{r.High:.6g} L{r.Low:.6g} C{r.Close:.6g}"
                          for r in last5.itertuples())
     parts = [
         f"{label} {tf} — CURRENT PRICE: {cur:.6g}",
-        f"  Swing (last {len(look)} bars): HIGH {swing_hi:.6g} / LOW {swing_lo:.6g}",
-        f"  Trend: EMA20 {ema20:.6g} {'>' if up_bias else '<'} EMA50 {ema50:.6g}"
+        f"  ATR(14, Wilder): {atr:.6g}",
+        f"  Trend: EMA20 {ema20:.6g} {'>' if up_bias else '<='} EMA50 {ema50:.6g}"
         + (f", EMA200 {ema200:.6g}" if ema200 else "") + f" → {'bullish' if up_bias else 'bearish'} bias",
-        f"  RSI(14): {rsi:.1f}",
-        f"  Fibonacci ({'low→high' if up_bias else 'high→low'} swing): price {fib_pos}; 38.2%={fib382:.6g}, 50%={fib50:.6g}, 61.8%={fib618:.6g}",
+        f"  RSI(14, Wilder): {rsi:.1f} (momentum context only; never an entry trigger)",
+        f"  Latest closed-candle trigger: {rejection['pattern']} ({rejection['direction']}); confirmed={rejection['confirmed']}",
         f"  Last 5 candles: {candles}",
     ]
+    if fib:
+        lv = fib["levels"]
+        overlap = "inside 38.2-61.8 pullback" if 0.382 <= fib["retracement"] <= 0.618 else f"{fib['retracement']*100:.1f}% retraced"
+        parts.append(
+            f"  Confirmed chronological Fib impulse {fib['direction']} ({fib['start_time']} → {fib['end_time']}): "
+            f"low={fib['low']:.6g}, high={fib['high']:.6g}, price={overlap}; "
+            f"38.2%={lv[0.382]:.6g}, 50%={lv[0.5]:.6g}, 61.8%={lv[0.618]:.6g}"
+        )
+    else:
+        parts.append("  Fibonacci: SKIP — no valid chronological confirmed impulse.")
     _zones = find_sr_zones(df, max_zones=4)
     if _zones:
         _zsum = "; ".join(
@@ -1364,10 +1434,9 @@ def find_sr_zones(df, lookback: int = 250, max_zones: int = 6, htf_df=None) -> l
     if n < 30:
         return []
 
-    # ── ATR(14) ──
-    trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i - 1]), abs(lows[i] - closes[i - 1]))
-           for i in range(1, n)]
-    atr = sum(trs[-14:]) / min(14, len(trs))
+    # ── Wilder ATR(14); local values are also used when judging old reactions ──
+    atr_values = _atr_series(d).bfill().to_numpy()
+    atr = float(atr_values[-1])
     if atr <= 0:
         atr = max((float(highs.max()) - float(lows.min())) / 100.0, 1e-9)
 
@@ -1379,6 +1448,14 @@ def find_sr_zones(df, lookback: int = 250, max_zones: int = 6, htf_df=None) -> l
                 pivots.append(["H", float(highs[i]), i, wt])
             if lows[i] <= min(lows[i - w:i + w + 1]):
                 pivots.append(["L", float(lows[i]), i, wt])
+    # A major pivot also appears in the window-5 pass. Deduplicate it instead of
+    # pretending one market reaction was two separate touches.
+    _dedup = {}
+    for p in pivots:
+        _key = (p[0], p[2])
+        if _key not in _dedup or p[3] > _dedup[_key][3]:
+            _dedup[_key] = p
+    pivots = list(_dedup.values())
     if not pivots:
         return []
 
@@ -1387,18 +1464,22 @@ def find_sr_zones(df, lookback: int = 250, max_zones: int = 6, htf_df=None) -> l
         _k, _pr, _i, _wt = p[0], p[1], p[2], p[3]
         j2 = min(n, _i + 7)
         if _i + 1 < j2:
-            react = ((_pr - float(min(lows[_i + 1:j2]))) / atr) if _k == "H" \
-                else ((float(max(highs[_i + 1:j2])) - _pr) / atr)
+            _local_atr = max(float(atr_values[_i]), 1e-12)
+            react = ((_pr - float(min(lows[_i + 1:j2]))) / _local_atr) if _k == "H" \
+                else ((float(max(highs[_i + 1:j2])) - _pr) / _local_atr)
         else:
             react = 0.0
         p.append(max(react, 0.0))
 
-    # ── Cluster pivots within 0.6 ATR ──
+    # ── Cluster around a stable centre. This prevents single-link chaining
+    # (A near B, B near C) from merging distinct levels into one oversized zone. ──
     tol = 0.6 * atr
     pivots.sort(key=lambda p: p[1])
     clusters, cur = [], [pivots[0]]
     for p in pivots[1:]:
-        if p[1] - cur[-1][1] <= tol:
+        _centre = sum(x[1] for x in cur) / len(cur)
+        _new_range = max(p[1], max(x[1] for x in cur)) - min(p[1], min(x[1] for x in cur))
+        if abs(p[1] - _centre) <= tol and _new_range <= 1.2 * atr:
             cur.append(p)
         else:
             clusters.append(cur)
@@ -1421,26 +1502,35 @@ def find_sr_zones(df, lookback: int = 250, max_zones: int = 6, htf_df=None) -> l
     out = []
     for z in clusters:
         prices     = [p[1] for p in z]
-        touch_bars = sorted(set(p[2] for p in z))
+        _raw_touch_bars = sorted(set(p[2] for p in z))
+        # Plateau highs/lows across adjacent candles are one test, not many.
+        touch_bars = []
+        for _bar in _raw_touch_bars:
+            if not touch_bars or _bar - touch_bars[-1] >= 4:
+                touch_bars.append(_bar)
         center     = sum(prices) / len(prices)
         touches    = len(touch_bars)
         n_high     = sum(1 for p in z if p[0] == "H")
         n_low      = sum(1 for p in z if p[0] == "L")
         recency    = sum(math.exp(-(n - 1 - i) / half_life) for i in touch_bars)
-        react      = sum(p[4] for p in z) / len(z)
+        _reactions = [p[4] for p in sorted(z, key=lambda p: p[2])]
+        react      = sum(_reactions) / len(_reactions)
+        reaction_decay = (len(_reactions) >= 3 and
+                          sum(_reactions[-2:]) / 2 < 0.65 * max(sum(_reactions[:2]) / 2, 1e-9))
         major      = any(p[3] > 1.0 for p in z)
         flip       = n_high > 0 and n_low > 0
         rnd        = abs(center / step - round(center / step)) * step <= max(0.25 * atr, step * 0.15)
         rnd_level  = round(center / step) * step if rnd else None
         htf_ok     = any(hz["low"] - tol <= center <= hz["high"] + tol for hz in htf_zones)
 
-        score = (1.6 * min(touches, 4)          # tested, but 5+ touches ≠ stronger
+        score = (1.6 * min(touches, 3)          # independent tests; repeated tests can consume orders
                  + 1.4 * recency                # fresh levels matter more
                  + 1.1 * min(react, 3.0)        # strong rejections = real level
                  + (1.5 if flip else 0.0)
                  + (1.2 if major else 0.0)
                  + (2.0 if htf_ok else 0.0)
-                 + (0.9 if rnd else 0.0))
+                 + (0.9 if rnd else 0.0)
+                 - (1.5 if touches >= 4 and reaction_decay else 0.0))
 
         lo, hi = min(prices), max(prices)
         if hi - lo < 0.25 * atr:
@@ -1448,13 +1538,15 @@ def find_sr_zones(df, lookback: int = 250, max_zones: int = 6, htf_df=None) -> l
         if hi - lo > 1.2 * atr:
             lo, hi = center - 0.6 * atr, center + 0.6 * atr
 
+        _kind = "decision" if lo <= price_now <= hi else ("resistance" if center > price_now else "support")
         out.append({
             "low": lo, "high": hi, "center": center,
             "touches": touches,
-            "kind": "resistance" if center > price_now else "support",
+            "kind": _kind,
             "flip": flip, "swing_highs": n_high, "swing_lows": n_low,
             "bars_since_last_touch": n - 1 - max(touch_bars),
             "avg_reaction_atr": round(react, 2),
+            "reaction_decay": reaction_decay,
             "major_swing": major,
             "round_level": rnd_level,
             "htf_confirmed": htf_ok,
@@ -1486,8 +1578,86 @@ def sr_zones_text(zones: list) -> str:
             bits.append("CONFIRMED on the D1 higher timeframe")
         if z.get("round_level"):
             bits.append(f"sits at round number {z['round_level']:.6g}")
+        if z.get("reaction_decay"):
+            bits.append("WEAKENING: recent rejections are materially smaller than early reactions")
+        if z.get("kind") == "decision":
+            bits.append("PRICE IS INSIDE THIS ZONE: no directional trade until rejection/close confirms")
         lines.append(" | ".join(bits))
     return "\n".join(lines)
+
+
+def build_setup_snapshot(d1_df, h4_df, h1_df) -> dict:
+    """Deterministic A/A+ gate engine. The LLM may explain this result, never override it."""
+    def _bias(frame):
+        close = frame["Close"]
+        return "bullish" if close.ewm(span=20, adjust=False).mean().iloc[-1] > close.ewm(span=50, adjust=False).mean().iloc[-1] else "bearish"
+
+    d1_bias, h4_bias = _bias(d1_df), _bias(h4_df)
+    direction = "BUY" if d1_bias == h4_bias == "bullish" else (
+        "SELL" if d1_bias == h4_bias == "bearish" else "WAIT")
+    h1_atr = float(_atr_series(h1_df).dropna().iloc[-1])
+    h4_zones = find_sr_zones(h4_df, lookback=300, max_zones=8, htf_df=d1_df)
+    price = float(h1_df["Close"].iloc[-1])
+    rejection = detect_rejection_candle(h1_df)
+    expected_rejection = "bullish" if direction == "BUY" else "bearish"
+
+    relevant = []
+    for zone in h4_zones:
+        if direction == "BUY" and zone["kind"] not in ("support", "decision"):
+            continue
+        if direction == "SELL" and zone["kind"] not in ("resistance", "decision"):
+            continue
+        distance = 0.0 if zone["low"] <= price <= zone["high"] else min(abs(price - zone["low"]), abs(price - zone["high"]))
+        relevant.append((distance, zone))
+    zone = min(relevant, key=lambda x: x[0])[1] if relevant else None
+    location_ok = bool(zone and zone["low"] - 0.25 * h1_atr <= price <= zone["high"] + 0.25 * h1_atr)
+    last = h1_df.iloc[-1]
+    candle_touches_zone = bool(zone and float(last.Low) <= zone["high"] + 0.10 * h1_atr
+                               and float(last.High) >= zone["low"] - 0.10 * h1_atr)
+    rejection_ok = bool(location_ok and candle_touches_zone and rejection["confirmed"]
+                        and rejection["direction"] == expected_rejection)
+
+    entry = price
+    stop = target = rr = None
+    opposing = []
+    if zone and direction == "BUY":
+        stop = zone["low"] - 0.20 * h1_atr
+        opposing = [z for z in h4_zones if z["low"] > entry and z["kind"] == "resistance"]
+        target = min(opposing, key=lambda z: z["low"])["low"] if opposing else None
+    elif zone and direction == "SELL":
+        stop = zone["high"] + 0.20 * h1_atr
+        opposing = [z for z in h4_zones if z["high"] < entry and z["kind"] == "support"]
+        target = max(opposing, key=lambda z: z["high"])["high"] if opposing else None
+    if stop is not None and target is not None and abs(entry - stop) > 1e-12:
+        rr = abs(target - entry) / abs(entry - stop)
+
+    fib = detect_impulse_fib(h4_df)
+    fib_overlap = False
+    fib_level = None
+    if fib and zone:
+        for ratio, level in fib["levels"].items():
+            if zone["low"] - 0.20 * h1_atr <= level <= zone["high"] + 0.20 * h1_atr:
+                fib_overlap, fib_level = True, {"ratio": ratio, "price": level}
+                break
+
+    gates = {
+        "direction": direction != "WAIT",
+        "location": location_ok,
+        "rejection": rejection_ok,
+        "invalidation": stop is not None and ((direction == "BUY" and stop < entry) or (direction == "SELL" and stop > entry)),
+        "reward": rr is not None and rr >= 2.0,
+    }
+    executable = all(gates.values())
+    grade = "A+" if executable and fib_overlap else ("A" if executable else "WAIT")
+    failed = [name for name, passed in gates.items() if not passed]
+    return {
+        "direction": direction if executable else "WAIT", "candidate_direction": direction,
+        "grade": grade, "gates": gates, "failed_gates": failed,
+        "d1_bias": d1_bias, "h4_bias": h4_bias,
+        "entry": entry, "stop": stop, "target": target, "rr": rr,
+        "zone": zone, "rejection": rejection,
+        "fib_overlap": fib_overlap, "fib_level": fib_level,
+    }
 
 
 def ai_text_call(prompt: str, api_key: str, model: str, json_mode: bool = False) -> str:
@@ -1518,6 +1688,14 @@ def parse_ai_json(raw: str, api_key: str = "", model: str = "") -> dict:
     """Extract a JSON object from an AI reply. Repairs common issues; falls back to AI self-repair."""
     if not raw:
         return {}
+    decoder = json.JSONDecoder()
+    for start in (i for i, char in enumerate(raw) if char == "{"):
+        try:
+            value, _ = decoder.raw_decode(raw[start:])
+            if isinstance(value, dict):
+                return value
+        except Exception:
+            continue
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m:
         return {}
@@ -1529,7 +1707,7 @@ def parse_ai_json(raw: str, api_key: str = "", model: str = "") -> dict:
         pass
     # 2) mechanical repairs: smart quotes, trailing commas, control chars
     t = txt
-    for _a, _b in (("“", "'"), ("”", "'"), ("‘", "'"), ("’", "'"), (" ", " ")):
+    for _a, _b in (("“", '"'), ("”", '"'), ("‘", "'"), ("’", "'"), (" ", " ")):
         t = t.replace(_a, _b)
     t = re.sub(r",\s*([}\]])", r"\1", t)
     t = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", t)
@@ -2231,6 +2409,7 @@ with st.sidebar:
 # ── Sidebar ───────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚙️ Configuration")
+    st.caption(f"Build {APP_VERSION}")
 
     st.caption("Gemini key = FREE (aistudio.google.com) · Claude key = best accuracy (console.anthropic.com)")
 
@@ -2374,7 +2553,7 @@ with st.sidebar:
             key="td_key_input",
         )
         if not twelve_data_key:
-            st.caption("Needed for live charts & currency strength on the Markets page.")
+            st.caption("Optional fallback when Yahoo Finance is unavailable.")
 
     st.divider()
 
@@ -2560,23 +2739,45 @@ if _nav == "Market Scout":
         "Markets to scan 扫描范围",
         _SCOUT_UNIVERSE,
         default=["XAU/USD", "XAG/USD", "EUR/USD", "GBP/USD", "USD/JPY", "BTC/USD"],
-        help="Free Twelve Data plan allows ~8 requests/minute — keep the list ≤ 8 pairs.",
+        help="Each market is checked on D1 + H4 + H1. Yahoo Finance is used first; Twelve Data is fallback.",
     )
 
     if st.button("🔍 Scan the Market Now 立即扫描", type="primary", use_container_width=True):
         if not api_key:
             st.warning("👈 Enter your AI API key in the sidebar first.")
-        elif not twelve_data_key:
-            st.warning("👈 Enter your Twelve Data key in the sidebar first (free at twelvedata.com).")
         elif not _scout_sel:
             st.warning("Pick at least one market to scan.")
         else:
+            _scout_labels = {
+                "XAU/USD": "Gold (XAUUSD)", "XAG/USD": "Silver (XAGUSD)",
+                "EUR/USD": "EURUSD", "GBP/USD": "GBPUSD", "USD/JPY": "USDJPY",
+                "AUD/USD": "AUDUSD", "NZD/USD": "NZDUSD", "USD/CAD": "USDCAD",
+                "USD/CHF": "USDCHF", "BTC/USD": "Bitcoin (BTCUSD)",
+                "ETH/USD": "Ethereum (ETHUSD)",
+            }
             _digests = []
+            _snapshots = {}
             _prog = st.progress(0.0, text="Fetching live data…")
             for _i, _sym in enumerate(_scout_sel):
                 try:
-                    _sdf = td_fetch_df(_sym, "1h", 300, twelve_data_key)
-                    _digests.append(build_market_digest(_sdf, _sym, "H1"))
+                    _label = _scout_labels[_sym]
+                    _d1, _src1 = fetch_candles_any(_label, "D1", twelve_data_key)
+                    _h4, _src4 = fetch_candles_any(_label, "H4", twelve_data_key)
+                    _h1, _srch = fetch_candles_any(_label, "H1", twelve_data_key)
+                    _snapshot = build_setup_snapshot(_d1, _h4, _h1)
+                    _snapshots[_sym] = _snapshot
+                    _digests.append(
+                        build_market_digest(_d1, _sym, "D1") + "\n" +
+                        build_market_digest(_h4, _sym, "H4") + "\n" +
+                        build_market_digest(_h1, _sym, "H1") + "\n" +
+                        "  DETERMINISTIC GATE RESULT: " + json.dumps({
+                            "direction": _snapshot["direction"], "grade": _snapshot["grade"],
+                            "gates": _snapshot["gates"], "failed": _snapshot["failed_gates"],
+                            "entry": _snapshot["entry"], "stop": _snapshot["stop"],
+                            "target": _snapshot["target"], "rr": _snapshot["rr"],
+                            "fib_overlap": _snapshot["fib_overlap"],
+                        }, default=str)
+                    )
                 except Exception as _se:
                     _digests.append(f"{_sym}: DATA UNAVAILABLE ({_se})")
                 _prog.progress((_i + 1) / len(_scout_sel), text=f"Fetched {_sym} ({_i + 1}/{len(_scout_sel)})")
@@ -2589,17 +2790,17 @@ Below is LIVE market data (fetched seconds ago) for {len(_scout_sel)} markets:
 
 {_nl.join("── " + d for d in _digests)}
 
-TASK: Pick the 1-3 BEST opportunities right now. Only pick markets with REAL confluence:
-clear trend + price at/near a key swing S/R level + healthy RSI + good risk:reward.
-A fib 38.2/50/61.8 level lining up with the S/R level is a bonus that raises confidence — not a requirement.
-If nothing qualifies, return fewer picks (even zero) and explain why in the market note. Quality over quantity.
+TASK: Explain and rank up to 3 opportunities, but ONLY where DETERMINISTIC GATE RESULT has grade A or A+.
+You may never override a WAIT result or invent different entry/SL/TP values. A means all five gates passed.
+A+ means the same gates passed plus Fib 38.2/50/61.8 overlaps the tested S/R zone.
+If no deterministic result qualifies, return zero picks. Quality over quantity.
 
 Output STRICT JSON only, no other text. Never put double-quote characters inside text values (use single quotes if needed):
 {{"market_note_en": "1-2 sentence market overview",
  "market_note_cn": "中文一两句市场总览",
  "picks": [
-   {{"pair": "XAU/USD", "direction": "BUY or SELL or WAIT", "confidence": 7,
-     "entry_zone": "price zone", "stop_loss": "level", "take_profit": "level",
+   {{"pair": "XAU/USD", "direction": "BUY or SELL", "grade": "A or A+", "confidence": 7,
+     "entry_zone": "copy deterministic entry", "stop_loss": "copy deterministic stop", "take_profit": "copy deterministic target",
      "reason_en": "2-3 sentences citing the exact fib levels and swing levels from the data",
      "reason_cn": "中文理由 2-3 句，引用具体价位"}}
  ]}}"""
@@ -2610,6 +2811,22 @@ Output STRICT JSON only, no other text. Never put double-quote characters inside
                     if not _parsed:
                         st.error("❌ AI returned an unreadable response — hit Scan again. AI 返回格式异常，请再扫描一次。")
                     else:
+                        # The model writes explanations only. Enforce the program's gates and levels.
+                        _safe_picks = []
+                        for _pick in (_parsed.get("picks", []) or []):
+                            _pair = str(_pick.get("pair", "")).upper().replace(" ", "")
+                            _matched = next((s for s in _snapshots if s.replace(" ", "").upper() == _pair), None)
+                            _snap = _snapshots.get(_matched) if _matched else None
+                            if not _snap or _snap["grade"] not in ("A", "A+"):
+                                continue
+                            _pick.update({
+                                "pair": _matched, "direction": _snap["direction"], "grade": _snap["grade"],
+                                "entry_zone": f"{_snap['entry']:.6g}", "stop_loss": f"{_snap['stop']:.6g}",
+                                "take_profit": f"{_snap['target']:.6g}", "rr": round(_snap["rr"], 2),
+                                "confidence": 8 if _snap["grade"] == "A+" else 7,
+                            })
+                            _safe_picks.append(_pick)
+                        _parsed["picks"] = _safe_picks[:3]
                         st.session_state["scout_result"]  = _parsed
                         st.session_state["scout_digests"] = _digests
                         import datetime as _dt_sc
@@ -2638,11 +2855,12 @@ Output STRICT JSON only, no other text. Never put double-quote characters inside
 <div class='chee-signal-card {_pc[3]}'>
   <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
     <span style='color:#eef5f0;font-size:19px;font-weight:800;font-family:Space Grotesk,sans-serif'>{_p.get('pair', '—')}</span>
-    <span class='tag' style='background:{_pc[1]};border:1px solid {_pc[2]};color:{_pc[0]};font-size:14px;padding:6px 20px'>{_dirn} · {_p.get('confidence', '—')}/10</span>
+    <span class='tag' style='background:{_pc[1]};border:1px solid {_pc[2]};color:{_pc[0]};font-size:14px;padding:6px 20px'>{_dirn} · {_p.get('grade', '—')} · {_p.get('confidence', '—')}/10</span>
   </div>
   <div class='rowline'><span class='k'>Entry 入场</span><span class='v'>{_p.get('entry_zone', '—')}</span></div>
   <div class='rowline'><span class='k'>Stop Loss 止损</span><span class='v'>{_p.get('stop_loss', '—')}</span></div>
   <div class='rowline'><span class='k'>Take Profit 目标</span><span class='v'>{_p.get('take_profit', '—')}</span></div>
+  <div class='rowline'><span class='k'>Risk : Reward</span><span class='v'>1 : {_p.get('rr', '—')}</span></div>
   <p style='color:#cfe0d4;font-size:13.5px;margin:12px 0 4px 0'>{_p.get('reason_en', '')}</p>
   <p style='color:#7d8f83;font-size:13px;margin:0'>{_p.get('reason_cn', '')}</p>
 </div>""", unsafe_allow_html=True)
@@ -2713,7 +2931,7 @@ if _nav == "Read My Chart":
         st.caption({
             "conservative": "A/A+ setups only, full confirmation, wider SL, max 1% risk. 保守：只做高确定性。",
             "balanced":     "Confirmed setups, 1-2% risk, minimum 1:2 R:R. 平衡：标准规则。",
-            "aggressive":   "Earlier entries and wider stops range — higher risk, clearly flagged. 激进：允许提前入场，风险更高。",
+            "aggressive":   "First confirmed retest, smaller buffer, max 1.5% risk; all A/A+ gates still required. 激进：仍需确认，只调整入场与风险。",
         }[_rc_risk])
 
         with st.expander("✏️ Pair & context (optional 可选)", expanded=False):
@@ -2854,7 +3072,7 @@ Zones are drawn the way a professional draws them — not just "count the pivots
 
 1. **Significant swings only 只取重要摆动点** — window-5 swing highs/lows, plus window-12 MAJOR swings (weighted heavier). Minor 3-bar wiggles are ignored, like your eye ignores them.
 2. **ATR-adaptive clustering 按波动率聚类** — pivots within 0.6 × ATR(14) merge into one zone, so zone width matches the market's actual volatility (gold zones are wider than EURUSD zones, automatically).
-3. **Scored like a trader judges 按交易员逻辑打分** — touches (capped at 4 — a level tested 6 times is worn out, not stronger) · **reaction strength** (how many ATR price bounced away after each touch — a real level rejects price hard) · **recency decay** (fresh levels beat stale ones) · flip behaviour · contains a major swing · **round-number proximity** · **D1 confirmation** (levels visible on the higher timeframe score double).
+3. **Scored like a trader judges 按交易员逻辑打分** — independent touches · **reaction strength** · reaction decay (repeated tests only weaken a zone when bounces are shrinking) · recency · flip behaviour · major swing · **round-number proximity** · **D1 confirmation**.
 4. **Zone width kept realistic** — 0.25 to 1.2 ATR, never a hairline or a huge blob.
 
 Top 6 zones by score are shown. If it still differs from your hand-drawn levels, tell the AI Analyst your level in chat — it will compare both against the data.
@@ -2891,7 +3109,7 @@ Auto-detected S/R zones (from swing-pivot clustering, sorted high→low). These 
 Current price: {_kl_price:.6g}
 
 TASK: For EACH zone, in the SAME order, explain WHY it is a valid support/resistance zone. Be specific and educational:
-- how many times it was tested and what that means (2-3 touches = strong, 4+ = weakening)
+- how many independent times it was tested; call repeated tests weakening only when reaction_decay is flagged
 - reaction strength (the avg ATR bounce shown — hard rejections prove real orders sit there)
 - swing structure (rejected as swing-high? held as swing-low? contains a major swing?)
 - flip behaviour if flagged (old support became resistance or vice versa — why that matters)
@@ -3002,484 +3220,6 @@ mtf_mode = False
 # ════════════════════════════════════════════════════════════
 # MULTI-TIMEFRAME MODE
 # ════════════════════════════════════════════════════════════
-if _nav == "Chart Analysis" and mtf_mode:
-    st.markdown("## 🔭 Multi-Timeframe Top-Down Analysis")
-    st.markdown("""
-<div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border-radius:10px;padding:12px 18px;margin-bottom:18px;border:2px solid #3b82f6'>
-<p style='color:#93c5fd;font-size:14px;margin:0;font-weight:700'>
-📋 Strategy: <span style='color:#fbbf24'>Only enter a trade when D1 + H1 + Entry chart ALL point the same direction.</span><br>
-<span style='color:#86efac;font-size:12px'>⬇️ 按顺序上传图表：先日线 → 再1小时 → 最后进场时间框架</span>
-</p>
-</div>
-""", unsafe_allow_html=True)
-
-    step1_tab, step2_tab, step3_tab = st.tabs([
-        "① 📅 D1 — HTF Bias",
-        "② ⏰ H1 — Confirmation",
-        "③ ⚡ Entry — Signal",
-    ])
-
-    # ── Helper: render one MTF step ─────────────────────────
-    def render_mtf_step(tab, step_key, step_label, step_tf, step_hint, htf_context=""):
-        img_key  = f"mtf_{step_key}_image"
-        text_key = f"mtf_{step_key}_analysis"
-        ann_key  = f"mtf_{step_key}_annotated"
-
-        with tab:
-            st.markdown(f"### {step_label}")
-            st.caption(step_hint)
-
-            col_up, col_res = st.columns([1, 1], gap="large")
-
-            with col_up:
-                uploaded = st.file_uploader(
-                    f"Upload {step_tf} chart",
-                    type=["png", "jpg", "jpeg", "webp"],
-                    key=f"uploader_{step_key}",
-                    label_visibility="collapsed",
-                )
-                if uploaded:
-                    img = Image.open(uploaded)
-                    st.session_state[img_key] = img
-                    st.image(img, caption=f"{market_type} · {step_tf}", use_container_width=True)
-
-                if st.session_state.get(img_key) and api_key:
-                    if st.button(f"🔍 Analyse {step_tf} Chart", key=f"btn_{step_key}", use_container_width=True):
-                        ctx = htf_context + ("\n" + additional_context if additional_context else "")
-                        with st.spinner(f"🤖 Analysing {step_tf} chart..."):
-                            try:
-                                result = analyze_chart_with_ai(
-                                    st.session_state[img_key],
-                                    api_key, model_choice,
-                                    market_type, step_tf, ctx,
-                                )
-                                st.session_state[text_key]  = result
-                                st.session_state[ann_key]   = None
-                                st.success(f"✅ {step_tf} analysis done!")
-                            except Exception as e:
-                                st.error(f"❌ Error: {str(e)}")
-                elif st.session_state.get(img_key) and not api_key:
-                    st.warning("👈 Enter API key in sidebar first.")
-                elif not st.session_state.get(img_key):
-                    st.info(f"👆 Upload a {step_tf} chart screenshot above.")
-
-            with col_res:
-                if text_key in st.session_state:
-                    result_text = st.session_state[text_key]
-                    meta = parse_json_from_analysis(result_text)
-                    sig  = meta.get("signal", "WAIT").upper()
-                    conf = meta.get("confidence", 5)
-
-                    badge_html = {
-                        "BUY":  '<div class="buy-badge" style="font-size:18px;padding:10px 20px">🟢 BUY BIAS</div>',
-                        "SELL": '<div class="sell-badge" style="font-size:18px;padding:10px 20px">🔴 SELL BIAS</div>',
-                    }.get(sig, '<div class="wait-badge" style="font-size:18px;padding:10px 20px">⏳ NEUTRAL</div>')
-                    st.markdown(badge_html, unsafe_allow_html=True)
-
-                    bar_color = "#059669" if conf >= 7 else ("#d97706" if conf >= 5 else "#dc2626")
-                    st.markdown(f"""
-<div style="margin:8px 0 10px 0">
-  <span style="color:#1a1a2e;font-size:13px;font-weight:600">Confidence: <b style="color:{bar_color}">{conf}/10</b></span>
-  <div style="background:#e9d5ff;border-radius:6px;height:10px;margin-top:4px">
-    <div style="background:{bar_color};width:{conf*10}%;height:10px;border-radius:6px"></div>
-  </div>
-</div>""", unsafe_allow_html=True)
-
-                    # Annotate
-                    if annotate_chart_flag and meta.get("annotations") and st.session_state.get(ann_key) is None:
-                        with st.spinner("🎨 Drawing annotations..."):
-                            ann_img = annotate_chart(
-                                st.session_state[img_key],
-                                meta["annotations"], sig, meta,
-                            )
-                            st.session_state[ann_key] = ann_img
-
-                    if st.session_state.get(ann_key):
-                        st.image(pil_to_download_bytes(st.session_state[ann_key]), use_container_width=True)
-                        st.download_button(
-                            f"⬇️ Download {step_tf} Chart",
-                            data=pil_to_download_bytes(st.session_state[ann_key]),
-                            file_name=f"annotated_{step_tf}.png",
-                            mime="image/png",
-                            use_container_width=True,
-                            key=f"dl_{step_key}",
-                        )
-
-                    st.divider()
-                    clean = re.sub(r"```json.*?```", "", result_text, flags=re.DOTALL).strip()
-                    st.markdown(clean)
-
-        # Return signal for confluence check
-        if text_key in st.session_state:
-            return parse_json_from_analysis(st.session_state[text_key]).get("signal", "WAIT").upper()
-        return None
-
-    # ── Build HTF context strings for lower TFs ─────────────
-    d1_context_for_h1 = ""
-    if "mtf_d1_analysis" in st.session_state:
-        d1_meta = parse_json_from_analysis(st.session_state["mtf_d1_analysis"])
-        d1_sig  = d1_meta.get("signal", "WAIT").upper()
-        d1_context_for_h1 = (
-            f"[HTF CONTEXT — D1 Chart already analysed]\n"
-            f"D1 Signal: {d1_sig}. "
-            f"D1 Pattern: {d1_meta.get('pattern_name','N/A')}.\n"
-            f"Your job: Analyse the H1 chart and check if it CONFIRMS this D1 direction. "
-            f"If H1 is pulling back but D1 is bullish, that's normal — note it as 'pullback within uptrend'. "
-            f"Signal WAIT if H1 strongly contradicts D1."
-        )
-
-    h1_context_for_entry = ""
-    if "mtf_d1_analysis" in st.session_state and "mtf_h1_analysis" in st.session_state:
-        d1_meta = parse_json_from_analysis(st.session_state["mtf_d1_analysis"])
-        h1_meta = parse_json_from_analysis(st.session_state["mtf_h1_analysis"])
-        d1_sig  = d1_meta.get("signal", "WAIT").upper()
-        h1_sig  = h1_meta.get("signal", "WAIT").upper()
-        h1_context_for_entry = (
-            f"[MULTI-TIMEFRAME CONTEXT — Higher TFs already analysed]\n"
-            f"D1 Bias: {d1_sig} | H1 Bias: {h1_sig}\n"
-            f"Your job: Find a PRECISE entry on this lower timeframe chart.\n"
-            f"CRITICAL RULE: Only signal BUY if D1={d1_sig} AND H1={h1_sig} AND this chart also shows bullish entry.\n"
-            f"Only signal SELL if D1={d1_sig} AND H1={h1_sig} AND this chart shows bearish entry.\n"
-            f"If this chart contradicts the higher TF direction, signal WAIT — do not fight the trend.\n"
-            f"Focus on: exact entry trigger, tight SL below/above nearest structure, TP at HTF levels."
-        )
-
-    # ── Render all 3 steps ───────────────────────────────────
-    d1_sig    = render_mtf_step(step1_tab, "d1",    "📅 Step 1: Daily Chart (D1)", "D1",
-                                "Get the big picture — which direction is the market going long-term?  先看日线，判断大方向。",
-                                "")
-    h1_sig    = render_mtf_step(step2_tab, "h1",    "⏰ Step 2: 1-Hour Chart (H1)", "H1",
-                                "Confirm the D1 direction — is H1 aligned?  确认1小时方向与日线一致。",
-                                d1_context_for_h1)
-    entry_sig = render_mtf_step(step3_tab, "entry", "⚡ Step 3: Entry Chart", timeframe,
-                                f"Find the precise entry on {timeframe} — only enter if D1 + H1 confirm!  找进场点，只在高时间框架一致时入场。",
-                                h1_context_for_entry)
-
-    # ── MTF Confluence Summary Banner ───────────────────────
-    if d1_sig and h1_sig and entry_sig:
-        st.divider()
-        st.markdown("## 🎯 MTF Confluence Summary 多时间框架综合结论")
-
-        all_sigs = [d1_sig, h1_sig, entry_sig]
-        buy_count  = all_sigs.count("BUY")
-        sell_count = all_sigs.count("SELL")
-
-        if buy_count == 3:
-            final_html = """
-<div style='background:linear-gradient(135deg,#064e3b,#065f46);border:3px solid #10b981;border-radius:14px;padding:20px;text-align:center'>
-<p style='color:#6ee7b7;font-size:28px;font-weight:900;margin:0'>✅ STRONG BUY 强烈看涨</p>
-<p style='color:#a7f3d0;font-size:16px;margin:6px 0 0 0'>D1 ✅ BUY &nbsp;·&nbsp; H1 ✅ BUY &nbsp;·&nbsp; Entry ✅ BUY</p>
-<p style='color:#6ee7b7;font-size:14px;margin:8px 0 0 0'>全部时间框架一致看涨 — 高概率做多机会！</p>
-</div>"""
-        elif sell_count == 3:
-            final_html = """
-<div style='background:linear-gradient(135deg,#7f1d1d,#991b1b);border:3px solid #ef4444;border-radius:14px;padding:20px;text-align:center'>
-<p style='color:#fca5a5;font-size:28px;font-weight:900;margin:0'>✅ STRONG SELL 强烈看跌</p>
-<p style='color:#fecaca;font-size:16px;margin:6px 0 0 0'>D1 ✅ SELL &nbsp;·&nbsp; H1 ✅ SELL &nbsp;·&nbsp; Entry ✅ SELL</p>
-<p style='color:#fca5a5;font-size:14px;margin:8px 0 0 0'>全部时间框架一致看跌 — 高概率做空机会！</p>
-</div>"""
-        elif buy_count == 2:
-            final_html = f"""
-<div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border:3px solid #f59e0b;border-radius:14px;padding:20px;text-align:center'>
-<p style='color:#fcd34d;font-size:24px;font-weight:900;margin:0'>⚠️ PARTIAL BUY 部分看涨</p>
-<p style='color:#fde68a;font-size:15px;margin:6px 0 0 0'>D1: {d1_sig} &nbsp;·&nbsp; H1: {h1_sig} &nbsp;·&nbsp; Entry: {entry_sig}</p>
-<p style='color:#93c5fd;font-size:13px;margin:8px 0 0 0'>2/3 时间框架看涨 — 谨慎考虑，建议等待全部一致再入场。</p>
-</div>"""
-        elif sell_count == 2:
-            final_html = f"""
-<div style='background:linear-gradient(135deg,#1e3a5f,#1a1a2e);border:3px solid #f59e0b;border-radius:14px;padding:20px;text-align:center'>
-<p style='color:#fcd34d;font-size:24px;font-weight:900;margin:0'>⚠️ PARTIAL SELL 部分看跌</p>
-<p style='color:#fde68a;font-size:15px;margin:6px 0 0 0'>D1: {d1_sig} &nbsp;·&nbsp; H1: {h1_sig} &nbsp;·&nbsp; Entry: {entry_sig}</p>
-<p style='color:#93c5fd;font-size:13px;margin:8px 0 0 0'>2/3 时间框架看跌 — 谨慎考虑，建议等待全部一致再入场。</p>
-</div>"""
-        else:
-            final_html = f"""
-<div style='background:linear-gradient(135deg,#1a1a2e,#0f0f23);border:3px solid #6b7280;border-radius:14px;padding:20px;text-align:center'>
-<p style='color:#d1d5db;font-size:24px;font-weight:900;margin:0'>⏳ NO TRADE 暂时观望</p>
-<p style='color:#9ca3af;font-size:15px;margin:6px 0 0 0'>D1: {d1_sig} &nbsp;·&nbsp; H1: {h1_sig} &nbsp;·&nbsp; Entry: {entry_sig}</p>
-<p style='color:#6b7280;font-size:13px;margin:8px 0 0 0'>时间框架方向不一致 — 等待明确方向，不要强行入场。</p>
-</div>"""
-
-        st.markdown(final_html, unsafe_allow_html=True)
-
-# ════════════════════════════════════════════════════════════
-# SINGLE CHART MODE (original)
-# ════════════════════════════════════════════════════════════
-elif _nav == "Chart Analysis":
-    left_col, right_col = st.columns([1, 1], gap="large")
-
-    with left_col:
-        st.subheader("📸 Upload Chart Screenshot")
-
-        uploaded_file = st.file_uploader(
-            "Drop your chart here",
-            type=["png", "jpg", "jpeg", "webp"],
-            label_visibility="collapsed",
-        )
-
-        if uploaded_file:
-            original_image = Image.open(uploaded_file)
-            st.image(original_image, caption=f"{market_type} · {timeframe}", use_container_width=True)
-
-            if not api_key:
-                st.warning("👈 Enter your API key in the sidebar to analyse this chart.")
-            else:
-                run_btn = st.button("🚀 Analyse This Chart", use_container_width=True)
-
-                if run_btn:
-                    with st.spinner("🤖 AI is analysing your chart — this may take 15-30 seconds..."):
-                        try:
-                            result_text = analyze_chart_with_ai(
-                                original_image,
-                                api_key,
-                                model_choice,
-                                market_type,
-                                timeframe,
-                                additional_context,
-                            )
-                            st.session_state["analysis"]   = result_text
-                            st.session_state["image"]      = original_image
-                            st.session_state["annotated"]  = None
-                            st.success("✅ Analysis complete!")
-                        except anthropic.AuthenticationError:
-                            st.error("❌ Invalid API key. Please check your key and try again.")
-                        except anthropic.RateLimitError:
-                            st.error("❌ Rate limit reached. Wait a moment and try again.")
-                        except Exception as e:
-                            st.error(f"❌ Error: {str(e)}")
-        else:
-            st.info("👆 Upload a chart screenshot to begin analysis.")
-
-            with st.expander("📖 Quick Guide — How to Use"):
-                st.markdown("""
-1. **Enter your API key** in the sidebar (free at console.anthropic.com)
-2. **Set the market and timeframe** to match your chart
-3. **Upload a screenshot** of any candlestick chart
-4. **Click Analyse** and wait ~20 seconds
-5. **Read the full analysis** — trend, patterns, entry, SL, TP
-6. **Download the annotated chart** if enabled
-                """)
-
-            with st.expander("🗺️ Pattern Cheat Sheet"):
-                tab1, tab2, tab3 = st.tabs(["📈 Bullish", "📉 Bearish", "🔄 Reversal"])
-                with tab1:
-                    st.markdown("""
-| Pattern | Signal | Key Rule |
-|---------|--------|----------|
-| Bull Flag | Continuation ↑ | Break above parallel channel |
-| Bull Pennant | Continuation ↑ | Break above converging lines |
-| Cup & Handle | Continuation ↑ | Break above cup rim |
-| Ascending Triangle | Continuation ↑ | Break above flat resistance |
-| Triple Bottom | Reversal ↑ | Break above neckline |
-| Measured Move Up | Continuation ↑ | Equal leg projection |
-                    """)
-                with tab2:
-                    st.markdown("""
-| Pattern | Signal | Key Rule |
-|---------|--------|----------|
-| Bear Flag | Continuation ↓ | Break below parallel channel |
-| Bear Pennant | Continuation ↓ | Break below converging lines |
-| Inverted Cup | Continuation ↓ | Break below inverted rim |
-| Descending Triangle | Continuation ↓ | Break below flat support |
-| Triple Top | Reversal ↓ | Break below neckline |
-| Measured Move Down | Continuation ↓ | Equal leg projection |
-                    """)
-                with tab3:
-                    st.markdown("""
-| Pattern | Signal | Key Rule |
-|---------|--------|----------|
-| Double Bottom (W) | Reversal ↑ | Break above middle peak |
-| Double Top (M) | Reversal ↓ | Break below middle valley |
-| H&S Top | Reversal ↓ | Break below neckline |
-| Inverse H&S | Reversal ↑ | Break above neckline |
-| Diamond Bottom | Reversal ↑ | Break above upper right |
-| Diamond Top | Reversal ↓ | Break below lower right |
-| Rectangle Bottom | Reversal ↑ | Break above range |
-| Rectangle Top | Reversal ↓ | Break below range |
-                    """)
-
-    with right_col:
-        st.subheader("🔍 Analysis Results")
-
-        if "analysis" in st.session_state:
-            text = st.session_state["analysis"]
-            meta = parse_json_from_analysis(text)
-            signal     = meta.get("signal", "WAIT").upper()
-            confidence = meta.get("confidence", 5)
-            pattern    = meta.get("pattern_name", "")
-
-            # ── Signal card (THISystem style) ─────────────
-            _sig_style = {
-                "BUY":  ("", "rgba(34,197,94,0.15)",  "#4ade80", "#22c55e", "BUY"),
-                "SELL": ("sell", "rgba(239,68,68,0.15)", "#f87171", "#ef4444", "SELL"),
-            }.get(signal, ("", "rgba(245,158,11,0.15)", "#fbbf24", "#f59e0b", "WAIT"))
-            _card_cls, _pill_bg, _pill_fg, _pill_bd, _pill_tx = _sig_style
-
-            # Bias marker position: BUY→right, SELL→left, WAIT→middle
-            if signal == "BUY":
-                _bias_pos = 50 + confidence * 5
-            elif signal == "SELL":
-                _bias_pos = 50 - confidence * 5
-            else:
-                _bias_pos = 50
-            _bias_pos = max(4, min(96, _bias_pos))
-            _conf_label = "High confidence" if confidence >= 7 else ("Medium confidence" if confidence >= 5 else "Low confidence")
-
-            st.markdown(f"""
-<div class='chee-signal-card {_card_cls}'>
-  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px'>
-    <span class='tag' style='background:rgba(34,197,94,0.10);border:1px solid rgba(74,222,128,0.4);color:#4ade80'>⚡ CHEE AI SIGNAL</span>
-    <span class='tag' style='background:{_pill_bg};border:1px solid {_pill_bd};color:{_pill_fg};font-size:14px;padding:7px 22px'>{_pill_tx}</span>
-  </div>
-  <span style='display:inline-block;background:#0c120e;border:1px solid #1c2a21;border-radius:999px;
-  padding:5px 14px;color:#cfe0d4;font-size:12px;font-weight:700;font-family:JetBrains Mono,monospace'>
-  ● {market_type.split('(')[0].strip()} · {timeframe}</span>
-  <div style='margin-top:18px'>
-    <div style='display:flex;justify-content:space-between;align-items:center'>
-      <span class='k'>Which way it leans</span>
-      <span style='color:#7d8f83;font-size:12px;font-family:JetBrains Mono,monospace'>{_conf_label} · {confidence}/10</span>
-    </div>
-    <div style='position:relative;height:8px;border-radius:999px;margin-top:10px;
-    background:linear-gradient(90deg,#7f1d1d,#3f1d1d 35%,#123322 65%,#14532d)'>
-      <div style='position:absolute;left:{_bias_pos}%;top:-4px;transform:translateX(-50%);
-      width:10px;height:16px;border-radius:4px;background:{_pill_fg};box-shadow:0 0 12px {_pill_fg}'></div>
-    </div>
-    <div style='display:flex;justify-content:space-between;margin-top:7px'>
-      <span style='color:#7d8f83;font-size:11px;letter-spacing:2px'>BEARISH</span>
-      <span style='color:#7d8f83;font-size:11px;letter-spacing:2px'>BULLISH</span>
-    </div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-            # ── News warning overlay ───────────────────────
-            _news_warns = get_news_warning(market_type)
-            render_news_warning_banner(_news_warns)
-
-            if pattern:
-                st.markdown(f"<p style='color:#4ade80;font-weight:700;font-size:15px;margin:4px 0'>📐 Pattern: {pattern}</p>",
-                            unsafe_allow_html=True)
-
-            # ── Build + show annotated chart first ────────
-            if annotate_chart_flag and meta.get("annotations"):
-                if st.session_state.get("annotated") is None:
-                    with st.spinner("🎨 Drawing annotations on chart..."):
-                        ann_img = annotate_chart(
-                            st.session_state["image"],
-                            meta["annotations"],
-                            signal,
-                            meta,
-                        )
-                        st.session_state["annotated"] = ann_img
-
-            if st.session_state.get("annotated") is not None:
-                st.image(pil_to_download_bytes(st.session_state["annotated"]),
-                         caption="Market Structure Analysis — BOS / CHoCH / Demand & Supply / S&R / Liquidity",
-                         use_container_width=True)
-                st.download_button(
-                    "⬇️ Download Annotated Chart",
-                    data=pil_to_download_bytes(st.session_state["annotated"]),
-                    file_name="annotated_chart.png",
-                    mime="image/png",
-                    use_container_width=True,
-                )
-
-            st.divider()
-
-            # ── Analysis text (json block stripped) ───────
-            clean_text = re.sub(r"```json.*?```", "", text, flags=re.DOTALL).strip()
-            st.markdown(clean_text)
-
-            st.divider()
-
-            # ── Follow-up Q&A on this analysis ────────────
-            st.markdown("#### 💬 Ask a follow-up question · 追问")
-            st.caption("Ask anything about this analysis — e.g. 'Where exactly is the liquidity swept?' or 'What if DXY pumps?'")
-
-            # Init per-analysis chat (reset when new analysis runs)
-            _analysis_id = hash(text[:100])
-            if st.session_state.get("analysis_chat_id") != _analysis_id:
-                st.session_state["analysis_chat_id"]  = _analysis_id
-                st.session_state["analysis_chat"]     = []
-
-            # Render conversation
-            for _msg in st.session_state["analysis_chat"]:
-                with st.chat_message(_msg["role"]):
-                    st.markdown(_msg["content"])
-
-            # Chat input
-            if _followup_q := st.chat_input("Ask about this analysis...", key="analysis_followup_input"):
-                if not api_key:
-                    st.warning("👈 Enter your API key first.")
-                else:
-                    st.session_state["analysis_chat"].append({"role": "user", "content": _followup_q})
-                    with st.chat_message("user"):
-                        st.markdown(_followup_q)
-
-                    with st.chat_message("assistant"):
-                        with st.spinner("Thinking..."):
-                            try:
-                                _sys = f"""You are an elite trading analyst. You have just completed a full analysis of a {market_type} chart on the {timeframe} timeframe.
-
-Your analysis summary:
-{clean_text[:2000]}
-
-Now the trader is asking follow-up questions about your analysis. Answer specifically and precisely — refer back to exact price levels, patterns, and structures you identified. Be direct. Use the same language the trader uses (English or Chinese)."""
-
-                                _chat_hist = st.session_state["analysis_chat"]
-                                if model_choice.startswith("gemini"):
-                                    _gc = google_genai.Client(api_key=api_key)
-                                    _hist_text = "\n".join([
-                                        f"{'Trader' if m['role']=='user' else 'Analyst'}: {m['content']}"
-                                        for m in _chat_hist
-                                    ])
-                                    _fa = _gc.models.generate_content(
-                                        model=model_choice,
-                                        contents=[_sys + "\n\nConversation:\n" + _hist_text],
-                                    )
-                                    _ans = _fa.text
-                                else:
-                                    _ac = anthropic.Anthropic(api_key=api_key)
-                                    _api_msgs = [{"role": m["role"], "content": m["content"]}
-                                                 for m in _chat_hist if m["role"] in ("user","assistant")]
-                                    # Include the chart image in the first message for Claude
-                                    if len(_api_msgs) == 1 and st.session_state.get("image"):
-                                        _img_b64 = encode_image_to_base64(st.session_state["image"])
-                                        _api_msgs[0] = {
-                                            "role": "user",
-                                            "content": [
-                                                {"type": "image", "source": {"type": "base64",
-                                                 "media_type": "image/jpeg", "data": _img_b64}},
-                                                {"type": "text", "text": _followup_q},
-                                            ]
-                                        }
-                                    _fa = _ac.messages.create(
-                                        model=model_choice, max_tokens=1200,
-                                        system=_sys, messages=_api_msgs[-12:],
-                                    )
-                                    _ans = claude_text(_fa)
-
-                                st.markdown(_ans)
-                                st.session_state["analysis_chat"].append({"role": "assistant", "content": _ans})
-                            except Exception as _e:
-                                st.error(f"Error: {_e}")
-                    st.rerun()
-
-        else:
-            st.markdown("""
-<div class="info-box">
-<p style="color:#cfe0d4;text-align:center;margin-top:40px;font-size:17px;font-weight:700">
-📊 Analysis results will appear here after you upload a chart and click Analyse.
-</p>
-<br>
-<p style="color:#7d8f83;text-align:center;font-size:14px;font-weight:600">
-The AI will identify:<br><br>
-🎯 Support & Resistance &nbsp;·&nbsp; 📈 Trend & Structure &nbsp;·&nbsp; 📐 Fib 38.2/50/61.8<br>
-🕯️ Chart & Candle Patterns &nbsp;·&nbsp; 💵 DXY Context<br><br>
-🎯 Entry &nbsp;·&nbsp; 🛑 Stop Loss &nbsp;·&nbsp; ✅ Take Profit 1 &nbsp;·&nbsp; 🚀 Take Profit 2
-</p>
-</div>
-            """, unsafe_allow_html=True)
 
 
 # ============================================================
@@ -3489,93 +3229,6 @@ The AI will identify:<br><br>
 # ════════════════════════════════════════════════════════════
 # TOOL 1 — POSITION SIZE CALCULATOR
 # ════════════════════════════════════════════════════════════
-if False:  # REMOVED — Position Size Calculator (no longer needed)
-    st.markdown("### 🧮 Position Size Calculator 仓位计算器")
-    st.caption("Calculate exact lot size based on your account risk. 根据账户风险计算精确手数。")
-
-    pc1, pc2, pc3 = st.columns(3)
-    with pc1:
-        ps_balance   = st.number_input("💰 Account Balance ($)", min_value=10.0, value=1000.0, step=100.0)
-        ps_risk_pct  = st.number_input("⚠️ Risk per Trade (%)", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
-    with pc2:
-        ps_instrument = st.selectbox("📈 Instrument Type", [
-            "Forex (Major Pairs)",
-            "Gold (XAUUSD)",
-            "Silver (XAGUSD)",
-            "BTC/USD",
-            "ETH/USD",
-            "US30 / NAS100 (Index)",
-            "Oil (WTI/Brent)",
-        ])
-        ps_account_currency = st.selectbox("💵 Account Currency", ["USD", "EUR", "GBP", "MYR", "SGD", "AUD"])
-    with pc3:
-        ps_entry = st.number_input("🎯 Entry Price", min_value=0.0001, value=1.1000, format="%.5f")
-        ps_sl    = st.number_input("❌ Stop Loss Price", min_value=0.0001, value=1.0950, format="%.5f")
-
-    if st.button("⚡ Calculate Position Size", use_container_width=True):
-        sl_distance = abs(ps_entry - ps_sl)
-        risk_amount = ps_balance * (ps_risk_pct / 100)
-
-        if sl_distance == 0:
-            st.error("Stop loss cannot equal entry price!")
-        else:
-            # Pip/point values per lot
-            if ps_instrument == "Forex (Major Pairs)":
-                pip_value_per_lot = 10.0   # $10 per pip per standard lot (USD account)
-                sl_pips = sl_distance * 10000
-                lot_size = risk_amount / (sl_pips * pip_value_per_lot)
-                unit = "lots"
-                pip_label = f"{sl_pips:.1f} pips"
-            elif ps_instrument == "Gold (XAUUSD)":
-                pip_value_per_lot = 100.0  # $1 per 0.01 move, lot=100oz
-                sl_pips = sl_distance * 100
-                lot_size = risk_amount / (sl_distance * 100)
-                unit = "lots"
-                pip_label = f"${sl_distance:.2f}/oz × 100oz"
-            elif ps_instrument in ["BTC/USD", "ETH/USD"]:
-                lot_size = risk_amount / sl_distance
-                unit = "units"
-                pip_label = f"${sl_distance:.2f} price move"
-            elif ps_instrument in ["US30 / NAS100 (Index)"]:
-                pip_value_per_lot = 1.0
-                lot_size = risk_amount / sl_distance
-                unit = "units"
-                pip_label = f"{sl_distance:.1f} points"
-            else:
-                lot_size = risk_amount / sl_distance
-                unit = "units"
-                pip_label = f"${sl_distance:.4f} move"
-
-            # MYR/SGD conversion approximation
-            fx_note = ""
-            if ps_account_currency == "MYR":
-                risk_amount_local = risk_amount * 4.7
-                fx_note = f" (≈ RM {risk_amount_local:.2f})"
-            elif ps_account_currency == "SGD":
-                risk_amount_local = risk_amount * 1.35
-                fx_note = f" (≈ SGD {risk_amount_local:.2f})"
-
-            rr2_tp = ps_entry + (ps_entry - ps_sl) * 2 if ps_entry > ps_sl else ps_entry - (ps_sl - ps_entry) * 2
-            rr3_tp = ps_entry + (ps_entry - ps_sl) * 3 if ps_entry > ps_sl else ps_entry - (ps_sl - ps_entry) * 3
-
-            st.markdown(f"""
-<div style='background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);border-radius:12px;padding:20px;margin-top:10px;border:2px solid #3b82f6'>
-<h3 style='color:#60a5fa;margin:0 0 12px 0'>📊 Calculation Results 计算结果</h3>
-<table style='width:100%;color:white;font-size:15px'>
-<tr><td style='padding:5px 0;color:#94a3b8'>Account Risk 风险金额</td>
-    <td style='color:#fbbf24;font-weight:700;font-size:18px'>${risk_amount:.2f}{fx_note}</td></tr>
-<tr><td style='padding:5px 0;color:#94a3b8'>SL Distance 止损距离</td>
-    <td style='color:#f87171;font-weight:600'>{pip_label}</td></tr>
-<tr><td style='padding:5px 0;color:#94a3b8'>Position Size 仓位大小</td>
-    <td style='color:#34d399;font-weight:700;font-size:22px'>{lot_size:.3f} {unit}</td></tr>
-<tr><td style='padding:5px 0;color:#94a3b8'>TP1 (1:2 R:R)</td>
-    <td style='color:#86efac;font-weight:600'>{rr2_tp:.5f} → Profit: ${risk_amount*2:.2f}</td></tr>
-<tr><td style='padding:5px 0;color:#94a3b8'>TP2 (1:3 R:R)</td>
-    <td style='color:#6ee7b7;font-weight:600'>{rr3_tp:.5f} → Profit: ${risk_amount*3:.2f}</td></tr>
-</table>
-<p style='color:#64748b;font-size:11px;margin:10px 0 0 0'>⚠️ Approximate values. Always verify with your broker. 以上为参考值，请以券商为准。</p>
-</div>
-""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
 # TOOL 2 — ECONOMIC CALENDAR
@@ -3650,243 +3303,6 @@ if _nav == "Markets":
 # ════════════════════════════════════════════════════════════
 # TOOL 3 — MULTI-CHART SCANNER
 # ════════════════════════════════════════════════════════════
-if False:  # REMOVED — Chart Scanner (overlapped with Chart Analysis)
-    st.markdown("### 📡 Multi-Chart Scanner 多图扫描")
-
-    scan_mode = st.radio(
-        "Scan mode · 扫描模式",
-        ["📤 Manual Upload", "🤖 Auto Scan (Live Data)"],
-        horizontal=True,
-        key="scan_mode_radio",
-    )
-    st.divider()
-
-    if not api_key:
-        st.warning("👈 Enter your API key in the sidebar first.")
-
-    # ── AUTO SCAN MODE ────────────────────────────────────────
-    elif scan_mode == "🤖 Auto Scan (Live Data)":
-        st.caption("App auto-fetches live charts for your watchlist and ranks the best setups. 自动拉取实时图表，找出最佳机会。")
-
-        # Watchlist picker
-        AUTO_WATCHLIST = {
-            "EUR/USD": ("EUR/USD", "EURUSD=X"),
-            "GBP/USD": ("GBP/USD", "GBPUSD=X"),
-            "USD/JPY": ("USD/JPY", "USDJPY=X"),
-            "AUD/USD": ("AUD/USD", "AUDUSD=X"),
-            "NZD/USD": ("NZD/USD", "NZDUSD=X"),
-            "USD/CAD": ("USD/CAD", "USDCAD=X"),
-            "USD/CHF": ("USD/CHF", "USDCHF=X"),
-            "GBP/JPY": ("GBP/JPY", "GBPJPY=X"),
-            "Gold (XAU/USD)": ("XAU/USD", "GC=F"),
-            "Silver (XAG/USD)": ("XAG/USD", "SI=F"),
-            "BTC/USD": ("BTC/USD", "BTC-USD"),
-            "ETH/USD": ("ETH/USD", "ETH-USD"),
-        }
-        AUTO_TF_MAP = {
-            "M15": ("15min", "15m", "5d"),
-            "M30": ("30min", "30m", "10d"),
-            "H1":  ("1h",    "1h",  "30d"),
-            "H4":  ("4h",    "1h",  "60d"),
-            "D1":  ("1day",  "1d",  "180d"),
-        }
-
-        as_col1, as_col2, as_col3 = st.columns([3, 1, 1])
-        with as_col1:
-            selected_pairs = st.multiselect(
-                "📋 Select watchlist · 选择监控列表",
-                list(AUTO_WATCHLIST.keys()),
-                default=["EUR/USD", "GBP/USD", "Gold (XAU/USD)", "BTC/USD"],
-                key="auto_scan_pairs",
-            )
-        with as_col2:
-            auto_tf = st.selectbox("⏱️ Timeframe", list(AUTO_TF_MAP.keys()),
-                                   index=2, key="auto_scan_tf")
-        with as_col3:
-            auto_candles = st.selectbox("🕯️ Candles", [50, 100], index=1, key="auto_scan_candles")
-
-        if st.button("🚀 Run Auto Scan", use_container_width=True, type="primary", key="auto_scan_btn"):
-            if not selected_pairs:
-                st.warning("Select at least one pair from the watchlist.")
-            else:
-                td_int, yf_int, yf_period = AUTO_TF_MAP[auto_tf]
-                auto_results = []
-                prog = st.progress(0)
-                stat = st.empty()
-                total = len(selected_pairs)
-
-                for idx, pair_name in enumerate(selected_pairs):
-                    stat.text(f"📡 Fetching & analysing {pair_name}... ({idx+1}/{total})")
-                    prog.progress(idx / total)
-                    try:
-                        td_sym_a, yf_sym_a = AUTO_WATCHLIST[pair_name]
-
-                        # Fetch data
-                        if twelve_data_key:
-                            import requests as _req2, pandas as _pd2
-                            _url = "https://api.twelvedata.com/time_series"
-                            _p   = {"symbol": td_sym_a, "interval": td_int,
-                                    "outputsize": auto_candles, "apikey": twelve_data_key, "format": "JSON"}
-                            _r   = _req2.get(_url, params=_p, timeout=12)
-                            _d   = _r.json()
-                            if _d.get("status") == "error":
-                                raise ValueError(_d.get("message", "API error"))
-                            _rows = [{"Datetime": v["datetime"],
-                                      "Open": float(v["open"]), "High": float(v["high"]),
-                                      "Low": float(v["low"]), "Close": float(v["close"]),
-                                      "Volume": float(v.get("volume", 0))}
-                                     for v in _d.get("values", [])]
-                            df_a = _pd2.DataFrame(_rows)
-                            df_a["Datetime"] = _pd2.to_datetime(df_a["Datetime"])
-                            df_a = df_a.sort_values("Datetime").set_index("Datetime")
-                        else:
-                            raise ValueError("⚡ Twelve Data API key required. Add it in the sidebar under '📡 Live Data Key'.")
-
-                        # Generate chart image
-                        chart_img_a = generate_chart_image_from_df(df_a, pair_name, auto_tf)
-
-                        # AI quick scan
-                        _last = float(df_a["Close"].iloc[-1])
-                        _qp   = f"""Analyse this {pair_name} chart on {auto_tf} timeframe. Current price: {_last:.5g}.
-Output ONLY this JSON, nothing else:
-{{"signal": "BUY" or "SELL" or "WAIT", "confidence": 1-10, "pattern": "pattern name or none",
-"trend": "Bullish/Bearish/Sideways", "wyckoff_phase": "Accumulation/Markup/Distribution/Markdown/Unknown",
-"key_level": "one key price level as price", "reason": "one sentence max"}}"""
-
-                        _qa = analyze_chart_with_ai(chart_img_a, api_key, model_choice,
-                                                     pair_name, auto_tf, _qp)
-                        _jm = re.search(r'\{.*?\}', _qa, re.DOTALL)
-                        _data = json.loads(_jm.group()) if _jm else {
-                            "signal": "WAIT", "confidence": 5, "pattern": "N/A",
-                            "trend": "Unknown", "reason": "Parse error"}
-                        _data["label"]      = pair_name
-                        _data["last_price"] = f"{_last:.5g}"
-                        # News warning flag
-                        _warns = get_news_warning(pair_name)
-                        _data["news_warn"]  = len(_warns) > 0
-                        _data["news_items"] = _warns
-                        auto_results.append(_data)
-
-                    except Exception as _ae:
-                        auto_results.append({"label": pair_name, "signal": "ERROR", "confidence": 0,
-                                             "pattern": "—", "trend": "—", "reason": str(_ae)[:80],
-                                             "last_price": "—", "news_warn": False, "news_items": []})
-
-                prog.progress(1.0)
-                stat.text("✅ Auto scan complete!")
-                st.session_state["auto_scan_results"] = auto_results
-
-        # Show auto scan results
-        if "auto_scan_results" in st.session_state:
-            _ares = sorted(st.session_state["auto_scan_results"],
-                           key=lambda x: x.get("confidence", 0), reverse=True)
-            st.markdown("#### 🏆 Ranked Setups · 最佳机会排名")
-            st.caption(f"Sorted by confidence · Timeframe: {auto_tf if 'auto_tf' in dir() else ''} · "
-                       "🟢 Twelve Data real-time")
-
-            for rank, r in enumerate(_ares):
-                sig   = r.get("signal", "WAIT")
-                conf  = r.get("confidence", 5)
-                sc    = "#10b981" if sig == "BUY" else ("#ef4444" if sig == "SELL" else "#6b7280")
-                medal = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][rank] if rank < 10 else ""
-                news_badge = " &nbsp;<span style='background:#dc2626;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700'>⚠️ NEWS</span>" if r.get("news_warn") else ""
-                high_conf  = conf >= 8
-                border_w   = "3px" if high_conf else "1px"
-                border_c   = sc if high_conf else "#334155"
-                st.markdown(f"""
-<div style='background:#1e293b;border:{border_w} solid {border_c};border-radius:10px;padding:14px 18px;margin:6px 0;display:flex;align-items:center;gap:16px'>
-<span style='font-size:26px'>{medal}</span>
-<div style='flex:1'>
-  <span style='color:white;font-weight:700;font-size:16px'>{r.get("label","")}</span>
-  <span style='color:#94a3b8;font-size:12px;margin-left:8px'>@ {r.get("last_price","")}</span>
-  <span style='margin-left:10px;background:{sc};color:white;padding:2px 10px;border-radius:20px;font-weight:700;font-size:13px'>{sig}</span>
-  <span style='margin-left:6px;color:#fbbf24;font-weight:600'>{conf}/10</span>{news_badge}<br>
-  <span style='color:#94a3b8;font-size:12px'>📐 {r.get("pattern","—")} &nbsp;·&nbsp; 📈 {r.get("trend","—")} &nbsp;·&nbsp; 🔄 {r.get("wyckoff_phase","—")}</span><br>
-  <span style='color:#cbd5e1;font-size:12px'>💬 {r.get("reason","")}</span>
-  {''.join([f"<br><span style='color:#fca5a5;font-size:11px'>⚠️ {w['currency']} {w['title']} @ {w['date']}</span>" for w in r.get("news_items",[])])}
-</div>
-</div>
-""", unsafe_allow_html=True)
-
-    # ── MANUAL UPLOAD MODE ────────────────────────────────────
-    else:
-        st.caption("Upload up to 5 charts — AI ranks them by signal strength. 上传最多5张图，AI自动排名最佳机会。")
-        scan_cols = st.columns(5)
-        scan_images = {}
-        scan_labels = {}
-
-        for i, col in enumerate(scan_cols):
-            with col:
-                st.markdown(f"**Chart {i+1}**")
-                lbl = st.text_input(f"Label", value=f"Chart {i+1}", key=f"scan_lbl_{i}", label_visibility="collapsed")
-                img_file = st.file_uploader("Upload", type=["png","jpg","jpeg","webp"],
-                                            key=f"scan_img_{i}", label_visibility="collapsed")
-                if img_file:
-                    scan_images[i] = Image.open(img_file)
-                    scan_labels[i] = lbl
-                    st.image(scan_images[i], use_container_width=True)
-
-        if len(scan_images) > 0:
-            if st.button(f"🔍 Scan All {len(scan_images)} Charts", use_container_width=True):
-                scan_results = []
-                progress = st.progress(0)
-                status_text = st.empty()
-
-                for idx, (i, img) in enumerate(scan_images.items()):
-                    lbl = scan_labels.get(i, f"Chart {i+1}")
-                    status_text.text(f"🤖 Analysing {lbl}...")
-                    progress.progress((idx) / len(scan_images))
-
-                    quick_prompt = f"""
-Analyse this {market_type} chart QUICKLY. Output ONLY this JSON, nothing else:
-{{"signal": "BUY" or "SELL" or "WAIT", "confidence": 1-10, "pattern": "pattern name or none",
-"trend": "Bullish/Bearish/Sideways", "wyckoff_phase": "Accumulation/Markup/Distribution/Markdown/Unknown",
-"key_level": "one key price level description", "reason": "one sentence max"}}
-"""
-                    try:
-                        quick_analysis = analyze_chart_with_ai(
-                            img, api_key, model_choice, market_type, timeframe, quick_prompt
-                        )
-                        json_match = re.search(r'\{.*?\}', quick_analysis, re.DOTALL)
-                        if json_match:
-                            data = json.loads(json_match.group())
-                        else:
-                            data = {"signal": "WAIT", "confidence": 5, "pattern": "N/A",
-                                    "trend": "Unknown", "reason": "Parse error"}
-                        data["label"] = lbl
-                        data["image_idx"] = i
-                        scan_results.append(data)
-                    except Exception as e:
-                        scan_results.append({"label": lbl, "signal": "ERROR", "confidence": 0,
-                                             "pattern": "Error", "trend": "N/A", "reason": str(e)[:60]})
-
-                progress.progress(1.0)
-                status_text.text("✅ Scan complete! Ranking results...")
-                st.session_state["scan_results"] = scan_results
-
-        if "scan_results" in st.session_state:
-            results = sorted(st.session_state["scan_results"],
-                             key=lambda x: x.get("confidence", 0), reverse=True)
-            st.markdown("#### 🏆 Ranked Results — Best Setups First")
-
-            for rank, r in enumerate(results):
-                sig   = r.get("signal", "WAIT")
-                conf  = r.get("confidence", 5)
-                sig_color = "#10b981" if sig == "BUY" else ("#ef4444" if sig == "SELL" else "#6b7280")
-                medal = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][rank] if rank < 5 else ""
-
-                st.markdown(f"""
-<div style='background:#1e293b;border:2px solid {sig_color};border-radius:10px;padding:14px 18px;margin:8px 0;display:flex;align-items:center;gap:16px'>
-<span style='font-size:28px'>{medal}</span>
-<div style='flex:1'>
-  <span style='color:white;font-weight:700;font-size:17px'>{r.get("label","")}</span>
-  <span style='margin-left:12px;background:{sig_color};color:white;padding:3px 10px;border-radius:20px;font-weight:700;font-size:13px'>{sig}</span>
-  <span style='margin-left:8px;color:#fbbf24;font-weight:600'>{conf}/10</span><br>
-  <span style='color:#94a3b8;font-size:13px'>📐 {r.get("pattern","N/A")} &nbsp;·&nbsp; 📈 {r.get("trend","N/A")} &nbsp;·&nbsp; 🔄 {r.get("wyckoff_phase","N/A")}</span><br>
-  <span style='color:#cbd5e1;font-size:13px'>💬 {r.get("reason","")}</span>
-</div>
-</div>
-""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
 # TOOL 4 — AI TRADING COACH
@@ -4173,18 +3589,19 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                     _live_digest = None
                     _live_note   = None
                     _detected    = detect_symbols_in_text(user_input)
-                    if _detected and twelve_data_key:
+                    if _detected:
                         _td_sym, _td_lbl = _detected[0]
                         try:
                             with st.spinner(f"📡 Fetching live {_td_lbl} data…"):
-                                _df_h1 = td_fetch_df(_td_sym, "1h", 300, twelve_data_key)
-                                _df_d1 = td_fetch_df(_td_sym, "1day", 200, twelve_data_key)
+                                _df_h1, _src_h1 = fetch_candles_any(_td_lbl, "H1", twelve_data_key)
+                                _df_d1, _src_d1 = fetch_candles_any(_td_lbl, "D1", twelve_data_key)
                             _live_digest = (
                                 "[LIVE MARKET DATA — fetched seconds ago, treat as ground truth]\n"
                                 + build_market_digest(_df_d1, _td_lbl, "D1") + "\n"
                                 + build_market_digest(_df_h1, _td_lbl, "H1")
                             )
-                            _live_note = f"📡 Live data fetched: {_td_lbl} · D1 + H1 · 已自动获取实时数据"
+                            _sources = " / ".join(dict.fromkeys((_src_d1, _src_h1)))
+                            _live_note = f"📡 Live data fetched: {_td_lbl} · D1 + H1 · {_sources} · 已自动获取实时数据"
                             # Attach an auto-generated live chart (if user didn't attach one)
                             if not extra_b64:
                                 try:
@@ -4198,8 +3615,6 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
                                     pass
                         except Exception as _fe:
                             _live_note = f"⚠️ Could not fetch live data ({_fe}) — answering from the chart/context only."
-                    elif _detected and not twelve_data_key:
-                        _live_note = "💡 Add a free Twelve Data key in the sidebar and I'll fetch live prices automatically."
 
                     # Append user message
                     user_entry = {"role": "user", "content": user_input}
@@ -4307,246 +3722,11 @@ padding:8px 10px;margin:3px 0;cursor:pointer'>
 # ════════════════════════════════════════════════════════════
 # TOOL 5 — PDF REPORT GENERATOR
 # ════════════════════════════════════════════════════════════
-if False:  # REMOVED — PDF Report (low value)
-    st.markdown("### 📄 PDF Report Generator 分析报告")
-    st.caption("Generate a professional PDF report from your latest analysis. 一键生成专业PDF交易分析报告。")
-
-    if "analysis" not in st.session_state:
-        st.info("👆 Run a chart analysis first, then come back here to generate the PDF report.")
-    else:
-        st.success("✅ Analysis found! Ready to generate PDF.")
-
-        report_trader_name = st.text_input("👤 Trader Name (optional)", placeholder="e.g. Chee")
-        report_notes       = st.text_area("📝 Personal Notes (optional)", placeholder="e.g. Waiting for NY session confirmation before entry...", height=80)
-
-        if st.button("📄 Generate PDF Report", use_container_width=True):
-            try:
-                from fpdf import FPDF
-                import datetime
-
-                analysis_text = st.session_state["analysis"]
-                clean_text    = re.sub(r"```json.*?```", "", analysis_text, flags=re.DOTALL).strip()
-                parsed        = parse_json_from_analysis(analysis_text)
-                sig           = parsed.get("signal", "WAIT")
-                conf          = parsed.get("confidence", 5)
-                pattern       = parsed.get("pattern_name", "N/A")
-                now_str       = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_auto_page_break(auto=True, margin=15)
-
-                # Header
-                pdf.set_fill_color(30, 30, 60)
-                pdf.rect(0, 0, 210, 32, 'F')
-                pdf.set_font("Helvetica", "B", 22)
-                pdf.set_text_color(255, 255, 255)
-                pdf.set_xy(10, 8)
-                pdf.cell(0, 10, "TradingAI Analyst - Chart Analysis Report", ln=True)
-                pdf.set_font("Helvetica", "", 11)
-                pdf.set_xy(10, 20)
-                pdf.cell(0, 8, f"Generated: {now_str}  |  Trader: {report_trader_name or 'Anonymous'}  |  {market_type}  {timeframe}", ln=True)
-
-                pdf.set_text_color(0, 0, 0)
-                pdf.ln(8)
-
-                # Signal box
-                sig_colors = {"BUY": (5,150,105), "SELL": (220,38,38), "WAIT": (180,130,0)}
-                sc = sig_colors.get(sig, (100,100,100))
-                pdf.set_fill_color(*sc)
-                pdf.set_text_color(255,255,255)
-                pdf.set_font("Helvetica","B",18)
-                pdf.cell(0, 14, f"  SIGNAL: {sig}   |   Confidence: {conf}/10   |   Pattern: {pattern}", ln=True, fill=True)
-                pdf.set_text_color(0,0,0)
-                pdf.ln(5)
-
-                # Annotated chart image
-                if st.session_state.get("annotated"):
-                    img_buf = io.BytesIO()
-                    st.session_state["annotated"].save(img_buf, format="PNG")
-                    img_buf.seek(0)
-                    tmp_img_path = "/tmp/report_chart.png"
-                    with open(tmp_img_path, "wb") as f:
-                        f.write(img_buf.read())
-                    try:
-                        pdf.image(tmp_img_path, x=10, w=190)
-                        pdf.ln(4)
-                    except Exception:
-                        pass
-
-                # Analysis text
-                pdf.set_font("Helvetica","B",13)
-                pdf.set_fill_color(240,240,255)
-                pdf.cell(0, 9, " AI Analysis", ln=True, fill=True)
-                pdf.set_font("Helvetica","",10)
-                pdf.ln(2)
-
-                for line in clean_text.split("\n"):
-                    line = line.strip()
-                    if not line:
-                        pdf.ln(2)
-                        continue
-                    # Strip markdown bold
-                    line = re.sub(r"\*\*(.*?)\*\*", r"\1", line)
-                    # Skip emoji-heavy lines that can't render
-                    safe_line = line.encode("latin-1", errors="replace").decode("latin-1")
-                    if line.startswith("**") or line.startswith("#"):
-                        pdf.set_font("Helvetica","B",11)
-                    else:
-                        pdf.set_font("Helvetica","",10)
-                    pdf.multi_cell(0, 6, safe_line)
-
-                # Personal notes
-                if report_notes:
-                    pdf.ln(4)
-                    pdf.set_font("Helvetica","B",12)
-                    pdf.set_fill_color(255,250,220)
-                    pdf.cell(0, 9, " Trader Notes", ln=True, fill=True)
-                    pdf.set_font("Helvetica","",10)
-                    safe_notes = report_notes.encode("latin-1", errors="replace").decode("latin-1")
-                    pdf.multi_cell(0, 6, safe_notes)
-
-                # Footer
-                pdf.ln(6)
-                pdf.set_font("Helvetica","I",8)
-                pdf.set_text_color(150,150,150)
-                pdf.cell(0, 5, "DISCLAIMER: For educational purposes only. Not financial advice. Always manage your own risk.", ln=True)
-
-                # Output
-                pdf_bytes = pdf.output(dest="S").encode("latin-1")
-                st.download_button(
-                    "⬇️ Download PDF Report",
-                    data=pdf_bytes,
-                    file_name=f"TradingAI_Report_{now_str[:10]}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
-                st.success("✅ PDF ready! Click above to download.")
-
-            except ImportError:
-                st.error("PDF library not installed. Add 'fpdf2' to requirements.txt and redeploy.")
-            except Exception as e:
-                st.error(f"PDF generation error: {str(e)}")
 
 
 # ════════════════════════════════════════════════════════════
 # TOOL 6 — CURRENCY STRENGTH METER
 # ════════════════════════════════════════════════════════════
-if False:  # REMOVED — Currency Strength Meter (low value)
-    st.markdown("### 💹 Currency Strength Meter 货币强弱表")
-    st.caption("Upload H1 charts for each currency pair to compute relative strength. 上传各货币对H1图表，自动计算货币强弱。")
-
-    if not api_key:
-        st.warning("👈 Enter your API key in the sidebar first.")
-    else:
-        st.markdown("""
-<div style='background:#1e293b;border-radius:8px;padding:12px;margin-bottom:12px'>
-<p style='color:#94a3b8;font-size:13px;margin:0'>
-📋 <b style='color:#fbbf24'>How it works:</b> Upload H1 charts for any pairs below.
-AI analyses each one and scores each currency's strength from 1-10.
-The meter shows who's strongest today.<br>
-<span style='color:#86efac'>怎么用：上传下面任何货币对的H1图，AI分析后自动给每个货币打分，显示今天谁最强。</span>
-</p>
-</div>
-""", unsafe_allow_html=True)
-
-        csm_pairs = {
-            "EUR/USD": ("EUR", "USD"), "GBP/USD": ("GBP", "USD"),
-            "USD/JPY": ("USD", "JPY"), "AUD/USD": ("AUD", "USD"),
-            "USD/CAD": ("USD", "CAD"), "USD/CHF": ("USD", "CHF"),
-            "NZD/USD": ("NZD", "USD"), "XAU/USD": ("XAU", "USD"),
-        }
-
-        csm_cols = st.columns(4)
-        csm_uploads = {}
-        for idx, (pair, currencies) in enumerate(csm_pairs.items()):
-            with csm_cols[idx % 4]:
-                st.markdown(f"**{pair}**")
-                f = st.file_uploader("", type=["png","jpg","jpeg","webp"],
-                                     key=f"csm_{pair}", label_visibility="collapsed")
-                if f:
-                    csm_uploads[pair] = (Image.open(f), currencies)
-                    st.image(csm_uploads[pair][0], use_container_width=True)
-
-        if len(csm_uploads) >= 2:
-            if st.button(f"⚡ Calculate Strength from {len(csm_uploads)} pairs", use_container_width=True):
-                currency_scores = {}
-                prog = st.progress(0)
-                stat = st.empty()
-
-                for i, (pair, (img, (base_ccy, quote_ccy))) in enumerate(csm_uploads.items()):
-                    stat.text(f"Analysing {pair}...")
-                    prog.progress(i / len(csm_uploads))
-                    try:
-                        quick = f"""Analyse this {pair} H1 chart. Output ONLY this JSON:
-{{"signal": "BUY" or "SELL" or "WAIT", "confidence": 1-10, "trend": "Bullish/Bearish/Sideways"}}"""
-                        r = analyze_chart_with_ai(img, api_key, model_choice, pair, "H1", quick)
-                        m = re.search(r'\{.*?\}', r, re.DOTALL)
-                        if m:
-                            d = json.loads(m.group())
-                            sig_val = d.get("signal","WAIT")
-                            conf_val = d.get("confidence", 5)
-                            # Score: BUY = base strong, SELL = quote strong
-                            strength = conf_val if sig_val == "BUY" else (10 - conf_val if sig_val == "SELL" else 5)
-                            # Base currency gets strength, quote gets inverse
-                            currency_scores[base_ccy]  = currency_scores.get(base_ccy, []) + [strength]
-                            currency_scores[quote_ccy] = currency_scores.get(quote_ccy, []) + [10 - strength]
-                    except Exception:
-                        pass
-
-                prog.progress(1.0)
-                stat.empty()
-
-                if currency_scores:
-                    # Average scores
-                    avg_scores = {c: sum(v)/len(v) for c, v in currency_scores.items()}
-                    sorted_scores = sorted(avg_scores.items(), key=lambda x: x[1], reverse=True)
-                    st.session_state["csm_scores"] = sorted_scores
-
-        if "csm_scores" in st.session_state:
-            scores = st.session_state["csm_scores"]
-            st.markdown("#### 📊 Currency Strength Ranking 货币强弱排名")
-
-            max_score = max(s for _, s in scores) if scores else 10
-            for rank, (ccy, score) in enumerate(scores):
-                pct   = score / 10
-                bar_w = int(pct * 100)
-                if pct >= 0.70:
-                    bar_color = "#10b981"; label_color = "#6ee7b7"; tag = "STRONG 强势 💪"
-                elif pct >= 0.45:
-                    bar_color = "#f59e0b"; label_color = "#fcd34d"; tag = "NEUTRAL 中性 ➡️"
-                else:
-                    bar_color = "#ef4444"; label_color = "#fca5a5"; tag = "WEAK 弱势 📉"
-                medal = ["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣"][rank] if rank < 8 else ""
-                st.markdown(f"""
-<div style='background:#1e293b;border-radius:8px;padding:12px 16px;margin:6px 0'>
-<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px'>
-  <span style='color:white;font-weight:700;font-size:17px'>{medal} {ccy}</span>
-  <span style='color:{label_color};font-weight:600;font-size:13px'>{tag}</span>
-  <span style='color:#94a3b8;font-size:14px;font-weight:700'>{score:.1f}/10</span>
-</div>
-<div style='background:#334155;border-radius:4px;height:14px'>
-  <div style='background:{bar_color};width:{bar_w}%;height:14px;border-radius:4px;transition:width 0.5s'></div>
-</div>
-</div>
-""", unsafe_allow_html=True)
-
-            # Trading suggestions based on strength
-            if len(scores) >= 2:
-                strongest = scores[0][0]
-                weakest   = scores[-1][0]
-                st.markdown(f"""
-<div style='background:linear-gradient(135deg,#0f2027,#203a43);border:2px solid #3b82f6;border-radius:10px;padding:16px;margin-top:12px'>
-<p style='color:#60a5fa;font-weight:700;font-size:15px;margin:0 0 8px 0'>💡 Trading Suggestion 交易建议</p>
-<p style='color:#e2e8f0;margin:0'>
-Strongest: <b style='color:#10b981'>{strongest}</b> &nbsp;·&nbsp; Weakest: <b style='color:#ef4444'>{weakest}</b><br>
-<span style='color:#fbbf24'>➡️ Look for {strongest}/{weakest} pair — buy {strongest}, sell {weakest}</span><br>
-<span style='color:#86efac;font-size:13px'>寻找 {strongest}/{weakest} 货币对 — 买入{strongest}，卖出{weakest}</span>
-</p>
-</div>
-""", unsafe_allow_html=True)
-        elif len(csm_uploads) < 2:
-            st.info("👆 Upload at least 2 currency pair charts to calculate strength.")
 
 
 # ════════════════════════════════════════════════════════════
@@ -4956,865 +4136,14 @@ if _nav == "Markets":
 # ════════════════════════════════════════════════════════════
 # TOOL 8 — MULTI-TIMEFRAME STRUCTURE PANEL
 # ════════════════════════════════════════════════════════════
-if False:  # REMOVED — MTF Panel (MTF mode lives inside Chart Analysis now)
-    st.markdown("### 🔭 Multi-Timeframe Structure Panel")
-    st.caption("One click → AI analyses D1 + H4 + H1 + M15 simultaneously. See if all timeframes agree before you trade.")
-
-    if not api_key:
-        st.warning("👈 Enter your API key in the sidebar first.")
-    else:
-        # ── Symbol selector ───────────────────────────────────
-        MTF_SYMBOLS = {
-            "EUR/USD":          ("EUR/USD",  "EURUSD=X"),
-            "GBP/USD":          ("GBP/USD",  "GBPUSD=X"),
-            "USD/JPY":          ("USD/JPY",  "USDJPY=X"),
-            "AUD/USD":          ("AUD/USD",  "AUDUSD=X"),
-            "NZD/USD":          ("NZD/USD",  "NZDUSD=X"),
-            "USD/CAD":          ("USD/CAD",  "USDCAD=X"),
-            "USD/CHF":          ("USD/CHF",  "USDCHF=X"),
-            "GBP/JPY":          ("GBP/JPY",  "GBPJPY=X"),
-            "EUR/JPY":          ("EUR/JPY",  "EURJPY=X"),
-            "Gold (XAU/USD)":   ("XAU/USD",  "GC=F"),
-            "Silver (XAG/USD)": ("XAG/USD",  "SI=F"),
-            "BTC/USD":          ("BTC/USD",  "BTC-USD"),
-            "ETH/USD":          ("ETH/USD",  "ETH-USD"),
-            "S&P 500":          ("SPX",      "^GSPC"),
-            "Nasdaq 100":       ("NDX",      "^NDX"),
-        }
-
-        # Timeframes to scan: label → (td_interval, yf_interval, yf_period, candles)
-        MTF_TFS = [
-            ("D1",  "1day",  "1d",  "180d", 80),
-            ("H4",  "4h",    "1h",  "60d",  80),
-            ("H1",  "1h",    "1h",  "30d",  80),
-            ("M15", "15min", "15m", "5d",   80),
-        ]
-
-        mtf_c1, mtf_c2 = st.columns([3, 1])
-        with mtf_c1:
-            mtf_symbol = st.selectbox("📌 Select Symbol", list(MTF_SYMBOLS.keys()),
-                                       index=0, key="mtf_symbol")
-        with mtf_c2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            mtf_run_btn = st.button("🚀 Run MTF Analysis", use_container_width=True,
-                                     type="primary", key="mtf_run_btn")
-
-        td_sym_mtf, yf_sym_mtf = MTF_SYMBOLS[mtf_symbol]
-
-        # ── News warning for this symbol ──────────────────────
-        _mtf_news = get_news_warning(mtf_symbol)
-        render_news_warning_banner(_mtf_news)
-
-        # ── Run analysis across all 4 TFs ─────────────────────
-        if mtf_run_btn:
-            mtf_results = {}
-            prog_mtf = st.progress(0)
-            stat_mtf = st.empty()
-
-            for idx, (tf_label, td_int, yf_int, yf_period, n_candles) in enumerate(MTF_TFS):
-                stat_mtf.text(f"📡 Fetching {mtf_symbol} {tf_label}... ({idx+1}/4)")
-                prog_mtf.progress(idx / 4)
-
-                try:
-                    # ── Fetch data ────────────────────────────
-                    import pandas as _pd_mtf
-                    if twelve_data_key:
-                        import requests as _rq_mtf
-                        _url = "https://api.twelvedata.com/time_series"
-                        _p   = {"symbol": td_sym_mtf, "interval": td_int,
-                                "outputsize": n_candles, "apikey": twelve_data_key, "format": "JSON"}
-                        _r   = _rq_mtf.get(_url, params=_p, timeout=15)
-                        _d   = _r.json()
-                        if _d.get("status") == "error":
-                            raise ValueError(_d.get("message", "Twelve Data error"))
-                        _rows = [{"Datetime": v["datetime"],
-                                  "Open": float(v["open"]), "High": float(v["high"]),
-                                  "Low": float(v["low"]), "Close": float(v["close"]),
-                                  "Volume": float(v.get("volume", 0))}
-                                 for v in _d.get("values", [])]
-                        df_mtf = _pd_mtf.DataFrame(_rows)
-                        df_mtf["Datetime"] = _pd_mtf.to_datetime(df_mtf["Datetime"])
-                        df_mtf = df_mtf.sort_values("Datetime").set_index("Datetime")
-                    else:
-                        raise ValueError("⚡ Twelve Data API key required. Add it in the sidebar under '📡 Live Data Key'.")
-
-                    # ── Generate chart image ──────────────────
-                    chart_pil_mtf = generate_chart_image_from_df(df_mtf, mtf_symbol, tf_label)
-
-                    # ── AI quick scan ─────────────────────────
-                    _last_mtf = float(df_mtf["Close"].iloc[-1])
-                    _qp_mtf = f"""Analyse this {mtf_symbol} chart on the {tf_label} timeframe. Price: {_last_mtf:.5g}.
-Output ONLY this JSON — nothing else:
-{{"signal": "BUY" or "SELL" or "WAIT",
-  "confidence": 1-10,
-  "trend": "Strongly Bullish" or "Bullish" or "Neutral" or "Bearish" or "Strongly Bearish",
-  "structure": "one sentence — what is the dominant market structure right now?",
-  "key_level": "the single most important price level right now",
-  "pattern": "chart pattern name or None",
-  "action": "what should a trader watch for on this timeframe? one sentence"}}"""
-
-                    _qa_mtf = analyze_chart_with_ai(chart_pil_mtf, api_key, model_choice,
-                                                     mtf_symbol, tf_label, _qp_mtf)
-                    _jm = re.search(r'\{.*\}', _qa_mtf, re.DOTALL)
-                    try:
-                        _data_mtf = json.loads(_jm.group()) if _jm else {}
-                    except Exception:
-                        _data_mtf = {}
-                    if not _data_mtf.get("signal"):
-                        _data_mtf = {"signal": "WAIT", "confidence": 5, "trend": "Neutral",
-                                     "structure": "Could not parse AI response", "key_level": "—",
-                                     "pattern": "None", "action": "—"}
-                    _data_mtf["last_price"] = f"{_last_mtf:.5g}"
-                    _data_mtf["tf"]         = tf_label
-                    mtf_results[tf_label]   = _data_mtf
-
-                except Exception as _mtf_e:
-                    mtf_results[tf_label] = {
-                        "signal": "ERROR", "confidence": 0, "trend": "—",
-                        "structure": str(_mtf_e)[:80], "key_level": "—",
-                        "pattern": "—", "action": "—",
-                        "last_price": "—", "tf": tf_label,
-                    }
-
-            prog_mtf.progress(1.0)
-            stat_mtf.text("✅ MTF analysis complete!")
-            st.session_state["mtf_panel_results"] = mtf_results
-            st.session_state["mtf_panel_symbol"]  = mtf_symbol
-
-        # ── Display MTF results ───────────────────────────────
-        if "mtf_panel_results" in st.session_state:
-            res       = st.session_state["mtf_panel_results"]
-            sym_shown = st.session_state.get("mtf_panel_symbol", mtf_symbol)
-
-            # ── Confluence summary banner ─────────────────────
-            signals   = [r.get("signal","WAIT") for r in res.values() if r.get("signal") not in ("ERROR","—")]
-            buys      = signals.count("BUY")
-            sells     = signals.count("SELL")
-            waits     = signals.count("WAIT")
-            avg_conf  = sum(r.get("confidence",0) for r in res.values() if isinstance(r.get("confidence"),int)) / max(len([r for r in res.values() if isinstance(r.get("confidence"),int)]),1)
-
-            if buys >= 3:
-                conf_bg   = "#0a2e1a"
-                conf_bdr  = "#22c55e"
-                conf_txt_color = "#4ade80"
-                conf_icon = "🟢"
-                conf_label = "STRONG BUY"
-                conf_detail = f"{buys}/4 Timeframes Bullish — High-probability long setup"
-            elif sells >= 3:
-                conf_bg   = "#2e0a0a"
-                conf_bdr  = "#ef4444"
-                conf_txt_color = "#f87171"
-                conf_icon = "🔴"
-                conf_label = "STRONG SELL"
-                conf_detail = f"{sells}/4 Timeframes Bearish — High-probability short setup"
-            elif buys >= 2 and sells == 0:
-                conf_bg   = "#0a1f12"
-                conf_bdr  = "#86efac"
-                conf_txt_color = "#86efac"
-                conf_icon = "🟡"
-                conf_label = "CAUTIOUS BUY"
-                conf_detail = f"{buys}/4 TFs Bullish — Wait for M15 confirmation before entering"
-            elif sells >= 2 and buys == 0:
-                conf_bg   = "#1f0a0a"
-                conf_bdr  = "#fca5a5"
-                conf_txt_color = "#fca5a5"
-                conf_icon = "🟡"
-                conf_label = "CAUTIOUS SELL"
-                conf_detail = f"{sells}/4 TFs Bearish — Wait for M15 confirmation before entering"
-            else:
-                conf_bg   = "#0f0f1a"
-                conf_bdr  = "#6366f1"
-                conf_txt_color = "#a5b4fc"
-                conf_icon = "⏳"
-                conf_label = "NO CONFLUENCE — WAIT"
-                conf_detail = "Timeframes are mixed. No high-probability setup right now. Stay patient."
-
-            st.markdown(f"""
-<div style='background:{conf_bg};border:2px solid {conf_bdr};border-radius:16px;
-padding:22px 28px;margin:16px 0 24px 0;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.4)'>
-  <div style='font-size:13px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px'>
-    {sym_shown} · MTF Confluence
-  </div>
-  <div style='font-size:26px;font-weight:900;color:{conf_txt_color};margin-bottom:8px'>
-    {conf_icon} {conf_label}
-  </div>
-  <div style='font-size:14px;color:#e2e8f0;margin-bottom:12px'>{conf_detail}</div>
-  <div style='display:flex;justify-content:center;gap:28px;flex-wrap:wrap'>
-    <span style='background:#14532d;color:#86efac;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>▲ BUY: {buys}</span>
-    <span style='background:#7f1d1d;color:#fca5a5;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>▼ SELL: {sells}</span>
-    <span style='background:#1e293b;color:#94a3b8;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>⏳ WAIT: {waits}</span>
-    <span style='background:#1e1b4b;color:#a5b4fc;padding:5px 16px;border-radius:20px;font-size:13px;font-weight:700'>⚡ Avg Conf: {avg_conf:.1f}/10</span>
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-            # ── 4 TF cards in 2×2 grid ────────────────────────
-            row1 = st.columns(2)
-            row2 = st.columns(2)
-            grid = [("D1", row1[0]), ("H4", row1[1]), ("H1", row2[0]), ("M15", row2[1])]
-            tf_icons = {"D1": "📅", "H4": "🕓", "H1": "🕐", "M15": "⚡"}
-
-            for tf_lbl, col_cell in grid:
-                r = res.get(tf_lbl, {})
-                sig   = r.get("signal", "WAIT")
-                conf  = r.get("confidence", 0)
-                trend = r.get("trend", "—")
-                struc = r.get("structure", "—")
-                klvl  = r.get("key_level", "—")
-                pat   = r.get("pattern", "None")
-                act   = r.get("action", "—")
-                price = r.get("last_price", "—")
-                tf_ico = tf_icons.get(tf_lbl, "")
-
-                if sig == "BUY":
-                    sig_bg = "#14532d"; sig_txt = "#4ade80"; sig_bdr = "#22c55e"; sig_ico = "▲"
-                elif sig == "SELL":
-                    sig_bg = "#7f1d1d"; sig_txt = "#fca5a5"; sig_bdr = "#ef4444"; sig_ico = "▼"
-                elif sig == "ERROR":
-                    sig_bg = "#1c1917"; sig_txt = "#f59e0b"; sig_bdr = "#78716c"; sig_ico = "⚠"
-                else:
-                    sig_bg = "#1e293b"; sig_txt = "#94a3b8"; sig_bdr = "#475569"; sig_ico = "⏳"
-
-                conf_int = int(conf) if isinstance(conf, (int, float)) else 0
-                bar_c = "#22c55e" if conf_int >= 7 else ("#f59e0b" if conf_int >= 5 else "#ef4444")
-
-                trend_map = {
-                    "Strongly Bullish": ("🔼", "#4ade80"),
-                    "Bullish":          ("▲",  "#86efac"),
-                    "Neutral":          ("➡",  "#fbbf24"),
-                    "Bearish":          ("▼",  "#f87171"),
-                    "Strongly Bearish": ("🔽", "#ef4444"),
-                }
-                trend_ico, trend_col = trend_map.get(trend, ("—", "#94a3b8"))
-
-                has_pat = pat and pat.lower() not in ("none", "—", "")
-                pat_row = f"<div style='background:#1e1b4b;border-radius:6px;padding:5px 10px;margin-top:6px;font-size:12px;color:#c7d2fe'>📐 <b>{pat}</b></div>" if has_pat else ""
-
-                with col_cell:
-                    st.markdown(f"""
-<div style='background:#0f172a;border:2px solid {sig_bdr};border-radius:14px;
-padding:18px;margin:6px 0;box-shadow:0 2px 12px rgba(0,0,0,0.5)'>
-
-  <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:12px'>
-    <div>
-      <span style='font-size:22px;font-weight:900;color:#f1f5f9'>{tf_ico} {tf_lbl}</span>
-      <div style='font-size:11px;color:#64748b;margin-top:1px'>Price: <b style='color:#fbbf24'>{price}</b></div>
-    </div>
-    <span style='background:{sig_bg};color:{sig_txt};border:1px solid {sig_bdr};
-    padding:6px 16px;border-radius:20px;font-weight:800;font-size:15px'>
-      {sig_ico} {sig}
-    </span>
-  </div>
-
-  <div style='margin-bottom:10px'>
-    <div style='display:flex;justify-content:space-between;margin-bottom:4px'>
-      <span style='color:#94a3b8;font-size:12px'>Confidence</span>
-      <b style='color:{bar_c};font-size:12px'>{conf_int}/10</b>
-    </div>
-    <div style='background:#1e293b;border-radius:6px;height:10px'>
-      <div style='background:{bar_c};width:{conf_int*10}%;height:10px;border-radius:6px;
-      transition:width 0.3s'></div>
-    </div>
-  </div>
-
-  <div style='background:#1e293b;border-radius:8px;padding:10px 12px;margin-bottom:8px'>
-    <div style='font-size:12px;color:#64748b;margin-bottom:4px'>TREND</div>
-    <div style='font-size:13px;font-weight:700;color:{trend_col}'>{trend_ico} {trend}</div>
-  </div>
-
-  <div style='font-size:12px;color:#cbd5e1;margin:6px 0;line-height:1.5'>
-    🏗️ {struc}
-  </div>
-
-  <div style='background:#1e293b;border-radius:6px;padding:6px 10px;margin-top:6px;
-  font-size:12px;color:#e2e8f0'>
-    🎯 Key Level: <b style='color:#a78bfa'>{klvl}</b>
-  </div>
-
-  {pat_row}
-
-  <div style='border-top:1px solid #1e293b;margin-top:10px;padding-top:8px;
-  font-size:11px;color:#64748b;line-height:1.5'>
-    👁️ {act}
-  </div>
-</div>
-""", unsafe_allow_html=True)
-
-            # ── Trading decision guide ────────────────────────
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("""
-<div style='background:#0a0f1e;border:1px solid #1e3a5f;border-radius:14px;padding:20px 24px;margin-top:4px'>
-  <div style='font-size:15px;font-weight:700;color:#fbbf24;margin-bottom:14px'>
-    📋 How to Read This Panel &nbsp;·&nbsp; 如何使用
-  </div>
-  <table style='width:100%;border-collapse:collapse'>
-    <tr>
-      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#f1f5f9;font-weight:700;width:60px'>D1</td>
-      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:13px'>Overall <b style='color:#4ade80'>Bias</b> — only trade in this direction. 大方向判断.</td>
-    </tr>
-    <tr>
-      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#f1f5f9;font-weight:700'>H4</td>
-      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:13px'>Trend <b style='color:#4ade80'>Structure</b> — look for pullbacks to key levels. 趋势结构.</td>
-    </tr>
-    <tr>
-      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#f1f5f9;font-weight:700'>H1</td>
-      <td style='padding:8px 12px;border-bottom:1px solid #1e293b;color:#94a3b8;font-size:13px'>Entry <b style='color:#4ade80'>Zone</b> — BOS/CHoCH forming here = setup confirmed. 入场区域.</td>
-    </tr>
-    <tr>
-      <td style='padding:8px 12px;color:#f1f5f9;font-weight:700'>M15</td>
-      <td style='padding:8px 12px;color:#94a3b8;font-size:13px'>Entry <b style='color:#4ade80'>Trigger</b> — precise timing only. Wait for confirmation candle. 精确入场.</td>
-    </tr>
-  </table>
-  <div style='margin-top:14px;background:#1a0a0a;border:1px solid #ef4444;border-radius:8px;
-  padding:10px 14px;font-size:13px;color:#fca5a5'>
-    ⚡ <b>Golden Rule:</b> Only enter when D1 + H4 + H1 ALL agree on direction. Use M15 for timing only.<br>
-    <span style='color:#86efac;font-size:12px'>黄金法则：只有D1+H4+H1三个时间框架方向一致时才进场，M15仅用于确定入场时机。</span>
-  </div>
-</div>
-""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
 # TOOL 9 — AI DEBATE (BOARD OF DIRECTORS)
 # ════════════════════════════════════════════════════════════
-if False:  # REMOVED — AI Debate (gimmick, not part of the workflow)
-    st.markdown("### ⚔️ AI Board of Directors — Bull vs Bear Debate")
-    st.caption("Two AIs forced to argue opposite sides. A Judge AI then evaluates both and declares the winner.")
-
-    if not api_key:
-        st.warning("👈 Enter your API key in the sidebar first.")
-    else:
-        # ── Symbol + TF selectors ──────────────────────────
-        DEBATE_SYMBOLS = {
-            "EUR/USD":          ("EUR/USD",  "EURUSD=X"),
-            "GBP/USD":          ("GBP/USD",  "GBPUSD=X"),
-            "USD/JPY":          ("USD/JPY",  "USDJPY=X"),
-            "GBP/JPY":          ("GBP/JPY",  "GBPJPY=X"),
-            "AUD/USD":          ("AUD/USD",  "AUDUSD=X"),
-            "USD/CAD":          ("USD/CAD",  "USDCAD=X"),
-            "USD/CHF":          ("USD/CHF",  "USDCHF=X"),
-            "EUR/JPY":          ("EUR/JPY",  "EURJPY=X"),
-            "Gold (XAU/USD)":   ("XAU/USD",  "GC=F"),
-            "Silver (XAG/USD)": ("XAG/USD",  "SI=F"),
-            "BTC/USD":          ("BTC/USD",  "BTC-USD"),
-            "ETH/USD":          ("ETH/USD",  "ETH-USD"),
-            "S&P 500":          ("SPX",      "^GSPC"),
-            "Nasdaq 100":       ("NDX",      "^NDX"),
-        }
-        DEBATE_TFS = {
-            "M15 (15 min)": ("15min", "15m", "5d",   80),
-            "H1 (1 hour)":  ("1h",    "1h",  "20d",  80),
-            "H4 (4 hour)":  ("4h",    "1h",  "60d",  80),
-            "D1 (Daily)":   ("1day",  "1d",  "180d", 80),
-        }
-
-        db_c1, db_c2, db_c3 = st.columns([2, 2, 1])
-        with db_c1:
-            db_symbol = st.selectbox("📌 Symbol", list(DEBATE_SYMBOLS.keys()),
-                                     index=0, key="db_symbol")
-        with db_c2:
-            db_tf = st.selectbox("⏱️ Timeframe", list(DEBATE_TFS.keys()),
-                                 index=1, key="db_tf")
-        with db_c3:
-            st.markdown("<br>", unsafe_allow_html=True)
-            db_run = st.button("⚔️ Start Debate", use_container_width=True,
-                               type="primary", key="db_run_btn")
-
-        td_sym_db, yf_sym_db = DEBATE_SYMBOLS[db_symbol]
-        td_int_db, yf_int_db, yf_per_db, n_db = DEBATE_TFS[db_tf]
-
-        # ── News warning ───────────────────────────────────
-        _db_news = get_news_warning(db_symbol)
-        render_news_warning_banner(_db_news)
-
-        if db_run:
-            db_prog  = st.progress(0)
-            db_stat  = st.empty()
-
-            # ── Step 1: Fetch data ─────────────────────────
-            db_stat.markdown("📡 **Step 1/4** — Fetching chart data…")
-            db_prog.progress(10)
-            try:
-                import pandas as _pd_db
-                if twelve_data_key:
-                    import requests as _rq_db
-                    _url_db = "https://api.twelvedata.com/time_series"
-                    _p_db   = {"symbol": td_sym_db, "interval": td_int_db,
-                               "outputsize": n_db, "apikey": twelve_data_key, "format": "JSON"}
-                    _r_db   = _rq_db.get(_url_db, params=_p_db, timeout=15)
-                    _d_db   = _r_db.json()
-                    if _d_db.get("status") == "error":
-                        raise ValueError(_d_db.get("message", "Twelve Data error"))
-                    _rows_db = [{"Datetime": v["datetime"],
-                                 "Open": float(v["open"]), "High": float(v["high"]),
-                                 "Low": float(v["low"]), "Close": float(v["close"]),
-                                 "Volume": float(v.get("volume", 0))}
-                                for v in _d_db.get("values", [])]
-                    df_db = _pd_db.DataFrame(_rows_db)
-                    df_db["Datetime"] = _pd_db.to_datetime(df_db["Datetime"])
-                    df_db = df_db.sort_values("Datetime").set_index("Datetime")
-                else:
-                    raise ValueError("⚡ Twelve Data API key required. Add it in the sidebar under '📡 Live Data Key'.")
-
-                last_price_db = float(df_db["Close"].iloc[-1])
-                chart_pil_db  = generate_chart_image_from_df(df_db, db_symbol, db_tf)
-                db_prog.progress(25)
-
-                # ── Helpers ────────────────────────────────
-                import html as _html_mod
-                import io as _io_db, base64 as _b64_db
-                from PIL import Image as _PILdb
-
-                def _esc(t):
-                    """HTML-escape dynamic text before injecting into f-string HTML."""
-                    return _html_mod.escape(str(t)) if t else "—"
-
-                def _debate_call_ai(pil_img, prompt_text):
-                    """Call AI directly (bypassing analyze_chart_with_ai wrapper) and return raw text."""
-                    _buf = _io_db.BytesIO()
-                    _img = pil_img.copy()
-                    if _img.mode in ("RGBA", "P"):
-                        _img = _img.convert("RGB")
-                    _img.save(_buf, format="JPEG", quality=90)
-                    _b64 = _b64_db.b64encode(_buf.getvalue()).decode()
-                    if model_choice.startswith("gemini"):
-                        import google.genai as _gai
-                        import google.genai.types as _gtypes
-                        _gc = _gai.Client(api_key=api_key)
-                        _resp = _gc.models.generate_content(
-                            model=model_choice,
-                            contents=[
-                                prompt_text,
-                                _gtypes.Part.from_bytes(data=_buf.getvalue(), mime_type="image/jpeg"),
-                            ],
-                        )
-                        return _resp.text or ""
-                    else:
-                        import anthropic as _anth
-                        _ac = _anth.Anthropic(api_key=api_key)
-                        _resp = _ac.messages.create(
-                            model=model_choice,
-                            max_tokens=1200,
-                            messages=[{"role": "user", "content": [
-                                {"type": "image", "source": {
-                                    "type": "base64", "media_type": "image/jpeg", "data": _b64}},
-                                {"type": "text", "text": prompt_text},
-                            ]}],
-                        )
-                        return claude_text(_resp) or ""
-
-                def _parse_debate_json(raw_text):
-                    """Robustly extract JSON from AI response, stripping markdown wrappers."""
-                    # Try: strip ```json ... ``` wrapper first
-                    _stripped = re.sub(r"```(?:json)?\s*", "", raw_text).replace("```", "").strip()
-                    for _txt in (raw_text, _stripped):
-                        _m = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}', _txt, re.DOTALL)
-                        if not _m:
-                            _m = re.search(r'\{.*\}', _txt, re.DOTALL)
-                        if _m:
-                            try:
-                                return json.loads(_m.group())
-                            except Exception:
-                                pass
-                    return {}
-
-                # ── Step 2: Bull AI ────────────────────────
-                db_stat.markdown("🐂 **Step 2/4** — Bull AI building the case to BUY…")
-                BULL_PROMPT = f"""You are the BULL analyst on a trading committee. Your ONLY job is to argue WHY this {db_symbol} chart ({db_tf}) should be BOUGHT right now. Current price: {last_price_db:.5g}.
-
-IMPORTANT RULES:
-- You MUST argue for a BUY position — this is your designated role
-- Find EVERY bullish signal: support levels, bullish patterns, oversold conditions, demand zones, BOS to the upside, higher lows, any reason a trader should go long
-- Be specific with price levels
-- Even if the chart looks bearish overall, find the bullish case
-
-Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
-{{"verdict": "BUY", "confidence": 7, "headline": "one punchy sentence", "argument": "3-4 sentences full bull case", "evidence": ["signal 1", "signal 2", "signal 3"], "entry_zone": "price", "target": "price", "invalidation": "price"}}"""
-
-                bull_raw  = _debate_call_ai(chart_pil_db, BULL_PROMPT)
-                bull_data = _parse_debate_json(bull_raw)
-                if not bull_data.get("headline"):
-                    bull_data = {"verdict": "BUY", "confidence": 5,
-                                 "headline": "Could not parse bull argument",
-                                 "argument": re.sub(r'[<>]', '', bull_raw[:400]),
-                                 "evidence": [], "entry_zone": "—", "target": "—", "invalidation": "—"}
-                db_prog.progress(55)
-
-                # ── Step 3: Bear AI ────────────────────────
-                db_stat.markdown("🐻 **Step 3/4** — Bear AI building the case to SELL…")
-                BEAR_PROMPT = f"""You are the BEAR analyst on a trading committee. Your ONLY job is to argue WHY this {db_symbol} chart ({db_tf}) should be SOLD right now. Current price: {last_price_db:.5g}.
-
-IMPORTANT RULES:
-- You MUST argue for a SELL position — this is your designated role
-- Find EVERY bearish signal: resistance levels, bearish patterns, overbought conditions, supply zones, BOS to the downside, lower highs, any reason a trader should go short
-- Be specific with price levels
-- Even if the chart looks bullish overall, find the bearish case
-
-Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
-{{"verdict": "SELL", "confidence": 7, "headline": "one punchy sentence", "argument": "3-4 sentences full bear case", "evidence": ["signal 1", "signal 2", "signal 3"], "entry_zone": "price", "target": "price", "invalidation": "price"}}"""
-
-                bear_raw  = _debate_call_ai(chart_pil_db, BEAR_PROMPT)
-                bear_data = _parse_debate_json(bear_raw)
-                if not bear_data.get("headline"):
-                    bear_data = {"verdict": "SELL", "confidence": 5,
-                                 "headline": "Could not parse bear argument",
-                                 "argument": re.sub(r'[<>]', '', bear_raw[:400]),
-                                 "evidence": [], "entry_zone": "—", "target": "—", "invalidation": "—"}
-                db_prog.progress(80)
-
-                # ── Step 4: Judge AI ───────────────────────
-                db_stat.markdown("⚖️ **Step 4/4** — Judge AI evaluating both arguments…")
-                JUDGE_PROMPT = f"""You are an impartial senior trading judge for {db_symbol} {db_tf}. Evaluate both arguments and declare a winner.
-
-BULL case (confidence {bull_data.get('confidence',5)}/10):
-Headline: {bull_data.get('headline','')}
-Argument: {bull_data.get('argument','')}
-Evidence: {', '.join(bull_data.get('evidence',[]) if isinstance(bull_data.get('evidence',[]), list) else [])}
-Entry: {bull_data.get('entry_zone','—')} | Target: {bull_data.get('target','—')} | Invalidation: {bull_data.get('invalidation','—')}
-
-BEAR case (confidence {bear_data.get('confidence',5)}/10):
-Headline: {bear_data.get('headline','')}
-Argument: {bear_data.get('argument','')}
-Evidence: {', '.join(bear_data.get('evidence',[]) if isinstance(bear_data.get('evidence',[]), list) else [])}
-Entry: {bear_data.get('entry_zone','—')} | Target: {bear_data.get('target','—')} | Invalidation: {bear_data.get('invalidation','—')}
-
-Judge based on: quality of technical reasoning, valid signals, risk/reward, confluence.
-
-Respond with ONLY a raw JSON object, no markdown, no code blocks, no extra text:
-{{"winner": "BULL", "score_bull": 6, "score_bear": 8, "winner_reason": "2-3 sentences why this side won", "loser_weakness": "1-2 sentences biggest flaw in losing argument", "final_verdict": "SELL", "final_confidence": 7, "judge_note": "one sentence caveat"}}"""
-
-                judge_raw  = _debate_call_ai(chart_pil_db, JUDGE_PROMPT)
-                judge_data = _parse_debate_json(judge_raw)
-                if not judge_data.get("winner"):
-                    judge_data = {"winner": "BULL", "score_bull": 5, "score_bear": 5,
-                                  "winner_reason": re.sub(r'[<>]', '', judge_raw[:300]),
-                                  "loser_weakness": "—", "final_verdict": "WAIT",
-                                  "final_confidence": 5, "judge_note": "—"}
-                db_prog.progress(100)
-                db_stat.empty()
-
-                st.session_state["db_result"] = {
-                    "bull": bull_data, "bear": bear_data, "judge": judge_data,
-                    "symbol": db_symbol, "tf": db_tf, "price": last_price_db,
-                    "chart_pil": chart_pil_db,
-                }
-
-            except Exception as _db_err:
-                db_stat.empty()
-                st.error(f"❌ Debate error: {_db_err}")
-
-        # ── Display debate results ─────────────────────────
-        if "db_result" in st.session_state:
-            dr     = st.session_state["db_result"]
-            bull   = dr["bull"]
-            bear   = dr["bear"]
-            judge  = dr["judge"]
-            sym_db = dr["symbol"]
-            tf_db  = dr["tf"]
-            px_db  = dr["price"]
-
-            winner = str(judge.get("winner", "BULL")).upper()
-            sc_b   = int(judge.get("score_bull", 5))
-            sc_s   = int(judge.get("score_bear", 5))
-            fv     = str(judge.get("final_verdict", "WAIT")).upper()
-            fc     = int(judge.get("final_confidence", 5))
-
-            # ── Pre-compute all colour/border values ───────
-            fv_col    = "#22c55e" if fv == "BUY" else ("#ef4444" if fv == "SELL" else "#f59e0b")
-            fv_icon   = "▲" if fv == "BUY" else ("▼" if fv == "SELL" else "⏳")
-            bull_bdr  = "#22c55e" if winner == "BULL" else "#166534"
-            bear_bdr  = "#ef4444" if winner == "BEAR" else "#7f1d1d"
-            bull_badge = "🏆 WINNER" if winner == "BULL" else "&nbsp;"
-            bear_badge = "🏆 WINNER" if winner == "BEAR" else "&nbsp;"
-
-            # ── VS banner ─────────────────────────────────
-            st.markdown(
-                f"<div style='text-align:center;padding:8px 0 4px 0;font-size:13px;"
-                f"color:#6e7681;letter-spacing:2px'>⚔️ {sym_db} · {tf_db} · "
-                f"Price: <b style='color:#fbbf24'>{px_db:.5g}</b></div>",
-                unsafe_allow_html=True)
-
-            vs_left, vs_mid, vs_right = st.columns([2, 1, 2])
-            with vs_left:
-                st.markdown(
-                    f"<div style='text-align:center;background:#061a0e;"
-                    f"border:2px solid {bull_bdr};border-radius:12px;padding:16px'>"
-                    f"<div style='font-size:28px;font-weight:900;color:#4ade80'>🐂 BULL</div>"
-                    f"<div style='font-size:24px;font-weight:900;color:#4ade80'>{sc_b}/10</div>"
-                    f"<div style='color:#4ade80;font-size:13px;font-weight:700;margin-top:4px'>{bull_badge}</div>"
-                    f"</div>", unsafe_allow_html=True)
-            with vs_mid:
-                st.markdown(
-                    "<div style='text-align:center;padding:20px 0;"
-                    "font-size:42px;font-weight:900;color:#475569'>VS</div>",
-                    unsafe_allow_html=True)
-            with vs_right:
-                st.markdown(
-                    f"<div style='text-align:center;background:#1a0606;"
-                    f"border:2px solid {bear_bdr};border-radius:12px;padding:16px'>"
-                    f"<div style='font-size:28px;font-weight:900;color:#f87171'>🐻 BEAR</div>"
-                    f"<div style='font-size:24px;font-weight:900;color:#f87171'>{sc_s}/10</div>"
-                    f"<div style='color:#f87171;font-size:13px;font-weight:700;margin-top:4px'>{bear_badge}</div>"
-                    f"</div>", unsafe_allow_html=True)
-
-            st.markdown(
-                f"<div style='text-align:center;margin:12px 0 20px 0;"
-                f"font-size:18px;font-weight:900;color:{fv_col}'>"
-                f"{fv_icon} Judge Final Verdict: {fv} &nbsp;·&nbsp; "
-                f"<span style='font-size:14px;color:#fbbf24'>Confidence {fc}/10</span></div>",
-                unsafe_allow_html=True)
-
-            st.divider()
-
-            # ── Bull & Bear argument cards ─────────────────
-            bull_col, bear_col = st.columns(2, gap="medium")
-
-            with bull_col:
-                bull_conf = int(bull.get("confidence", 5))
-                # Header: bright green on white background — always readable
-                if winner == "BULL":
-                    st.markdown("<div style='background:#22c55e;color:#fff;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🏆 WINNER &nbsp;·&nbsp; 🐂 BULL CASE</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='background:#166534;color:#86efac;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🐂 BULL CASE</div>", unsafe_allow_html=True)
-                st.markdown(f"Confidence: **{bull_conf}/10** &nbsp; " + "🟩" * bull_conf + "⬜" * (10 - bull_conf))
-                st.info(f"💬 *{bull.get('headline', '')}*")
-                st.markdown(bull.get('argument', ''))
-                st.markdown("**✅ Bull Evidence:**")
-                ev_list = bull.get('evidence', [])
-                if isinstance(ev_list, list):
-                    for ev in ev_list:
-                        st.markdown(f"- ✅ {ev}")
-                st.markdown("**📊 Trade Plan:**")
-                st.markdown(f"- 🎯 Entry: `{bull.get('entry_zone','—')}`")
-                st.markdown(f"- 💰 Target: `{bull.get('target','—')}`")
-                st.markdown(f"- 🚫 Invalidation: `{bull.get('invalidation','—')}`")
-
-            with bear_col:
-                bear_conf = int(bear.get("confidence", 5))
-                # Header: bright red on white background — always readable
-                if winner == "BEAR":
-                    st.markdown("<div style='background:#ef4444;color:#fff;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🏆 WINNER &nbsp;·&nbsp; 🐻 BEAR CASE</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='background:#7f1d1d;color:#fca5a5;font-size:15px;font-weight:800;padding:8px 16px;border-radius:10px;margin-bottom:8px'>🐻 BEAR CASE</div>", unsafe_allow_html=True)
-                st.markdown(f"Confidence: **{bear_conf}/10** &nbsp; " + "🟥" * bear_conf + "⬜" * (10 - bear_conf))
-                st.info(f"💬 *{bear.get('headline', '')}*")
-                st.markdown(bear.get('argument', ''))
-                st.markdown("**❌ Bear Evidence:**")
-                ev_list_b = bear.get('evidence', [])
-                if isinstance(ev_list_b, list):
-                    for ev in ev_list_b:
-                        st.markdown(f"- ❌ {ev}")
-                st.markdown("**📊 Trade Plan:**")
-                st.markdown(f"- 🎯 Entry: `{bear.get('entry_zone','—')}`")
-                st.markdown(f"- 💰 Target: `{bear.get('target','—')}`")
-                st.markdown(f"- 🚫 Invalidation: `{bear.get('invalidation','—')}`")
-
-            st.divider()
-
-            # ── Judge verdict ──────────────────────────────
-            w_icon = "🐂" if winner == "BULL" else "🐻"
-            st.markdown(f"### ⚖️ Judge's Ruling — {w_icon} {winner} WINS")
-            st.success(f"**Why {winner} won:** {judge.get('winner_reason', '')}")
-            st.error(f"**Losing side's fatal flaw:** {judge.get('loser_weakness', '')}")
-
-            fv_fn = st.success if fv == "BUY" else (st.error if fv == "SELL" else st.warning)
-            fv_fn(f"{fv_icon} **Final Call: {fv}** — Conviction {fc}/10 · {judge.get('judge_note', '')}")
-
-
-            # ── Chart ──────────────────────────────────────
-            with st.expander("📊 View Chart Used in Debate", expanded=False):
-                if dr.get("chart_pil"):
-                    _db_buf = io.BytesIO()
-                    dr["chart_pil"].save(_db_buf, format="PNG")
-                    st.image(_db_buf.getvalue(), use_container_width=True)
 
 # ════════════════════════════════════════════════════════════
 # TOOL 10 — SIGNAL FEED (TradingView → Google Sheets)
 # ════════════════════════════════════════════════════════════
-if False:  # REMOVED — TradingView Signal Feed (no longer needed)
-    import pandas as _pd_sf
-    import datetime as _dt_sf
-
-    st.markdown("### 📲 Live TradingView Signal Feed")
-    st.caption("Every signal from your Pine Script — entry signals, TP hits, and SL hits — all shown here automatically.")
-
-    # ── Sheet ID input ──────────────────────────────────────
-    if "sf_sheet_id" not in st.session_state:
-        st.session_state["sf_sheet_id"] = "13vjfvw1FvMSnoeUoGXbMDCfOCAkYGUTJ2UM5Uny1LZ8"
-
-    _sf_col1, _sf_col2 = st.columns([3, 1])
-    with _sf_col1:
-        _sf_input = st.text_input(
-            "Google Sheet ID",
-            value=st.session_state["sf_sheet_id"],
-            placeholder="Google Sheet ID",
-            label_visibility="collapsed",
-        )
-    with _sf_col2:
-        _sf_refresh = st.button("🔄 Refresh", use_container_width=True)
-
-    if _sf_input:
-        st.session_state["sf_sheet_id"] = _sf_input.strip()
-    _sf_sheet_id = st.session_state.get("sf_sheet_id", "")
-
-    # ── Load signals ────────────────────────────────────────
-    @st.cache_data(ttl=60, show_spinner=False)
-    def _sf_load(sid):
-        _url = f"https://docs.google.com/spreadsheets/d/{sid}/export?format=csv"
-        _df = _pd_sf.read_csv(_url, on_bad_lines="skip")
-        _df.columns = [c.strip() for c in _df.columns]
-        return _df
-
-    if _sf_refresh and _sf_sheet_id:
-        st.cache_data.clear()
-
-    if _sf_sheet_id:
-        try:
-            _sf_df = _sf_load(_sf_sheet_id)
-
-            if _sf_df.empty:
-                st.info("📭 No signals yet. Waiting for your first TradingView alert to fire.")
-            else:
-                _sf_df_sorted = _sf_df.iloc[::-1].reset_index(drop=True)
-
-                # ── Find latest BUY/SELL signal ─────────────
-                _sf_active = None
-                for _, _r in _sf_df_sorted.iterrows():
-                    _d = str(_r.get("Direction", "")).upper().strip()
-                    if _d in ("BUY", "SELL"):
-                        _sf_active = _r
-                        break
-
-                # ── Latest Active Signal Card ───────────────
-                if _sf_active is not None:
-                    _sfa_dir  = str(_sf_active.get("Direction", "")).upper()
-                    _sfa_ep   = _sf_active.get("EP", "—")
-                    _sfa_tp1  = _sf_active.get("TP1", "—")
-                    _sfa_tp2  = _sf_active.get("TP2", "—")
-                    _sfa_tp3  = _sf_active.get("TP3", "—")
-                    _sfa_sl   = _sf_active.get("SL", "—")
-                    _sfa_con  = _sf_active.get("Confidence", "—")
-                    _sfa_sym  = _sf_active.get("Symbol", "—")
-                    _sfa_ts   = _sf_active.get("Timestamp", "—")
-                    _sfa_isbuy = (_sfa_dir == "BUY")
-                    _sfa_dcol  = "#22c55e" if _sfa_isbuy else "#ef4444"
-                    _sfa_dbg   = "#052e16" if _sfa_isbuy else "#450a0a"
-                    _sfa_icon  = "🚀" if _sfa_isbuy else "💀"
-
-                    st.markdown("#### 📡 Latest Entry Signal")
-                    st.markdown(
-                        f"<div style='background:{_sfa_dbg};border:2px solid {_sfa_dcol};border-radius:14px;padding:18px 20px;margin-bottom:8px'>"
-                        f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>"
-                        f"<span style='color:{_sfa_dcol};font-size:20px;font-weight:900'>{_sfa_icon} {_sfa_dir} SIGNAL</span>"
-                        f"<span style='color:#94a3b8;font-size:12px'>{_sfa_ts}</span></div>"
-                        f"<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px'>"
-                        f"<span style='background:#1e293b;color:#fbbf24;padding:3px 10px;border-radius:20px;font-size:13px'>🎯 EP: {_sfa_ep}</span>"
-                        f"<span style='background:#1e293b;color:#f87171;padding:3px 10px;border-radius:20px;font-size:13px'>🛑 SL: {_sfa_sl}</span>"
-                        f"<span style='background:#1e293b;color:#a78bfa;padding:3px 10px;border-radius:20px;font-size:13px'>📊 {_sfa_con}</span>"
-                        f"<span style='background:#1e293b;color:#94a3b8;padding:3px 10px;border-radius:20px;font-size:13px'>📌 {_sfa_sym}</span>"
-                        f"</div>"
-                        f"<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:8px'>"
-                        f"<div style='background:#0f172a;border-radius:8px;padding:10px;text-align:center'>"
-                        f"<div style='color:#64748b;font-size:11px'>TP1</div>"
-                        f"<div style='color:#4ade80;font-size:15px;font-weight:700'>{_sfa_tp1}</div></div>"
-                        f"<div style='background:#0f172a;border-radius:8px;padding:10px;text-align:center'>"
-                        f"<div style='color:#64748b;font-size:11px'>TP2</div>"
-                        f"<div style='color:#4ade80;font-size:15px;font-weight:700'>{_sfa_tp2}</div></div>"
-                        f"<div style='background:#0f172a;border-radius:8px;padding:10px;text-align:center'>"
-                        f"<div style='color:#64748b;font-size:11px'>TP3</div>"
-                        f"<div style='color:#4ade80;font-size:15px;font-weight:700'>{_sfa_tp3}</div></div>"
-                        f"</div></div>",
-                        unsafe_allow_html=True
-                    )
-
-                # ── Activity Timeline ───────────────────────
-                st.markdown(f"#### 🕐 Signal Activity  &nbsp;<span style='color:#64748b;font-size:13px;font-weight:400'>Last loaded: {_dt_sf.datetime.now().strftime('%H:%M:%S')} · auto-refresh 60s</span>", unsafe_allow_html=True)
-
-                for _, _row in _sf_df_sorted.head(30).iterrows():
-                    _rd   = str(_row.get("Direction", "—")).upper().strip()
-                    _rts  = _row.get("Timestamp", "—")
-                    _rep  = _row.get("EP", "—")
-                    _rext = _row.get("Exit", "—")
-                    _rtp1 = _row.get("TP1", "—")
-                    _rsl  = _row.get("SL", "—")
-                    _rcon = _row.get("Confidence", "—")
-
-                    if _rd == "BUY":
-                        st.markdown(
-                            f"<div style='background:#052e16;border-left:4px solid #22c55e;border-radius:0 8px 8px 0;"
-                            f"padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#4ade80;font-weight:700'>🚀 BUY SIGNAL &nbsp;"
-                            f"<span style='color:#94a3b8;font-weight:400;font-size:13px'>EP: {_rep} &nbsp;·&nbsp; TP1: {_rtp1} &nbsp;·&nbsp; SL: {_rsl} &nbsp;·&nbsp; {_rcon}</span></span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-                    elif _rd == "SELL":
-                        st.markdown(
-                            f"<div style='background:#450a0a;border-left:4px solid #ef4444;border-radius:0 8px 8px 0;"
-                            f"padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#f87171;font-weight:700'>💀 SELL SIGNAL &nbsp;"
-                            f"<span style='color:#94a3b8;font-weight:400;font-size:13px'>EP: {_rep} &nbsp;·&nbsp; TP1: {_rtp1} &nbsp;·&nbsp; SL: {_rsl} &nbsp;·&nbsp; {_rcon}</span></span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-                    elif "TP3" in _rd:
-                        st.markdown(
-                            f"<div style='background:#1c1917;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;"
-                            f"padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#fbbf24;font-weight:700'>💎 TP3 HIT &nbsp;"
-                            f"<span style='color:#94a3b8;font-weight:400;font-size:13px'>Exit: {_rext}</span></span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-                    elif "TP2" in _rd:
-                        st.markdown(
-                            f"<div style='background:#1c1917;border-left:4px solid #f59e0b;border-radius:0 8px 8px 0;"
-                            f"padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#fbbf24;font-weight:700'>🎯 TP2 HIT &nbsp;"
-                            f"<span style='color:#94a3b8;font-weight:400;font-size:13px'>Exit: {_rext}</span></span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-                    elif "TP1" in _rd:
-                        st.markdown(
-                            f"<div style='background:#0c1a0c;border-left:4px solid #86efac;border-radius:0 8px 8px 0;"
-                            f"padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#86efac;font-weight:700'>✅ TP1 HIT &nbsp;"
-                            f"<span style='color:#94a3b8;font-weight:400;font-size:13px'>Exit: {_rext}</span></span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-                    elif "SL" in _rd:
-                        st.markdown(
-                            f"<div style='background:#2d0a0a;border-left:4px solid #dc2626;border-radius:0 8px 8px 0;"
-                            f"padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#f87171;font-weight:700'>❌ SL HIT &nbsp;"
-                            f"<span style='color:#94a3b8;font-weight:400;font-size:13px'>Exit: {_rext}</span></span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-                    elif "CLOSE" in _rd:
-                        st.markdown(
-                            f"<div style='background:#1e1e1e;border-left:4px solid #94a3b8;border-radius:0 8px 8px 0;"
-                            f"padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#94a3b8;font-weight:700'>🚨 CLOSE &nbsp;"
-                            f"<span style='font-weight:400;font-size:13px'>Exit: {_rext}</span></span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        st.markdown(
-                            f"<div style='background:#1e293b;border-left:4px solid #475569;border-radius:0 8px 8px 0;"
-                            f"padding:8px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center'>"
-                            f"<span style='color:#94a3b8'>📡 {_rd}</span>"
-                            f"<span style='color:#64748b;font-size:12px'>{_rts}</span></div>",
-                            unsafe_allow_html=True
-                        )
-
-                st.caption(f"Showing latest 30 entries · Total recorded: **{len(_sf_df)}**")
-
-        except Exception as _sf_err:
-            st.error(f"❌ Cannot load signals: {_sf_err}")
-            st.markdown("Make sure your Google Sheet is set to **Anyone with link → Viewer**.")
 
 # ── Footer ─────────────────────────────────────────────────
 st.divider()
