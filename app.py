@@ -14,7 +14,7 @@ import json
 import re
 import os
 
-APP_VERSION = "2026.07.15-strategy-hardening"
+APP_VERSION = "2026.07.15-ui-dark-aggressive"
 
 # ── localStorage persistence (browser-side) ──────────────────
 try:
@@ -430,9 +430,10 @@ def analyze_chart_with_ai(
                          "otherwise say WAIT. Entries only after full confirmation (rejection candle closed). "
                          "SL beyond structure with extra buffer. TP at the nearest opposing S/R only if it offers 2R+. Max 1% risk. "
                          "When in doubt — WAIT."),
-        "aggressive": ("RISK PROFILE = AGGRESSIVE 🔥: The same A/A+ gates still apply; never enter before a rejection "
-                       "candle closes. Aggressive means using the first valid retest entry, a smaller volatility buffer, "
-                       "and up to 1.5% account risk. It does NOT permit confidence below 7 or R:R below 2."),
+        "aggressive": ("RISK PROFILE = AGGRESSIVE 🔥: You MUST output a directional signal: BUY or SELL. WAIT is forbidden. "
+                       "If all A/A+ gates pass, label it A or A+. If gates are missing, still choose the stronger direction but "
+                       "label it SPECULATIVE AGGRESSIVE, list every failed gate, use at most 0.5% account risk, and give a fast "
+                       "invalidation level. Never pretend a speculative signal is A-grade."),
     }.get(risk, "RISK PROFILE = BALANCED ⚖️: standard rules — confirmed setups only, 1-2% risk, minimum 1:2 R:R.")
 
     user_prompt = f"""
@@ -497,6 +498,8 @@ Does one of those levels OVERLAP a key S/R level? (= bonus confluence). If fib a
 
 ---
 Now output the drawing instructions as a JSON block to annotate the chart.
+The JSON MUST also contain `bias_signal` (always BUY or SELL) and `setup_grade`
+(A, A+, SPECULATIVE, or WAIT). In aggressive mode `signal` MUST equal `bias_signal`; WAIT is not allowed.
 
 ════ MARKET STRUCTURE ANNOTATION RULES ════
 
@@ -552,6 +555,8 @@ Example — bearish with double top pattern:
 ```json
 {{
   "signal": "SELL",
+  "bias_signal": "SELL",
+  "setup_grade": "A",
   "confidence": 8,
   "pattern_name": "Double Top 双重顶",
   "annotations": [
@@ -567,6 +572,8 @@ Example — bullish with ascending triangle:
 ```json
 {{
   "signal": "BUY",
+  "bias_signal": "BUY",
+  "setup_grade": "A",
   "confidence": 7,
   "pattern_name": "Ascending Triangle 上升三角形",
   "annotations": [
@@ -1731,6 +1738,26 @@ def parse_ai_json(raw: str, api_key: str = "", model: str = "") -> dict:
     return {}
 
 
+def force_aggressive_direction(raw: str) -> tuple[str, str]:
+    """Guarantee BUY/SELL for Aggressive mode while keeping non-A setups explicit."""
+    meta = parse_ai_json(raw)
+    original = str(meta.get("signal", "WAIT")).upper()
+    if original in ("BUY", "SELL"):
+        grade = str(meta.get("setup_grade", "SPECULATIVE")).upper()
+        return original, grade if grade in ("A", "A+", "SPECULATIVE") else "SPECULATIVE"
+    bias = str(meta.get("bias_signal", "")).upper()
+    if bias not in ("BUY", "SELL"):
+        long_term = re.search(r"long[- ]term[^\n:]*:\s*(bullish|bearish)", raw or "", re.IGNORECASE)
+        if long_term:
+            bias = "BUY" if long_term.group(1).lower() == "bullish" else "SELL"
+        else:
+            text = (raw or "").lower()
+            bulls = text.count("bullish") + text.count("看涨") + text.count("买入")
+            bears = text.count("bearish") + text.count("看跌") + text.count("卖出")
+            bias = "BUY" if bulls >= bears else "SELL"
+    return bias, "SPECULATIVE"
+
+
 # ============================================================
 # STREAMLIT UI
 # ============================================================
@@ -2369,6 +2396,161 @@ st.markdown("""
   div[data-baseweb="button-group"] button[aria-selected="true"] p {
     color: #04120a !important; font-weight: 800 !important;
   }
+
+  /* =========================================================
+     FINAL CONTROL OVERRIDES — Streamlit 1.40+ / 1.5x DOMs
+     Keep this block last so BaseWeb cannot paint white layers.
+     ========================================================= */
+  [data-testid="stSelectbox"] [data-baseweb="select"],
+  [data-testid="stSelectbox"] [data-baseweb="select"] > div,
+  [data-testid="stMultiSelect"] [data-baseweb="select"],
+  [data-testid="stMultiSelect"] [data-baseweb="select"] > div,
+  div[data-baseweb="select"] > div {
+    background: #0b120e !important;
+    background-color: #0b120e !important;
+    color: #e8f0ea !important;
+    -webkit-text-fill-color: #e8f0ea !important;
+    border-color: #2b4534 !important;
+    box-shadow: none !important;
+  }
+  [data-testid="stSelectbox"] [data-baseweb="select"] *,
+  [data-testid="stMultiSelect"] [data-baseweb="select"] * {
+    color: #e8f0ea !important;
+    -webkit-text-fill-color: #e8f0ea !important;
+  }
+  [data-testid="stSelectbox"] svg,
+  [data-testid="stMultiSelect"] svg { fill: #8fb49b !important; color: #8fb49b !important; }
+
+  /* Dropdown portal is rendered outside the widget tree. */
+  [data-baseweb="popover"],
+  [data-baseweb="popover"] > div,
+  [data-baseweb="menu"],
+  ul[role="listbox"] {
+    background: #0b120e !important;
+    background-color: #0b120e !important;
+    color: #e8f0ea !important;
+    border-color: #2b4534 !important;
+  }
+  [role="option"], li[role="option"] {
+    background: #0b120e !important;
+    color: #d9e8dd !important;
+    -webkit-text-fill-color: #d9e8dd !important;
+  }
+  [role="option"]:hover, li[role="option"]:hover {
+    background: #14251a !important; color: #6ee7a0 !important;
+  }
+  [role="option"][aria-selected="true"], li[role="option"][aria-selected="true"] {
+    background: #16a34a !important; color: #04120a !important;
+    -webkit-text-fill-color: #04120a !important;
+  }
+
+  /* Text, number, date, time and textarea controls — every nested BaseWeb layer. */
+  [data-testid="stTextInput"] [data-baseweb="input"],
+  [data-testid="stTextInput"] [data-baseweb="base-input"],
+  [data-testid="stNumberInput"] [data-baseweb="input"],
+  [data-testid="stNumberInput"] [data-baseweb="base-input"],
+  [data-testid="stTextArea"] [data-baseweb="textarea"],
+  [data-testid="stDateInput"] [data-baseweb="input"],
+  [data-testid="stTimeInput"] [data-baseweb="input"] {
+    background: #0b120e !important; background-color: #0b120e !important;
+    color: #e8f0ea !important; border-color: #2b4534 !important;
+  }
+  [data-testid="stTextInput"] input,
+  [data-testid="stNumberInput"] input,
+  [data-testid="stDateInput"] input,
+  [data-testid="stTimeInput"] input,
+  [data-testid="stTextArea"] textarea {
+    background: transparent !important; color: #e8f0ea !important;
+    -webkit-text-fill-color: #e8f0ea !important; caret-color: #4ade80 !important;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #6f8576 !important; -webkit-text-fill-color: #6f8576 !important; opacity: 1 !important;
+  }
+
+  /* Segmented controls: covers st.segmented_control, st.pills and radio fallback. */
+  [data-testid="stButtonGroup"],
+  [data-testid="stSegmentedControl"],
+  div[data-baseweb="button-group"],
+  [role="radiogroup"] {
+    background: transparent !important; background-color: transparent !important;
+  }
+  [data-testid="stButtonGroup"] button,
+  [data-testid="stSegmentedControl"] button,
+  div[data-baseweb="button-group"] button,
+  [role="radiogroup"] button,
+  button[kind*="segmented"],
+  button[data-testid*="segmented"] {
+    background: #0b120e !important; background-color: #0b120e !important;
+    color: #cfe0d4 !important; -webkit-text-fill-color: #cfe0d4 !important;
+    border-color: #2b4534 !important; box-shadow: none !important;
+  }
+  [data-testid="stButtonGroup"] button *,
+  [data-testid="stSegmentedControl"] button *,
+  div[data-baseweb="button-group"] button *,
+  [role="radiogroup"] button * {
+    color: inherit !important; -webkit-text-fill-color: inherit !important;
+  }
+  [data-testid="stButtonGroup"] button:hover,
+  [data-testid="stSegmentedControl"] button:hover,
+  div[data-baseweb="button-group"] button:hover {
+    background: #13251a !important; color: #6ee7a0 !important; border-color: #22c55e !important;
+  }
+  [data-testid="stButtonGroup"] button[aria-pressed="true"],
+  [data-testid="stButtonGroup"] button[aria-checked="true"],
+  [data-testid="stButtonGroup"] button[aria-selected="true"],
+  [data-testid="stSegmentedControl"] button[aria-pressed="true"],
+  [data-testid="stSegmentedControl"] button[aria-checked="true"],
+  [data-testid="stSegmentedControl"] button[aria-selected="true"],
+  div[data-baseweb="button-group"] button[aria-pressed="true"],
+  div[data-baseweb="button-group"] button[aria-checked="true"],
+  div[data-baseweb="button-group"] button[aria-selected="true"],
+  button[kind="segmented_controlActive"],
+  button[data-testid="stBaseButton-segmented_controlActive"] {
+    background: #22c55e !important; background-color: #22c55e !important;
+    color: #031208 !important; -webkit-text-fill-color: #031208 !important;
+    border-color: #6ee7a0 !important; box-shadow: 0 0 16px rgba(34,197,94,.42) !important;
+    font-weight: 800 !important;
+  }
+  [data-testid="stButtonGroup"] button[aria-pressed="true"] *,
+  [data-testid="stButtonGroup"] button[aria-checked="true"] *,
+  [data-testid="stButtonGroup"] button[aria-selected="true"] *,
+  [data-testid="stSegmentedControl"] button[aria-pressed="true"] *,
+  [data-testid="stSegmentedControl"] button[aria-checked="true"] *,
+  [data-testid="stSegmentedControl"] button[aria-selected="true"] *,
+  div[data-baseweb="button-group"] button[aria-pressed="true"] *,
+  div[data-baseweb="button-group"] button[aria-checked="true"] *,
+  div[data-baseweb="button-group"] button[aria-selected="true"] * {
+    color: #031208 !important; -webkit-text-fill-color: #031208 !important; font-weight: 800 !important;
+  }
+  [data-testid="stButtonGroup"] button:disabled,
+  [data-testid="stSegmentedControl"] button:disabled,
+  div[data-baseweb="button-group"] button:disabled {
+    background: #0a100c !important; color: #718478 !important;
+    -webkit-text-fill-color: #718478 !important; opacity: .72 !important;
+  }
+
+  /* Upload dropzone and secondary buttons. */
+  [data-testid="stFileUploaderDropzone"],
+  [data-testid="stFileUploaderDropzone"] > div,
+  [data-testid="stFileUploader"] section {
+    background: #0b120e !important; background-color: #0b120e !important;
+    color: #cfe0d4 !important; border-color: #2b4534 !important;
+  }
+  [data-testid="stFileUploader"] button,
+  [data-testid="stFileUploaderDropzone"] button {
+    background: #121b14 !important; color: #4ade80 !important; border-color: #2b4534 !important;
+  }
+
+  /* Labels, help copy, captions and tooltips must remain readable. */
+  [data-testid="stWidgetLabel"] p,
+  [data-testid="stCaptionContainer"] p,
+  .stCaption p,
+  [data-testid="stMarkdownContainer"] small {
+    color: #91a99a !important; -webkit-text-fill-color: #91a99a !important; opacity: 1 !important;
+  }
+  [data-baseweb="tooltip"], [role="tooltip"] {
+    background: #101812 !important; color: #e8f0ea !important; border: 1px solid #2b4534 !important;
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -2973,6 +3155,13 @@ if _nav == "Read My Chart":
                         context=_rc_ctx,
                         mode=_rc_mode, risk=_rc_risk,
                     )
+                if _rc_risk == "aggressive":
+                    _forced_signal, _forced_grade = force_aggressive_direction(_rc_text)
+                    st.session_state["rc_forced_signal"] = _forced_signal
+                    st.session_state["rc_forced_grade"] = _forced_grade
+                else:
+                    st.session_state.pop("rc_forced_signal", None)
+                    st.session_state.pop("rc_forced_grade", None)
                 st.session_state["rc_result"] = _rc_text
                 st.session_state["rc_image"]  = _rc_img
                 st.session_state["rc_ann"]    = None
@@ -2986,7 +3175,8 @@ if _nav == "Read My Chart":
     if st.session_state.get("rc_result"):
         _rt   = st.session_state["rc_result"]
         _meta = parse_json_from_analysis(_rt)
-        _sig  = str(_meta.get("signal", "WAIT")).upper()
+        _sig  = st.session_state.get("rc_forced_signal") or str(_meta.get("signal", "WAIT")).upper()
+        _grade = st.session_state.get("rc_forced_grade") or str(_meta.get("setup_grade", "WAIT")).upper()
         _conf = int(_meta.get("confidence", 5) or 5)
         _pat  = _meta.get("pattern_name", "")
         _m_lb, _r_lb = st.session_state.get("rc_modes", ("⚡ Auto", "⚖️ Balanced"))
@@ -3003,7 +3193,7 @@ if _nav == "Read My Chart":
         st.markdown(f"""
 <div class='chee-signal-card {_sty[0]}'>
   <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px'>
-    <span class='tag' style='background:rgba(232,199,110,0.10);border:1px solid rgba(232,199,110,0.4);color:#e8c76e'>⚡ CHEE AI READ</span>
+    <span class='tag' style='background:rgba(232,199,110,0.10);border:1px solid rgba(232,199,110,0.4);color:#e8c76e'>⚡ CHEE AI READ · {_grade}</span>
     <span class='tag' style='background:{_sty[1]};border:1px solid {_sty[3]};color:{_sty[2]};font-size:14px;padding:7px 22px'>{_sty[4]}</span>
   </div>
   <span style='display:inline-block;background:#0c120e;border:1px solid #1c2a21;border-radius:999px;
@@ -3025,6 +3215,9 @@ if _nav == "Read My Chart":
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+        if _grade == "SPECULATIVE":
+            st.warning("🔥 Aggressive forced signal: direction is provided as requested, but one or more A-grade gates are missing. Suggested risk: max 0.5%. 激进强制信号：已给出方向，但并非 A/A+ 设置，建议风险不超过 0.5%。")
 
         # ── Annotated chart ──
         if _meta.get("annotations") and st.session_state.get("rc_ann") is None:
